@@ -1,0 +1,99 @@
+{
+  "status": "ok",
+  "title": "Desk Plant Monitor",
+  "summary": "Monitors soil moisture, temperature, and humidity; displays data on OLED and alerts via buzzer if dry.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "soil",
+      "part_id": "soil_moisture_capacitive"
+    },
+    {
+      "instance_id": "bme",
+      "part_id": "bme280"
+    },
+    {
+      "instance_id": "buzzer",
+      "part_id": "piezo_buzzer_passive"
+    },
+    {
+      "instance_id": "oled",
+      "part_id": "ssd1306_oled_096"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "soil",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "soil",
+      "from_pin": "AOUT",
+      "to_instance": "board",
+      "to_pin": "D32",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "soil",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    }
+  ],
+  "layout": [],
+  "behaviors": [
+    {
+      "name": "monitor",
+      "part_ids": [
+        "soil_moisture_capacitive",
+        "bme280",
+        "ssd1306_oled_096"
+      ],
+      "readings": [
+        {
+          "name": "moisture",
+          "unit": "adc_counts",
+          "instance_id": "soil"
+        },
+        {
+          "name": "temp",
+          "unit": "C",
+          "instance_id": "bme"
+        },
+        {
+          "name": "hum",
+          "unit": "%",
+          "instance_id": "bme"
+        }
+      ],
+      "display_lines": [
+        {
+          "target_instance": "oled",
+          "reading": "moisture",
+          "unit": "%",
+          "text": "Soil"
+        },
+        {
+          "target_instance": "oled",
+          "reading": "hum",
+          "unit": "%",
+          "text": "Humidity"
+        },
+        {
+          "target_instance": "oled",
+          "reading": "temp",
+          "unit": "C",
+          "text": "Temp"
+        }
+      ]
+    }
+  ]
+}

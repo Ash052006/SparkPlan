@@ -136,7 +136,7 @@ class Planner:
                 )
                 if round_no >= MAX_REPAIR_ROUNDS:
                     break
-                user = _repair_prompt(raw, parse_issues)
+                user = _repair_prompt(raw, None, parse_issues)
                 continue
 
             if isinstance(parsed, UnsupportedBuild):
@@ -213,7 +213,7 @@ class Planner:
             )
             if round_no >= MAX_REPAIR_ROUNDS:
                 break
-            user = _repair_prompt(raw, report.errors)
+            user = _repair_prompt(raw, parsed, report.errors)
 
         return _failed(
             idea,
@@ -313,13 +313,38 @@ def _unsupported_issues(parsed: UnsupportedBuild) -> list[Issue]:
     ]
 
 
-def _repair_prompt(idea: str, issues: list[Issue]) -> str:
-    """Minimal repair feedback: the idea, then only the failing issues.
+def _compact_candidate(candidate: SupportedBuild | None) -> str:
+    """Serialize the current candidate spec as compact JSON (no empty optionals).
 
-    The previous response is deliberately NOT echoed back: re-sending a large
-    spec each round burns the provider's token quota, and the model can rebuild
-    every section from the system prompt. Only the machine-readable issues and
-    their fix hints are sent.
+    Sent back on repair so the model AMENDS a known-good baseline instead of
+    re-inventing the build (which caused unrequested parts and re-truncation).
+    Empty optional strings/lists are dropped to keep the anchor small; only
+    facts that could change a validator outcome are kept.
+    """
+    if candidate is None:
+        return "null"
+    data = candidate.model_dump()
+    return json.dumps(_strip_empty(data), separators=(",", ":"), ensure_ascii=False)
+
+
+def _strip_empty(value: Any) -> Any:
+    """Recursively drop empty optional fields ("" / [] / None) from a dict/list."""
+    if isinstance(value, dict):
+        return {
+            k: _strip_empty(v) for k, v in value.items() if not (v is None or v == "" or v == [])
+        }
+    if isinstance(value, list):
+        return [_strip_empty(v) for v in value]
+    return value
+
+
+def _repair_prompt(idea: str, candidate: SupportedBuild | None, issues: list[Issue]) -> str:
+    """Actionable repair feedback: the idea, the current candidate, the errors.
+
+    The candidate spec is echoed (compact) so the model can correct only what is
+    broken while preserving everything already valid. Only error-severity issues
+    are sent. Explicit instructions forbid adding unrequested parts and require
+    every pin connection and one layout entry per non-board part.
     """
     machine = json.dumps(
         [
@@ -337,9 +362,17 @@ def _repair_prompt(idea: str, issues: list[Issue]) -> str:
     )
     return (
         f"{build_user_message(idea)}\n\n"
-        f"Your previous reply was INVALID. Fix every error below and return the "
-        f"FULL corrected BuildSpec (all required sections):\n{machine}\n\n"
-        'Reply with the corrected BuildSpec inside {"build": <BuildSpec>} JSON only.'
+        "Your PREVIOUS BuildSpec (compact JSON) is below. Keep every part, "
+        "connection and layout entry that is already valid; change ONLY what the "
+        "errors require. Do NOT add any component the user did not ask for, and "
+        "do NOT drop a part that is still needed.\n"
+        f"CURRENT_SPEC: {_compact_candidate(candidate)}\n\n"
+        f"ERRORS TO FIX (all are blocking; fix every one):\n{machine}\n\n"
+        "CHECK before replying: (a) every non-board part has VCC -> a rail and "
+        "GND -> a board GND; (b) EVERY remaining pin of every non-board part is an "
+        "endpoint of some connection; (c) there is exactly one layout entry "
+        "{{part_id, mount}} for every non-board part.\n\n"
+        'Return the FULL corrected BuildSpec inside {"build": <BuildSpec>} JSON only.'
     )
 
 
