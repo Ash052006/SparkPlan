@@ -458,6 +458,7 @@
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "base",
+    "heat_source": true,
     "exposure": {
       "face": "top",
       "opening_x_mm": 24.0,
@@ -704,6 +705,7 @@
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
+    "heat_source": true,
     "exposure": {
       "face": "front",
       "opening_x_mm": 82.0,
