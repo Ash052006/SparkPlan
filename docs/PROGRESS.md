@@ -316,3 +316,83 @@ the audit and the changes made from it.
 - Persistent over-budget validation still yields `failed`, not `unsupported`
   (approved: only LLM refusals are `unsupported`).
 - The legacy planner/client/validators remain separate and unreconciled.
+
+## Phase 3 stabilization — live verification attempt
+
+Ran against the real Groq API (`qwen/qwen3.8-27b`, `max_tokens=900`,
+`max_retries=3`, base `https://api.groq.com/openai/v1`). Offline gates first:
+`make test` 270 passed, `make lint` clean. API key never printed.
+
+**Fix found and made from live evidence**
+
+The first live desk-plant run returned `failed` with `LLM_TRUNCATED` on all four
+calls. Inspecting the raw response showed the completion was 2,582 chars and
+**ended in complete, parseable JSON** (`...}]}}`) yet `finish_reason="length"`
+because the provider counts its own tokens to the 900 cap. The planner was
+discarding an already-valid response and re-asking, burning the whole call
+budget. Fix: `planner.py` no longer rejects a truncated response up-front; it
+always attempts `_parse`, and truncation only changes how an unparseable
+response is labelled (`truncated` + `LLM_TRUNCATED` hint vs `parse_error`). A
+parseable-but-truncated response now flows into validation like any other.
+Regression tests updated/added in
+`tests/planner/phase3/test_p3_planner.py`:
+`test_truncated_but_parseable_valid_spec_is_accepted`,
+`test_truncated_unparseable_triggers_repair`,
+`test_always_truncated_unparseable_is_failed_not_ok`.
+
+**Live results (this session)**
+
+| Prompt | Status | Calls | Repair rounds | Result |
+|---|---|---|---|---|
+| Build a desk plant monitor | `failed` | 4 | 3 | Real validator errors (12), see below |
+| Build a motion-triggered night light | `failed` | 1 | 0 | BLOCKED: HTTP 429 (TPD) |
+| Build a door distance alarm | — | — | — | BLOCKED: HTTP 429 (TPD), not run |
+
+- **Desk plant monitor** (post-fix): after the truncation fix the run produced
+  genuine `NO_GROUND`, `NO_POWER`, `PIN_UNCONNECTED`, `NO_MOUNT_ZONE` and
+  `BEHAVIOR_UNIT_MISMATCH` errors and fed them back as repair feedback across
+  rounds. The model kept emitting a spec missing `layout` entries and several
+  connections (it also added an unrequested `piezo_buzzer_passive`), so repairs
+  did not converge and the final verdict was `failed` with 12 errors. `status`
+  was correctly never `ok` while errors remained. Provider usage per call:
+  prompt ~2,947 then ~3,453/~3,667 (grows with repair feedback),
+  completion 900 (capped) each.
+- **Motion-triggered night light** and **door distance alarm**: not completed.
+  Groq returned HTTP 429 on every real (multi-thousand-token) request.
+
+**Blocker: Groq daily token quota**
+
+The binding limit is **tokens per day (TPD) = 200,000** on the on-demand tier
+for `qwen/qwen3.8-27b`, not just the per-minute cap. At the end of this session
+`Used=198,484` and any 2,950-token request was rejected (reset ~10 min later).
+A single plan costs roughly 12-15k prompt tokens (system prompt ~2,950 real
+tokens x up to 4 calls) plus up to 3.6k completion, so only about a dozen real
+model calls per day are available. This cannot reliably cover three multi-call
+plans. Tiny one-token probes sometimes returned HTTP 200, which is why quota
+looked intermittently available.
+
+**Local estimate vs provider-reported usage**
+
+- Local `estimate_tokens` (~2.0 chars/token) for the last request of the desk
+  run: ~5,091 then ~6,071 tokens; provider-reported prompt for the same first
+  call was 2,947. The local estimate is ~1.7x conservative, as designed.
+- Provider-reported completion was pinned at 900 (the configured cap) on every
+  desk call; the local estimate cannot see the cap.
+
+**Merged / tagged?**
+
+No. Per the phase-completion gate and the user's instruction, the live gate is
+**blocked**, so `phase-3-stabilize` is NOT merged and no tag was moved. The
+existing `phase-3` tag (at `b195ae7`) was left untouched — moving it is
+forbidden without explicit authorization.
+
+**Remaining risks / manual verification needed**
+
+- Live end-to-end success (a real `ok` spec passing Phase 2) was not observed
+  this session; the desk monitor converges poorly because the model omits
+  `layout`/connections. Whether the sharpened rules help is UNVERIFIED.
+- The `RAIL_OVER_BUDGET` night-light question could not be re-inspected live.
+- Catalog current figures and rail budgets remain approximate.
+- Re-running needs either a higher Groq tier, a different model, a much smaller
+  prompt, or spreading calls across days. All three prompts should then be
+  re-run and recorded here.
