@@ -471,3 +471,65 @@ validates; and no invalid supported build ever returns `ok`.
   quota, to see whether errors shrink round-over-round and whether the buzzer
   stops appearing. Then the night-light (RAIL_OVER_BUDGET inspection) and
   door-alarm runs when quota allows.
+
+## Phase 3 — single live convergence verification (desk plant monitor)
+
+Branch `phase-3-stabilize` @ `b8bcd9a` (HEAD == origin), tree clean, tag
+`phase-3` still at `b195ae7`. Preflight: key loaded (length only, never
+printed), model `qwen/qwen3.8-27b`, `max_tokens=900`, `max_retries=3`.
+`/openai/v1/models` returned HTTP 200 and exposed no rate-limit headers (those
+appear only on generation responses). No token probes, no extra prompts.
+
+Command run: `uv run python scripts/try_plan.py "Build a desk plant monitor"`.
+
+**Result: failed / BLOCKED (incomplete).**
+
+- `status=failed`, `llm_calls=2`, `repair_round=1`.
+- Attempt history:
+  - round 0: `validation_error`, 9 errors (prompt=2947, completion=900).
+  - round 1: `transport_error`, HTTP 429 - the anchored repair call was
+    rejected, so the repair was never delivered or evaluated.
+- Local request estimate: ~7,258 tokens (last call; the anchored repair prompt
+  is larger than the initial one). Provider-reported usage for the one
+  completed call: prompt=2,947, completion=900. These are different measures:
+  the ~7,258 is the local ~2.0 chars/token estimate *including* the tool's
+  system + anchored prompt; 2,947 is the provider's counted prompt tokens.
+
+**Round-0 validation errors (9):**
+
+- `BEHAVIOR_UNIT_MISMATCH` x3 (display lines declare units but the readings have
+  empty units).
+- `NO_GROUND`: buzzer only.
+- `NO_MOUNT_ZONE` x4: bme, buzzer, oled, soil (the whole `layout` list was
+  omitted).
+- `PIN_UNCONNECTED`: buzzer `NEG` only.
+
+**Comparison with the previous live run (12 errors):**
+
+- Initial errors dropped 12 -> 9.
+- `bme` and `oled` are now fully wired (previously both produced
+  `NO_POWER`/`NO_GROUND`/`PIN_UNCONNECTED`). This is consistent with the
+  sharper every-pin / power guidance helping the *initial* emission.
+- The remaining wiring errors are concentrated on the unrequested
+  `piezo_buzzer_passive` and on the missing `layout`.
+
+**Unrequested component:** still present in the initial emission (a buzzer).
+The "do NOT add any component the user did not ask for" instruction lives only
+in the *repair* prompt, not the initial system prompt, so the first response can
+still over-add. Whether the anchored repair would have removed it is UNKNOWN -
+the repair call was blocked by the 429.
+
+**Convergence: NOT demonstrated.** The provider returned HTTP 429 on the first
+repair call. Whether error counts decrease across rounds and whether valid
+connections/layout are preserved by the anchored repair remain UNVERIFIED. No
+retry was made (per instruction to respect rate limits and not loop).
+
+**Remaining limitations / next steps**
+
+- The 429 looks like the daily token ceiling again (200k/day on this tier); a
+  four-call plan cannot reliably complete in one window. Re-running needs a
+  higher tier, a smaller prompt, or spreading calls across the day.
+- Consider adding the "do not add unrequested components" rule to the INITIAL
+  system prompt (not just repair) so the first emission stops over-adding -
+  offline change, would need its own tests.
+- Do not merge or move `phase-3`; branch left pushed for later verification.
