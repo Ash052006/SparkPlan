@@ -198,20 +198,28 @@ HARD RULES:
    using BOARD.id as its part_id (e.g. instance_id "board"). Use ONLY the part
    ids, pin names and capabilities in CATALOG; never invent parts or pins; never
    substitute a "close enough" part.
-2. If the idea needs a capability the catalog lacks, do NOT approximate. Reply
-   exactly: {{"status":"unsupported","title":"...","reasons":["..."],
+2. SCOPE: build ONLY what the idea asks for. Do NOT add optional components -
+   no buzzer, LED, display, sensor, motor or other peripheral - unless the idea
+   requests it or it is genuinely required to deliver the requested
+   functionality. Extra parts add cost, wiring and failure modes the user did
+   not ask for. This does NOT relax any other rule: every included part must
+   still meet the connection, layout, power and unit rules below, and you must
+   NOT drop a required part or a safety measure to satisfy scope.
+3. If the idea needs a capability the catalog lacks, do NOT approximate and do
+   NOT invent a component to cover it. Reply exactly:
+   {{"status":"unsupported","title":"...","reasons":["..."],
    "missing_capabilities":["..."],"closest_supported_alternative":"..."}}.
-3. Use GPIOs only from BOARD.gpio; respect its lists exactly: never a forbidden
+4. Use GPIOs only from BOARD.gpio; respect its lists exactly: never a forbidden
    pin; never drive an output from input_only (these are input/ADC only); analog
    reads need adc; PWM outputs need pwm. Prefer i2c_default for sda/scl.
-4. Power: before choosing parts, sum each rail's draw and keep it <= that rail's
+5. Power: before choosing parts, sum each rail's draw and keep it <= that rail's
    max_ma. Use the PEAK i_ma for parts that surge (servos, LED strips); otherwise
    the typical i_ma. If the ONLY catalog parts that fit the idea would exceed a
    rail budget, do NOT emit an over-budget build: reply "unsupported" with that
    as a reason (e.g. "5V rail budget exceeded"). Figures are APPROXIMATE and
    unverified - never claim electrical or physical safety. Ground every claim in
    CATALOG; omit anything not present.
-5. REQUIRED sections - omit none, and connect EVERY pin, not just VCC/GND:
+6. REQUIRED sections - omit none, and connect EVERY pin, not just VCC/GND:
    `parts` (board + every peripheral),
    `connections` (every pin listed for a non-board part must appear on a
    connection endpoint: VCC -> a rail, signal_role "rail" + rail_name; GND -> a
@@ -221,10 +229,10 @@ HARD RULES:
    `behaviors`.
    Emit the keys in this order so a cut-off response still contains `layout`:
    parts, layout, behaviors, connections.
-6. Keep every string terse (title/summary/behavior text <= a few words). The
+7. Keep every string terse (title/summary/behavior text <= a few words). The
    response must be COMPLETE within the token budget: emit the whole object
    (including `layout` and `behaviors`) rather than stopping early.
-7. Output exactly one JSON object of the form {{"build": <BuildSpec>}} and
+8. Output exactly one JSON object of the form {{"build": <BuildSpec>}} and
    NOTHING else - no prose, no code fences. <BuildSpec> is the union below.
 
 CATALOG (board + parts + capabilities, compact JSON; i_ma=[typical,peak] mA;

@@ -116,3 +116,32 @@ def test_prompt_states_concrete_power_precheck(catalog):
 def test_prompt_requires_every_pin_connected(catalog):
     system = build_system_prompt(catalog)
     assert "EVERY pin" in system
+
+
+def test_system_prompt_states_scope_constraint(catalog):
+    # Initial generation must be told to build only what the idea asks for and
+    # not to add optional peripherals.
+    system = build_system_prompt(catalog)
+    assert "SCOPE" in system
+    assert "Do NOT add optional components" in system
+    assert "no buzzer, LED, display, sensor, motor or other peripheral" in system
+    assert "requests it or it is genuinely required" in system
+
+
+def test_scope_rule_does_not_relax_other_rules(catalog):
+    # The scope rule must explicitly preserve wiring, layout, power and units,
+    # and forbid dropping required parts/safety measures.
+    system = build_system_prompt(catalog)
+    flat = " ".join(system.split())
+    assert "does NOT relax any other rule" in flat
+    assert "connection, layout, power and unit rules" in flat
+    assert "NOT drop a required part or a safety measure" in flat
+
+
+def test_unsupported_outcome_retained_under_scope_rule(catalog):
+    # A required capability the catalog lacks must still use the unsupported
+    # outcome, not an invented component.
+    system = build_system_prompt(catalog)
+    flat = " ".join(system.split())
+    assert "do NOT invent a component to cover it" in flat
+    assert '"status":"unsupported"' in flat
