@@ -59,7 +59,7 @@ UNVERIFIED.
   `sparkplan/{validators,planner,geometry,firmware,guide,pipeline}`, `api/`,
   `web/`, and their tests. Reconciliation to the new models is deferred to a
   later phase. The Phase 1 catalog/BuildSpec were added alongside it.
-- `docs/PROGRESS.md` did not exist before this phase despite the brief saying
+- `docs/.md` did not exist before this phase despite the brief saying
   it did; it is created here.
 - The GitHub remote was empty (no commits). Phase 1 is the first content on
   `main`; the usual pull/branch/merge flow was not applicable at bootstrap.
@@ -144,3 +144,96 @@ UNVERIFIED.
 - `run_all` sorts issues by severity; downstream machinery (planner/API) still
   targets the legacy validator API and is not yet wired to the Phase 2 report.
 
+
+## Phase 3 — LLM planner with repair loop and refusal
+
+**Built**
+
+- `sparkplan/llm/phase3/` (new subpackage, does not touch the legacy
+  `sparkplan/llm/`):
+  - `client.py`: `LLMResponse` (data + `LLMUsage` + `finish_reason`/`truncated`),
+    `LLMUsage` (`present=False` when the provider omits usage - counts are never
+    invented), `LLMError`/`LLMRetryableError`, `FakeLLM` (scripted, no network),
+    `OpenAICompatibleClient`, and `make_llm_from_env()`.
+  - `OpenAICompatibleClient.complete_json`: primary `json_schema` mode with a
+    one-shot `json_object` fallback when the provider rejects the schema; one
+    bounded transport retry per call (separate from planner repair rounds) with
+    exponential backoff honouring `Retry-After`.
+- `sparkplan/planner/phase3/` (new subpackage):
+  - `prompt.py`: compact catalog digest + compact schema + hard rules; the
+    untrusted idea is wrapped in a delimited, JSON-encoded block and defused.
+    Also `provider_response_schema()`/`unwrap_provider_response()` (the union is
+    wrapped under `{"build": ...}` so strict providers accept it, then unwrapped
+    before parsing), `compact_schema`, `estimate_tokens`, `log_request_size`.
+  - `models.py`: `PlanStatus`, `Attempt`, `PlanResult`.
+  - `planner.py`: at most FOUR LLM calls (`MAX_REPAIR_ROUNDS = 3`,
+    `MAX_LLM_CALLS = 4`). `ok` is returned ONLY when parsing yields a
+    `SupportedBuild` AND the Phase 2 `run_all` report has no errors; warnings
+    pass through. Truncated responses (`finish_reason=length`) are treated as a
+    repairable `LLM_TRUNCATED`. Empty/whitespace idea -> `refused` without an
+    LLM call. An LLM `UnsupportedBuild` -> `unsupported` with its exact fields.
+    Otherwise `failed` with the final validation report and attempt history.
+- `scripts/try_plan.py`: live runner. Loads `.env` via a minimal stdlib dotenv
+  reader (never prints secrets). Exit 0 (ok/unsupported), 1 (failed), 2 (config).
+
+**Prompt sizing and provider calibration**
+
+- Initial attempt hit HTTP 413 (prompt too large for Groq). Fixed by compacting
+  the digest (GPIO table as category lists, trimmed parts, no global capability
+  list, `desc` truncated) and the schema (strip `title`/`description`, no
+  indent). Provider-measured system prompt is ~3.1-3.2k prompt tokens.
+- Groq rejects `json_schema` for the BuildSpec union: a top-level `oneOf` is
+  rejected outright, and wrapping it under `build` still fails because Groq
+  requires the property itself to be `type: object`. `json_object` mode is
+  therefore the effective mode on Groq, and the model must be guided by prompt.
+- `qwen/qwen3.8-27b` has a 1,000 output-token/minute ceiling; requests asking
+  for more are rejected. `openai/gpt-oss-20b` was unusable (it spends the whole
+  completion budget on hidden reasoning and returns empty content). Model is set
+  via `SPARKPLAN_LLM_MODEL` in `.env` (git-ignored).
+- Prompts now require the board as a part, the required sections, and key order
+  (`parts, layout, behaviors, connections`) so a cut-off response still contains
+  `layout`.
+
+**Tests**
+
+- `tests/planner/phase3/`: planner loop, token accounting, prompt safety, client
+  (offline via `httpx.MockTransport`), provider-schema compatibility, and prompt
+  compactness/size-budget tests. Fixtures:
+  `tests/fixtures/phase3/{supported,unsupported}/`.
+- `make test`: 263 passed. `make lint`: ruff and black clean.
+- Coverage of the new packages: 99 % (`sparkplan.llm.phase3` 99 %,
+  `sparkplan.planner.phase3` 98-100 %).
+
+**Live runs (this session, real Groq `qwen/qwen3.8-27b`, via `scripts/try_plan.py`)**
+
+- "a desk plant monitor ... OLED" -> `ok` in 3 calls / 2 repair rounds, full
+  validated BuildSpec, report passed (0 errors, 0 warnings).
+- "a drone that flies ... streams video" -> `unsupported` in 1 call, with
+  reasons, `missing_capabilities`, and a closest supported alternative.
+- "a motion-triggered night light ... PIR ... LED strip" -> `failed` after 4
+  calls; the final spec tripped `RAIL_OVER_BUDGET` (5V: PIR + WS2812B peak
+  530 mA > 500 mA budget) plus missing mount zones. The catalogue itself notes
+  the strip's full-white current exceeds the USB budget, so this is a genuine
+  over-budget build the model did not declare unsupported.
+- "a door alarm ... ultrasonic ... buzzer" -> `failed` after 4 calls on
+  `NO_GROUND`/`NO_POWER` wiring omissions the validator caught.
+
+**UNVERIFIED**
+
+- Live runs depend on the operator's Groq account and model; the 1,000
+  output-token/minute tier makes multi-call plans sensitive to pacing, so the
+  two `failed` live results above may partly reflect provider-tier throttling
+  rather than model capability. This was not isolated.
+- The catalog's current figures and rail budget remain approximate; nothing was
+  measured electrically.
+
+**Known gaps / deferred**
+
+- The model does not always declare genuinely over-budget ideas as
+  `unsupported`; the deterministic validator catches them and the result is
+  `failed`, not `unsupported`. Converting a persistent validator error into an
+  `unsupported` status was explicitly out of scope for this phase.
+- Streamed/constrained decoding that would force every required key is not
+  available on the current provider tier; prompt guidance is used instead.
+- The legacy planner/client/validators are untouched and still serve the API,
+  eval and pipeline; reconciliation remains deferred.

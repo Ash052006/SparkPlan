@@ -1,0 +1,10 @@
+{
+  "status": "unsupported",
+  "title": "Autonomous drone",
+  "reasons": [
+    "A drone needs a flight controller, brushless motors and an IMU for stabilization.",
+    "SparkPlan has no flight-control, motor-driver or IMU parts and must not approximate them."
+  ],
+  "missing_capabilities": ["flight_control", "brushless_motor_drive", "imu_stabilization"],
+  "closest_supported_alternative": "A ground rover using DC motors and a distance sensor to avoid obstacles."
+}
