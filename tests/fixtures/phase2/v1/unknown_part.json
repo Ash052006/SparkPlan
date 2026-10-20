@@ -1,0 +1,18 @@
+{
+  "status": "ok",
+  "title": "Soil moisture monitor",
+  "summary": "Reads soil moisture and temperature, shows them on an OLED.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "ghost",
+      "part_id": "camera_module_v2"
+    }
+  ],
+  "connections": [],
+  "layout": [],
+  "behaviors": []
+}

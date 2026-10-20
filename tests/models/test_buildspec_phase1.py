@@ -71,19 +71,30 @@ def test_unsupported_round_trips_through_json():
     assert rehydrated == spec
 
 
-def test_duplicate_instance_ids_rejected():
+def test_duplicate_instance_ids_parse_and_are_reported_by_v1():
+    # Structural problems are reported by the V1 membership validator, not by
+    # the parser, so the spec must parse cleanly here.
     bad = dict(SUPPORTED)
     bad["parts"] = [
         {"instance_id": "board", "part_id": "esp32_devkit_30pin"},
         {"instance_id": "board", "part_id": "dht22"},
     ]
-    with pytest.raises(ValidationError):
-        parse_build_spec(bad)
+    spec = parse_build_spec(bad)
+    assert isinstance(spec, SupportedBuild)
+    assert len([p for p in spec.parts if p.instance_id == "board"]) == 2
 
 
-def test_supported_build_requires_board():
+def test_supported_build_without_board_still_parses():
     bad = dict(SUPPORTED)
     bad["parts"] = [{"instance_id": "temp", "part_id": "dht22"}]
+    spec = parse_build_spec(bad)
+    assert isinstance(spec, SupportedBuild)
+    assert spec.board_instances() == []
+
+
+def test_supported_build_requires_at_least_one_part():
+    bad = dict(SUPPORTED)
+    bad["parts"] = []
     with pytest.raises(ValidationError):
         parse_build_spec(bad)
 

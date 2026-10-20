@@ -1,0 +1,140 @@
+{
+  "status": "ok",
+  "title": "Soil moisture monitor",
+  "summary": "Reads soil moisture and temperature, shows them on an OLED.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "soil",
+      "part_id": "soil_moisture_capacitive"
+    },
+    {
+      "instance_id": "env",
+      "part_id": "dht22"
+    },
+    {
+      "instance_id": "screen",
+      "part_id": "ssd1306_oled_096"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "soil",
+      "from_pin": "AOUT",
+      "to_instance": "board",
+      "to_pin": "D32",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "soil",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "env",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "env",
+      "from_pin": "DATA",
+      "to_instance": "board",
+      "to_pin": "D4",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "env",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SDA",
+      "to_instance": "board",
+      "to_pin": "D21",
+      "signal_role": "sda"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SCL",
+      "to_instance": "board",
+      "to_pin": "D22",
+      "signal_role": "scl"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "soil_moisture_capacitive",
+      "mount": "wall"
+    },
+    {
+      "part_id": "dht22",
+      "mount": "wall"
+    },
+    {
+      "part_id": "ssd1306_oled_096",
+      "mount": "lid"
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "monitor",
+      "part_ids": [
+        "soil_moisture_capacitive",
+        "dht22",
+        "ssd1306_oled_096"
+      ],
+      "description": "Track soil moisture and temperature.",
+      "readings": [
+        {
+          "name": "soil_raw",
+          "unit": "adc_counts",
+          "instance_id": "soil"
+        }
+      ],
+      "rules": [
+        {
+          "name": "dry_alert",
+          "condition_reading": "soil_raw",
+          "condition_unit": "adc_counts",
+          "comparator": ">",
+          "threshold": 3000,
+          "action_reading": "soil_raw"
+        }
+      ],
+      "display_lines": [
+        {
+          "target_instance": "screen",
+          "reading": "temperature_c",
+          "unit": "C",
+          "text": "Temp"
+        }
+      ]
+    }
+  ]
+}

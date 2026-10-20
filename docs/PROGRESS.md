@@ -63,3 +63,84 @@ UNVERIFIED.
   it did; it is created here.
 - The GitHub remote was empty (no commits). Phase 1 is the first content on
   `main`; the usual pull/branch/merge flow was not applicable at bootstrap.
+
+## Phase 2 — deterministic validators
+
+**Built**
+
+- `sparkplan/validators/phase2/`: one module per validator, each a pure function
+  `(spec, catalog, board) -> list[Issue]`:
+  - V1 `membership.py` — unknown part ids, duplicate instance ids, ESP32 exactly
+    once (missing or duplicated).
+  - V2 `pins_check.py` — referenced pins exist on the catalog part; the
+    controller target is a real GPIO; role fits capability (ADC for analog,
+    PWM for pwm, output/input direction); flash pins 6-11 are errors;
+    input-only pins used as outputs are errors; strapping pins warn.
+  - V3 `conflicts.py` — one GPIO drives one signal, I2C bus lines exempt.
+  - V4 `power_check.py` — VCC to a rail inside the part's supply range, every
+    GND connected, per-rail current vs budget (error over, warning above 80 %);
+    peak current is used and named for servos and LED strips.
+  - V5 `logic_levels.py` — a part output above 3.3 V into a GPIO is an error
+    unless the net passes through `voltage_divider_5v_3v3`; the fix_hint names
+    the divider.
+  - V6 `i2c.py` — I2C parts share one SDA and one SCL line; duplicate I2C
+    addresses are an error.
+  - V7 `completeness.py` — every required pin of every non-board part connected.
+  - V8 `behaviors.py` — every rule and display line references an existing
+    reading or actuator, and declared units match.
+  - V9 `layout.py` — every non-board part has a mount zone; wall/lid parts
+    declare an exposure.
+- `sparkplan/validators/phase2/report.py`: `run_all(spec, catalog=None)` returns
+  a `ValidationReport` with `issues`, `passed`, `warnings`, `errors`,
+  `by_code()`, and per-validator `timings_ms`. A validator that raises is
+  reported as `VALIDATOR_CRASH` rather than crashing the pipeline.
+- `sparkplan/validators/phase2/__main__.py`: CLI
+  `python -m sparkplan.validators.phase2 spec.json` prints a readable report and
+  exits 0 (pass) / 1 (fail) / 2 (usage or unreadable file).
+
+**Model changes**
+
+- `sparkplan/models/buildspec.py` was extended for validation: `Connection`
+  gained `signal_role` (signal/rail/gnd/sda/scl/passive) and `rail_name`;
+  `Behavior` gained `readings`, `rules` and `display_lines`. The structural
+  hard-failures (duplicate instance ids, missing ESP32) were moved out of the
+  Pydantic model into V1 so malformed specs parse and are reported as Issues.
+  The Phase 1 tests that asserted the old hard failures were updated to assert
+  the relaxed parse plus V1 reporting (not deleted).
+
+**Tests**
+
+- `tests/validators/phase2/`: per-validator tests (>=3 failing fixtures + 1
+  passing each), required-scenario tests, report/CLI tests, and edge-case unit
+  tests. `tests/fixtures/phase2/`: 40 BuildSpec fixtures, including the five
+  required scenarios:
+  - HC-SR04 echo straight to a GPIO -> fails V5 (LOGIC_LEVEL_HIGH)
+  - two OLEDs at 0x3C -> fails V6 (I2C_ADDRESS_CONFLICT)
+  - servo + LED strip + OLED on USB power -> fails V4 (RAIL_OVER_BUDGET)
+  - use of GPIO 6 -> fails V2 (GPIO_FLASH_RESERVED)
+  - fully valid soil moisture monitor -> passes everything
+- `make test`: 176 passed (was 109). `make lint`: ruff and black clean.
+
+**Coverage (sparkplan/validators/phase2)**
+
+- 97 % total (438 statements, 11 missed), well above the required 90 %:
+  `report.py`, `membership.py`, `conflicts.py`, `i2c.py`, `layout.py`,
+  `completeness.py`, `__init__.py` at 100 %; `__main__.py` 98 %; `power_check.py`
+  97 %; `behaviors.py` 96 %; `logic_levels.py` and `pins_check.py` 93 %.
+
+**UNVERIFIED**
+
+- The current-budget numbers (500 mA per rail) and part current figures are the
+  catalogue's approximate values; none were measured in this session.
+- Validator behaviour is verified against fixtures I wrote, not against real
+  faulty hardware.
+
+**Known gaps / deferred**
+
+- The legacy validator package (`sparkplan/validators/{structure,pins,power,
+  actions,base}.py`, exported via `sparkplan.validators.__init__`) and its tests
+  still exist and are untouched; Phase 2 lives in the `phase2/` subpackage so
+  the two do not collide. Reconciliation remains deferred.
+- `run_all` sorts issues by severity; downstream machinery (planner/API) still
+  targets the legacy validator API and is not yet wired to the Phase 2 report.
+
