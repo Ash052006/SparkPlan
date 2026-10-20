@@ -533,3 +533,60 @@ retry was made (per instruction to respect rate limits and not loop).
   system prompt (not just repair) so the first emission stops over-adding -
   offline change, would need its own tests.
 - Do not merge or move `phase-3`; branch left pushed for later verification.
+
+## Phase 3 — initial-generation scope constraint (offline)
+
+Branch `phase-3-stabilize`; no merge, no tag move, no Phase 4.
+
+**Root cause addressed.** The single live desk-monitor run added an unrequested
+`piezo_buzzer_passive`. The "do NOT add unrequested components" instruction
+lived only in the *repair* prompt, so the FIRST generation had no scope rule and
+over-added. (That run's 12 -> 9 error reduction was in the initial emission and
+does NOT prove anchored-repair convergence - the repair call was blocked by
+HTTP 429.)
+
+**Change**
+
+- `sparkplan/planner/phase3/prompt.py` - new hard rule 2 (SCOPE): build only
+  what the idea asks for; do not add optional components (no buzzer, LED,
+  display, sensor, motor or other peripheral) unless requested or genuinely
+  required; the rule explicitly does NOT relax the connection/layout/power/unit
+  rules and forbids dropping required parts or safety measures. Rule 3
+  (unsupported) now also says not to invent a component to cover a missing
+  capability. Existing catalog-only, untrusted-input, power-backshot and
+  every-pin rules are unchanged (just renumbered).
+- `sparkplan/planner/phase3/planner.py` - repair prompt now also states "never
+  introduce a part merely to silence an unrelated error", and continues to
+  require preserving already-valid parts/connections/layout. Initial and repair
+  prompts now agree on scope.
+
+**Tests (offline, FakeLLM only)**
+
+- `tests/planner/phase3/test_p3_prompt_catalog.py`: system prompt states the
+  scope rule; the scope rule does not relax wiring/layout/power/units and
+  forbids dropping required parts; the unsupported outcome is retained under the
+  scope rule.
+- `tests/planner/phase3/test_p3_convergence.py`: the INITIAL system prompt
+  contains the scope rule; the repair prompt retains it and the preserve-valid
+  instruction; a desk-monitor idea grants no buzzer authorization; a
+  capability the catalog lacks still returns the existing `unsupported`
+  outcome; the scope rule does not weaken V7/V9 (missing wiring still FAILS);
+  injection protections (untrusted DATA, delimiters) are intact.
+
+**Results**
+
+- `make test`: 291 passed (was 281; +10 scope/consistency tests).
+- `make lint`: clean (ruff + black).
+- Coverage (new packages): 99% (`planner.py` 98%, `prompt.py` 99%,
+  `client.py` 99%; uncovered lines are pre-existing defensive branches).
+
+**Explicitly still UNVERIFIED**
+
+- The latest live repair was BLOCKED by HTTP 429; anchored-repair convergence
+  remains unverified.
+- The 12 -> 9 error reduction is from the initial emission only and does not
+  demonstrate repair convergence.
+- The new scope rule has offline test coverage but is UNVERIFIED against the
+  live model - whether it actually suppresses the unrequested buzzer on the
+  initial generation is not yet shown. No Groq probing/retrying was done while
+  quota is exhausted.
