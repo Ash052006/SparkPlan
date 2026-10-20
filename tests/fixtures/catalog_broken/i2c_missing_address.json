@@ -1,0 +1,22 @@
+{
+  "parts": [
+    {
+      "id": "i2c_without_address",
+      "name": "An I2C sensor with no i2c_address",
+      "category": "sensor",
+      "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+      "logic_level_v": 3.3,
+      "typical_current_ma": 1.0,
+      "peak_current_ma": 2.0,
+      "interface": "i2c",
+      "pins": [
+        { "name": "VCC", "role": "vcc", "direction": "power" },
+        { "name": "GND", "role": "gnd", "direction": "power" },
+        { "name": "SCL", "role": "scl", "direction": "in" },
+        { "name": "SDA", "role": "sda", "direction": "bidir" }
+      ],
+      "dimensions_mm": { "x": 10.0, "y": 10.0, "z": 5.0 },
+      "mount": "base"
+    }
+  ]
+}

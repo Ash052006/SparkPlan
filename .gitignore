@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# Node
+web/node_modules/
+web/dist/
+
+# SparkPlan artifacts
+out/
+runs/
+eval/results/
+*.stl
+
+# Env
+.env

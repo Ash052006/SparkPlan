@@ -1,0 +1,42 @@
+{
+  "part_id": "sg90_servo",
+  "name": "SG90 micro servo (9 g)",
+  "category": "actuator",
+  "description": "180-degree micro servo on a 5V rail with 3-wire interface (PWM signal at 3.3V logic is accepted).",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 4.8,
+    "voltage_max": 6.0,
+    "i_ma_typ": 150,
+    "i_ma_max": 650,
+    "notes": "Stall current ~650 mA; total 5V budget usually requires an external supply."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 5.0},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "SIG", "kind": "pwm", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 22.8,
+    "length_mm": 12.2,
+    "height_mm": 28.5,
+    "board_thickness_mm": 0.0,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": ["ESP32Servo"],
+    "includes": ["#include <ESP32Servo.h>"],
+    "defines": [],
+    "globals": ["static Servo {instance}_servo;"],
+    "setup": ["{instance}_servo.setPeriodHertz(50);", "{instance}_servo.attach({gpio}, 500, 2400);"],
+    "functions": [
+      "void {instance}_write_angle(float deg) {",
+      "  if (deg < 0) deg = 0; if (deg > 180) deg = 180;",
+      "  {instance}_servo.write((int)deg);",
+      "}"
+    ],
+    "api": [
+      {"name": "write_angle", "kind": "write", "returns": "void", "unit": "degrees", "param": "float", "fn": "{instance}_write_angle"}
+    ]
+  }
+}

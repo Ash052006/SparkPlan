@@ -1,0 +1,46 @@
+{
+  "part_id": "rgb_led_module",
+  "name": "Common-cathode RGB LED module (with resistors)",
+  "category": "actuator",
+  "description": "Diffused RGB LED breakout, common cathode, three current-limiting resistors fitted; PWM on R/G/B pins.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 10,
+    "i_ma_max": 60,
+    "notes": "Three PWM channels; ~20 mA per channel at 5 V, less at 3.3 V."
+  },
+  "pins": [
+    {"name": "R", "kind": "pwm", "logic_v": 3.3},
+    {"name": "G", "kind": "pwm", "logic_v": 3.3},
+    {"name": "B", "kind": "pwm", "logic_v": 3.3},
+    {"name": "C", "kind": "ground", "logic_v": 0.0}
+  ],
+  "mechanical": {
+    "width_mm": 20.0,
+    "length_mm": 12.0,
+    "height_mm": 8.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["ledcAttach({gpio_r}, 5000, 8);", "ledcAttach({gpio_g}, 5000, 8);", "ledcAttach({gpio_b}, 5000, 8);"],
+    "functions": [
+      "void {instance}_write_rgb(float r, float g, float b) {",
+      "  auto clamp8 = [](float v) -> uint32_t { if (v < 0) v = 0; if (v > 255) v = 255; return (uint32_t)v; };",
+      "  ledcWrite({gpio_r}, clamp8(r));",
+      "  ledcWrite({gpio_g}, clamp8(g));",
+      "  ledcWrite({gpio_b}, clamp8(b));",
+      "}"
+    ],
+    "api": [
+      {"name": "write_rgb", "kind": "write", "returns": "void", "unit": "rgb", "param": "float,float,float", "fn": "{instance}_write_rgb"}
+    ],
+    "requires_three_gpios": true
+  }
+}

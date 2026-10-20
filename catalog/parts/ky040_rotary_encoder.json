@@ -1,0 +1,57 @@
+{
+  "part_id": "ky040_rotary_encoder",
+  "name": "KY-040 rotary encoder module",
+  "category": "input",
+  "description": "Incremental rotary encoder with push switch and onboard pull-ups.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 5,
+    "i_ma_max": 10,
+    "notes": "CLK/DT/SW are open-collector with onboard pull-ups."
+  },
+  "pins": [
+    {"name": "+", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "CLK", "kind": "digital_in", "logic_v": 3.3},
+    {"name": "DT", "kind": "digital_in", "logic_v": 3.3},
+    {"name": "SW", "kind": "digital_in", "logic_v": 3.3, "active": "low"}
+  ],
+  "mechanical": {
+    "width_mm": 28.0,
+    "length_mm": 15.0,
+    "height_mm": 12.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": [
+      "pinMode({gpio_clk}, INPUT_PULLUP);",
+      "pinMode({gpio_dt}, INPUT_PULLUP);",
+      "pinMode({gpio_sw}, INPUT_PULLUP);"
+    ],
+    "functions": [
+      "int {instance}_read_delta() {",
+      "  static int last_clk = HIGH; static int acc = 0;",
+      "  int clk = digitalRead({gpio_clk});",
+      "  if (clk != last_clk && clk == LOW) {",
+      "    acc += digitalRead({gpio_dt}) == clk ? 1 : -1;",
+      "  }",
+      "  last_clk = clk;",
+      "  int out = acc; acc = 0;",
+      "  return out;",
+      "}",
+      "bool {instance}_switch_pressed() { return digitalRead({gpio_sw}) == LOW; }"
+    ],
+    "api": [
+      {"name": "read_delta", "kind": "read", "returns": "int", "unit": "ticks", "fn": "{instance}_read_delta"},
+      {"name": "switch_pressed", "kind": "read", "returns": "bool", "unit": "boolean", "fn": "{instance}_switch_pressed"}
+    ],
+    "requires_three_gpios": true
+  }
+}

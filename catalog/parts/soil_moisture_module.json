@@ -1,0 +1,39 @@
+{
+  "part_id": "soil_moisture_module",
+  "name": "Capacitive soil moisture sensor v2.0",
+  "category": "sensor",
+  "description": "Corrosion-resistant capacitive soil moisture probe with analog output proportional to wetness.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 5,
+    "i_ma_max": 15,
+    "notes": "Powered at 3V3 so AO maps cleanly onto the ESP32 ADC range."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "AO", "kind": "analog_in", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 40.0,
+    "length_mm": 22.0,
+    "height_mm": 2.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["analogSetPinAttenuation({gpio}, ADC_11db);"],
+    "functions": [
+      "int {instance}_read_raw() { return analogRead({gpio}); }"
+    ],
+    "api": [
+      {"name": "read_raw", "kind": "read", "returns": "int", "unit": "adc_counts", "fn": "{instance}_read_raw"}
+    ]
+  }
+}

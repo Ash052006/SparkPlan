@@ -1,0 +1,40 @@
+{
+  "part_id": "photoresistor_module",
+  "name": "Photoresistor sensor module (GL5528 + comparator)",
+  "category": "sensor",
+  "description": "Light-dependent resistor divider with LM393 comparator; provides analog (AO) and digital (DO) outputs.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 5,
+    "i_ma_max": 12,
+    "notes": "Use 3V3 so AO stays within the ESP32 ADC range."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "AO", "kind": "analog_in", "logic_v": 3.3},
+    {"name": "DO", "kind": "digital_in", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 32.0,
+    "length_mm": 14.0,
+    "height_mm": 7.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["analogSetPinAttenuation({gpio}, ADC_11db);"],
+    "functions": [
+      "int {instance}_read_raw() { return analogRead({gpio}); }"
+    ],
+    "api": [
+      {"name": "read_raw", "kind": "read", "returns": "int", "unit": "adc_counts", "fn": "{instance}_read_raw"}
+    ]
+  }
+}

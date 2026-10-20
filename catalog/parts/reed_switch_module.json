@@ -1,0 +1,39 @@
+{
+  "part_id": "reed_switch_module",
+  "name": "Reed switch sensor module (magnetic)",
+  "category": "sensor",
+  "description": "Magnet-actuated normally-open reed switch on a breakout with indicator LED and pull-up.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 3,
+    "i_ma_max": 8,
+    "notes": "Active-low digital output."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "DO", "kind": "digital_in", "logic_v": 3.3, "active": "low"}
+  ],
+  "mechanical": {
+    "width_mm": 32.0,
+    "length_mm": 14.0,
+    "height_mm": 6.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["pinMode({gpio}, INPUT_PULLUP);"],
+    "functions": [
+      "bool {instance}_is_closed() { return digitalRead({gpio}) == LOW; }"
+    ],
+    "api": [
+      {"name": "is_closed", "kind": "read", "returns": "bool", "unit": "boolean", "fn": "{instance}_is_closed"}
+    ]
+  }
+}

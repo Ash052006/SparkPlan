@@ -1,0 +1,49 @@
+[
+  {
+    "idea": "desk weather station that shows temperature and humidity",
+    "expect": "supported",
+    "expected_parts_any_of": [["dht22"], ["bmp280"]]
+  },
+  {
+    "idea": "plant pot that tells me when the soil is dry",
+    "expect": "supported",
+    "expected_parts_any_of": [["soil_moisture_module"]]
+  },
+  {
+    "idea": "door open alarm with a buzzer",
+    "expect": "supported",
+    "expected_parts_any_of": [["reed_switch_module"], ["buzzer_active_module"]]
+  },
+  {
+    "idea": "distance meter that prints the range on an OLED",
+    "expect": "supported",
+    "expected_parts_any_of": [["hc_sr04"]]
+  },
+  {
+    "idea": "servo pan mount controlled by a rotary knob",
+    "expect": "supported",
+    "expected_parts_any_of": [["sg90_servo"], ["ky040_rotary_encoder"]]
+  },
+  {
+    "idea": "portable battery powered night light with a color ring",
+    "expect": "supported",
+    "expected_parts_any_of": [["neopixel_ring_12", "battery_holder_18650"]]
+  },
+  {
+    "idea": "tilt alarm that beeps when the box is moved",
+    "expect": "supported",
+    "expected_parts_any_of": [["mpu6050"], ["buzzer_active_module"]]
+  },
+  {
+    "idea": "wifi security camera with night vision",
+    "expect": "refused"
+  },
+  {
+    "idea": "GPS tracker with a TFT screen",
+    "expect": "refused"
+  },
+  {
+    "idea": "robot car with DC motors and a motor driver",
+    "expect": "refused"
+  }
+]

@@ -1,0 +1,52 @@
+{
+  "part_id": "hc_sr04",
+  "name": "HC-SR04 ultrasonic distance sensor",
+  "category": "sensor",
+  "description": "Ultrasonic ranging module, 2-400 cm, 5V supply. Trigger and echo are 5V logic.",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 4.8,
+    "voltage_max": 5.2,
+    "i_ma_typ": 15,
+    "i_ma_max": 40,
+    "notes": "5V supply only. ECHO output is 5V logic and must be level-shifted for ESP32."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 5.0},
+    {"name": "TRIG", "kind": "digital_out", "logic_v": 5.0},
+    {"name": "ECHO", "kind": "digital_in", "logic_v": 5.0, "level_shift_required": true},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0}
+  ],
+  "mechanical": {
+    "width_mm": 45.0,
+    "length_mm": 20.0,
+    "height_mm": 15.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": [
+      {"x_mm": 2.0, "y_mm": 2.0, "diameter_mm": 2.0},
+      {"x_mm": 43.0, "y_mm": 2.0, "diameter_mm": 2.0},
+      {"x_mm": 2.0, "y_mm": 18.0, "diameter_mm": 2.0},
+      {"x_mm": 43.0, "y_mm": 18.0, "diameter_mm": 2.0}
+    ]
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["pinMode({gpio_trig}, OUTPUT);", "pinMode({gpio_echo}, INPUT);"],
+    "functions": [
+      "float {instance}_read_distance_cm() {",
+      "  digitalWrite({gpio_trig}, LOW); delayMicroseconds(2);",
+      "  digitalWrite({gpio_trig}, HIGH); delayMicroseconds(10);",
+      "  digitalWrite({gpio_trig}, LOW);",
+      "  unsigned long us = pulseIn({gpio_echo}, HIGH, 30000UL);",
+      "  return us == 0 ? -1.0f : (float)us * 0.0343f / 2.0f;",
+      "}"
+    ],
+    "api": [
+      {"name": "read_distance_cm", "kind": "read", "returns": "float", "unit": "centimeters", "fn": "{instance}_read_distance_cm"}
+    ],
+    "requires_two_gpios": true
+  }
+}

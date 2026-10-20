@@ -1,0 +1,91 @@
+{
+  "capabilities": [
+    {
+      "id": "measure_temperature_humidity",
+      "keywords": ["temperature", "humidity", "weather", "climate", "dht", "thermostat", "hygrometer", "room monitor"],
+      "parts": ["dht22"]
+    },
+    {
+      "id": "measure_distance",
+      "keywords": ["distance", "ultrasonic", "range", "parking", "level", "depth", "sonar", "hc-sr04", "proximity"],
+      "parts": ["hc_sr04"]
+    },
+    {
+      "id": "measure_motion",
+      "keywords": ["motion", "accelerometer", "gyroscope", "imu", "tilt", "orientation", "vibration", "mpu6050", "step"],
+      "parts": ["mpu6050"]
+    },
+    {
+      "id": "measure_pressure",
+      "keywords": ["pressure", "barometer", "altitude", "altimeter", "weather station", "bmp280", "hpa"],
+      "parts": ["bmp280"]
+    },
+    {
+      "id": "measure_light",
+      "keywords": ["light", "brightness", "lumen", "lux", "photoresistor", "ldr", "ambient", "dark"],
+      "parts": ["photoresistor_module"]
+    },
+    {
+      "id": "detect_magnet",
+      "keywords": ["reed", "magnet", "magnetic", "door", "window", "lid", "hall", "contact"],
+      "parts": ["reed_switch_module"]
+    },
+    {
+      "id": "measure_soil",
+      "keywords": ["soil", "moisture", "plant", "garden", "irrigation", "watering"],
+      "parts": ["soil_moisture_module"]
+    },
+    {
+      "id": "move_servo",
+      "keywords": ["servo", "pan", "tilt", "arm", "lock", "latch", "position", "180"],
+      "parts": ["sg90_servo"]
+    },
+    {
+      "id": "drive_leds",
+      "keywords": ["led", "neopixel", "ws2812", "rgb ring", "light strip", "addressable", "color", "lamp"],
+      "parts": ["neopixel_ring_12"]
+    },
+    {
+      "id": "switch_relay",
+      "keywords": ["relay", "switch", "ac", "appliance", "outlet", "high power", "mains", "heater", "pump"],
+      "parts": ["relay_module_1ch"]
+    },
+    {
+      "id": "beep",
+      "keywords": ["buzzer", "beep", "alarm", "sound", "tone", "piezo", "siren", "alert"],
+      "parts": ["buzzer_active_module"]
+    },
+    {
+      "id": "rgb_indicate",
+      "keywords": ["rgb led", "status light", "indicator", "traffic light"],
+      "parts": ["rgb_led_module"]
+    },
+    {
+      "id": "display_text",
+      "keywords": ["oled", "display", "screen", "show", "lcd", "readout", "ssd1306", "128x64"],
+      "parts": ["ssd1306_oled"]
+    },
+    {
+      "id": "user_input_knob",
+      "keywords": ["encoder", "knob", "rotary", "dial", "menu", "ky-040", "ky040"],
+      "parts": ["ky040_rotary_encoder"]
+    },
+    {
+      "id": "wireless_radio",
+      "keywords": ["nrf24", "radio", "2.4ghz", "remote control", "two way", "wireless link"],
+      "parts": ["nrf24l01"]
+    },
+    {
+      "id": "battery_power",
+      "keywords": ["battery", "portable", "cordless", "18650", "li-ion", "wire-free", "untethered"],
+      "parts": ["battery_holder_18650", "mt3608_boost"]
+    }
+  ],
+  "refusal_keywords": [
+    "camera", "video", "gps", "wifi camera", "bluetooth audio", "motor driver", "dc motor", "stepper",
+    "laser", "lidar", "ethernet", "sd card", "speaker amplifier", "e-ink", "gps module", "can bus",
+    "gsm", "lora", "esp8266", "raspberry", "arduino uno", "pic", "stm32", "teensy", "fan", "heater element",
+    "keyboard", "mouse", "wifi pineapple", "sdr", "drone", "robot wheel", "quadcopter"
+  ],
+  "refusal_note": "SparkPlan only designs around parts in its catalog. Ideas that require parts outside the catalog must be refused with explicit reasons; never approximate with a similar catalog part."
+}

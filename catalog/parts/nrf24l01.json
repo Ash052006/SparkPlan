@@ -1,0 +1,54 @@
+{
+  "part_id": "nrf24l01",
+  "name": "nRF24L01+ 2.4 GHz SPI transceiver module",
+  "category": "comms",
+  "description": "Short-range 2.4 GHz radio, SPI interface. 3.3 V only - not 5 V tolerant.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 1.9,
+    "voltage_max": 3.6,
+    "i_ma_typ": 13,
+    "i_ma_max": 115,
+    "notes": "Must be powered from 3V3; 5V will destroy the module. Add 10 uF across VCC/GND."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "CE", "kind": "digital_out", "logic_v": 3.3},
+    {"name": "CSN", "kind": "spi_cs", "logic_v": 3.3},
+    {"name": "SCK", "kind": "spi_sck", "logic_v": 3.3},
+    {"name": "MOSI", "kind": "spi_mosi", "logic_v": 3.3},
+    {"name": "MISO", "kind": "spi_miso", "logic_v": 3.3},
+    {"name": "IRQ", "kind": "digital_out", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 29.0,
+    "length_mm": 15.0,
+    "height_mm": 1.3,
+    "board_thickness_mm": 1.3,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": ["RF24"],
+    "includes": ["#include <SPI.h>", "#include <RF24.h>"],
+    "defines": [],
+    "globals": ["static RF24 {instance}_radio({gpio_csn}, {gpio_ce});"],
+    "setup": [
+      "{instance}_radio.begin();",
+      "{instance}_radio.setPALevel(RF24_PA_LOW);",
+      "{instance}_radio.setDataRate(RF24_250KBPS);"
+    ],
+    "functions": [
+      "bool {instance}_send(const void* buf, uint8_t len) { return {instance}_radio.write(buf, len); }",
+      "bool {instance}_available() { return {instance}_radio.available(); }",
+      "bool {instance}_receive(void* buf, uint8_t len) { return {instance}_radio.read(buf, len); }"
+    ],
+    "api": [
+      {"name": "send", "kind": "write", "returns": "bool", "unit": "bytes", "param": "const void*,uint8_t", "fn": "{instance}_send"},
+      {"name": "available", "kind": "read", "returns": "bool", "unit": "boolean", "fn": "{instance}_available"},
+      {"name": "receive", "kind": "read", "returns": "bool", "unit": "bytes", "param": "void*,uint8_t", "fn": "{instance}_receive"}
+    ],
+    "requires_two_gpios": true,
+    "bus": "spi"
+  }
+}

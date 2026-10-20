@@ -1,0 +1,22 @@
+{
+  "parts": [
+    {
+      "id": "good_sensor",
+      "name": "A fine sensor",
+      "category": "sensor",
+      "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+      "logic_level_v": 3.3,
+      "typical_current_ma": 1.0,
+      "peak_current_ma": 2.0,
+      "interface": "digital",
+      "pins": [
+        { "name": "VCC", "role": "vcc", "direction": "power" },
+        { "name": "SIG", "role": "signal", "direction": "out" },
+        { "name": "GND", "role": "gnd", "direction": "power" }
+      ],
+      "dimensions_mm": { "x": 10.0, "y": 10.0, "z": 5.0 },
+      "mount": "base",
+      "typo_field": "this field is not in the schema"
+    }
+  ]
+}

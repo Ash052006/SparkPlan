@@ -1,0 +1,17 @@
+{
+  "parts": [
+    {
+      "id": "pinless_sensor",
+      "name": "A sensor with no pins",
+      "category": "sensor",
+      "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+      "logic_level_v": 3.3,
+      "typical_current_ma": 1.0,
+      "peak_current_ma": 2.0,
+      "interface": "digital",
+      "pins": [],
+      "dimensions_mm": { "x": 10.0, "y": 10.0, "z": 5.0 },
+      "mount": "base"
+    }
+  ]
+}

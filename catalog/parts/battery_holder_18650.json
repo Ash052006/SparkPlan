@@ -1,0 +1,39 @@
+{
+  "part_id": "battery_holder_18650",
+  "name": "18650 single-cell battery holder with leads",
+  "category": "power",
+  "description": "PCB or ABS holder for one 18650 cell (3.0-4.2 V) with 150 mm leads. Pairs with a boost module.",
+  "supply": {
+    "rail": "none",
+    "voltage_min": 3.0,
+    "voltage_max": 4.2,
+    "i_ma_typ": 0,
+    "i_ma_max": 2000,
+    "notes": "Cell not included. Feeds the boost converter input."
+  },
+  "pins": [
+    {"name": "BAT+", "kind": "power_out", "logic_v": 3.7},
+    {"name": "BAT-", "kind": "ground", "logic_v": 0.0}
+  ],
+  "mechanical": {
+    "width_mm": 76.0,
+    "length_mm": 21.0,
+    "height_mm": 21.0,
+    "board_thickness_mm": 0.0,
+    "mounting_holes": []
+  },
+  "power_role": {
+    "kind": "battery",
+    "voltage": 3.7,
+    "ma": 2000
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": [],
+    "functions": [],
+    "api": []
+  }
+}

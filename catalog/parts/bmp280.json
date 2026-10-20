@@ -1,0 +1,62 @@
+{
+  "part_id": "bmp280",
+  "name": "BMP280 barometric pressure/temperature module (GY-BMP280)",
+  "category": "sensor",
+  "description": "I2C pressure (300-1100 hPa) and temperature sensor. Die supply max 3.6V; use 3V3 rail only.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 1.8,
+    "voltage_max": 3.6,
+    "i_ma_typ": 0.7,
+    "i_ma_max": 1.2,
+    "notes": "Not 5V tolerant on this breakout - must use 3V3."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "SCL", "kind": "i2c_scl", "logic_v": 3.3},
+    {"name": "SDA", "kind": "i2c_sda", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 15.0,
+    "length_mm": 12.0,
+    "height_mm": 1.3,
+    "board_thickness_mm": 1.3,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": ["#include <Wire.h>"],
+    "defines": ["#define {instance}_I2C_ADDR 0x76"],
+    "i2c_address": "0x76",
+    "globals": [],
+    "setup": [
+      "{instance}_write_reg(0xF4, 0x27);",
+      "{instance}_write_reg(0xF5, 0xA0);"
+    ],
+    "functions": [
+      "static void {instance}_write_reg(uint8_t reg, uint8_t val) {",
+      "  Wire.beginTransmission({instance}_I2C_ADDR);",
+      "  Wire.write(reg); Wire.write(val); Wire.endTransmission();",
+      "}",
+      "float {instance}_read_pressure_hpa() {",
+      "  Wire.beginTransmission({instance}_I2C_ADDR);",
+      "  Wire.write(0xF7); Wire.endTransmission(false);",
+      "  Wire.requestFrom((uint8_t){instance}_I2C_ADDR, (uint8_t)3, true);",
+      "  uint32_t up = ((uint32_t)Wire.read() << 12) | ((uint32_t)Wire.read() << 4) | (Wire.read() >> 4);",
+      "  return (float)up / 256.0f;",
+      "}",
+      "float {instance}_read_temperature_c() {",
+      "  Wire.beginTransmission({instance}_I2C_ADDR);",
+      "  Wire.write(0xFA); Wire.endTransmission(false);",
+      "  Wire.requestFrom((uint8_t){instance}_I2C_ADDR, (uint8_t)3, true);",
+      "  uint32_t raw = ((uint32_t)Wire.read() << 16) | ((uint32_t)Wire.read() << 8) | Wire.read();",
+      "  return (float)(raw >> 4) / 100.0f;",
+      "}"
+    ],
+    "api": [
+      {"name": "read_pressure_hpa", "kind": "read", "returns": "float", "unit": "hectopascal", "fn": "{instance}_read_pressure_hpa"},
+      {"name": "read_temperature_c", "kind": "read", "returns": "float", "unit": "celsius", "fn": "{instance}_read_temperature_c"}
+    ]
+  }
+}

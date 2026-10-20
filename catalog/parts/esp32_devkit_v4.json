@@ -1,0 +1,68 @@
+{
+  "part_id": "esp32_devkit_v4",
+  "name": "ESP32 DevKitC V4 (38-pin, WROOM-32)",
+  "category": "controller",
+  "description": "38-pin ESP32-WROOM-32 development board with USB-UART, 3.3V regulator, and two rows of 2.54mm headers.",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 4.5,
+    "voltage_max": 5.5,
+    "i_ma_typ": 80,
+    "i_ma_max": 250,
+    "notes": "Powered from USB 5V or VIN. Onboard AMS1117-3.3 produces the 3V3 rail."
+  },
+  "pins": [
+    {"name": "3V3", "kind": "power_out", "logic_v": 3.3},
+    {"name": "5V", "kind": "power_in", "logic_v": 5.0},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "EN", "kind": "reset", "logic_v": 3.3},
+    {"name": "GPIO0", "kind": "bidir", "gpio": 0, "logic_v": 3.3},
+    {"name": "GPIO1", "kind": "uart0_tx", "gpio": 1, "logic_v": 3.3},
+    {"name": "GPIO2", "kind": "bidir", "gpio": 2, "logic_v": 3.3},
+    {"name": "GPIO3", "kind": "uart0_rx", "gpio": 3, "logic_v": 3.3},
+    {"name": "GPIO4", "kind": "bidir", "gpio": 4, "logic_v": 3.3},
+    {"name": "GPIO5", "kind": "bidir", "gpio": 5, "logic_v": 3.3},
+    {"name": "GPIO12", "kind": "bidir", "gpio": 12, "logic_v": 3.3},
+    {"name": "GPIO13", "kind": "bidir", "gpio": 13, "logic_v": 3.3},
+    {"name": "GPIO14", "kind": "bidir", "gpio": 14, "logic_v": 3.3},
+    {"name": "GPIO15", "kind": "bidir", "gpio": 15, "logic_v": 3.3},
+    {"name": "GPIO16", "kind": "bidir", "gpio": 16, "logic_v": 3.3},
+    {"name": "GPIO17", "kind": "bidir", "gpio": 17, "logic_v": 3.3},
+    {"name": "GPIO18", "kind": "bidir", "gpio": 18, "logic_v": 3.3},
+    {"name": "GPIO19", "kind": "bidir", "gpio": 19, "logic_v": 3.3},
+    {"name": "GPIO21", "kind": "bidir", "gpio": 21, "logic_v": 3.3},
+    {"name": "GPIO22", "kind": "bidir", "gpio": 22, "logic_v": 3.3},
+    {"name": "GPIO23", "kind": "bidir", "gpio": 23, "logic_v": 3.3},
+    {"name": "GPIO25", "kind": "bidir", "gpio": 25, "logic_v": 3.3},
+    {"name": "GPIO26", "kind": "bidir", "gpio": 26, "logic_v": 3.3},
+    {"name": "GPIO27", "kind": "bidir", "gpio": 27, "logic_v": 3.3},
+    {"name": "GPIO32", "kind": "bidir", "gpio": 32, "logic_v": 3.3},
+    {"name": "GPIO33", "kind": "bidir", "gpio": 33, "logic_v": 3.3},
+    {"name": "GPIO34", "kind": "input_only", "gpio": 34, "logic_v": 3.3},
+    {"name": "GPIO35", "kind": "input_only", "gpio": 35, "logic_v": 3.3},
+    {"name": "GPIO36", "kind": "input_only", "gpio": 36, "logic_v": 3.3},
+    {"name": "GPIO39", "kind": "input_only", "gpio": 39, "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 28.5,
+    "length_mm": 55.0,
+    "height_mm": 13.0,
+    "board_thickness_mm": 1.6,
+    "mounting_holes": [
+      {"x_mm": 2.0, "y_mm": 2.0, "diameter_mm": 2.7},
+      {"x_mm": 26.5, "y_mm": 2.0, "diameter_mm": 2.7},
+      {"x_mm": 2.0, "y_mm": 53.0, "diameter_mm": 2.7},
+      {"x_mm": 26.5, "y_mm": 53.0, "diameter_mm": 2.7}
+    ],
+    "usb_connector": {"type": "micro-usb", "edge": "short_end", "offset_mm": 14.25, "width_mm": 8.0, "height_mm": 3.5}
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": [],
+    "functions": [],
+    "api": []
+  }
+}

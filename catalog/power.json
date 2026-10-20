@@ -1,0 +1,23 @@
+{
+  "controller": "esp32_devkit_v4",
+  "rails": {
+    "3v3": {
+      "name": "3.3 V rail (onboard AMS1117)",
+      "voltage": 3.3,
+      "max_ma": 500,
+      "source": "controller"
+    },
+    "5v": {
+      "name": "5 V rail (USB or VIN)",
+      "voltage": 5.0,
+      "max_ma": 500,
+      "source": "usb_or_external",
+      "controller_share_ma": 250
+    }
+  },
+  "external_supply_rules": {
+    "boost_part_required_for_5v_over_budget": true,
+    "boost_output_ma_default": 1000,
+    "battery_part_required_for_boost": true
+  }
+}

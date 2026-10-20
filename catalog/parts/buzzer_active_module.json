@@ -1,0 +1,39 @@
+{
+  "part_id": "buzzer_active_module",
+  "name": "Active piezo buzzer module",
+  "category": "actuator",
+  "description": "Self-oscillating 5 V buzzer module; a HIGH level produces a fixed tone.",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 3.3,
+    "voltage_max": 5.0,
+    "i_ma_typ": 10,
+    "i_ma_max": 30,
+    "notes": "Works on 3V3 or 5V; louder at 5V."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 5.0},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "I/O", "kind": "digital_out", "logic_v": 3.3}
+  ],
+  "mechanical": {
+    "width_mm": 12.0,
+    "length_mm": 12.0,
+    "height_mm": 8.0,
+    "board_thickness_mm": 0.0,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["pinMode({gpio}, OUTPUT);"],
+    "functions": [
+      "void {instance}_beep(bool on) { digitalWrite({gpio}, on ? HIGH : LOW); }"
+    ],
+    "api": [
+      {"name": "beep", "kind": "write", "returns": "void", "unit": "boolean", "param": "bool", "fn": "{instance}_beep"}
+    ]
+  }
+}

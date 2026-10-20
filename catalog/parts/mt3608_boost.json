@@ -1,0 +1,42 @@
+{
+  "part_id": "mt3608_boost",
+  "name": "MT3608 DC-DC boost converter module",
+  "category": "power",
+  "description": "Step-up converter, 2-24 V in to 5-24 V out at up to 2 A. Used to raise a single-cell Li-ion to the 5 V rail.",
+  "supply": {
+    "rail": "none",
+    "voltage_min": 2.0,
+    "voltage_max": 24.0,
+    "i_ma_typ": 0,
+    "i_ma_max": 0,
+    "notes": "Pass-through power part: its output feeds the 5V budget, its input draws from a battery part."
+  },
+  "pins": [
+    {"name": "VIN+", "kind": "power_in", "logic_v": 0.0},
+    {"name": "VIN-", "kind": "ground", "logic_v": 0.0},
+    {"name": "VOUT+", "kind": "power_out", "logic_v": 5.0},
+    {"name": "VOUT-", "kind": "ground", "logic_v": 0.0}
+  ],
+  "mechanical": {
+    "width_mm": 36.0,
+    "length_mm": 17.0,
+    "height_mm": 6.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "power_role": {
+    "kind": "boost",
+    "output_rail": "5v",
+    "output_ma": 1000,
+    "requires_battery": true
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": [],
+    "functions": [],
+    "api": []
+  }
+}

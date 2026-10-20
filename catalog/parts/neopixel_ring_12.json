@@ -1,0 +1,47 @@
+{
+  "part_id": "neopixel_ring_12",
+  "name": "NeoPixel ring, 12 x WS2812B",
+  "category": "actuator",
+  "description": "12-LED addressable RGB ring, 5V, single-wire data. Up to 720 mA at full white.",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 3.7,
+    "voltage_max": 5.3,
+    "i_ma_typ": 50,
+    "i_ma_max": 720,
+    "notes": "Logic high at 3.3V normally works on WS2812B; keep data lead short or level-shift."
+  },
+  "pins": [
+    {"name": "5V", "kind": "power_in", "logic_v": 5.0},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "DIN", "kind": "digital_out", "logic_v": 5.0}
+  ],
+  "mechanical": {
+    "width_mm": 44.0,
+    "length_mm": 44.0,
+    "height_mm": 3.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": [
+      {"x_mm": 22.0, "y_mm": 22.0, "diameter_mm": 5.0}
+    ]
+  },
+  "firmware": {
+    "libraries": ["Adafruit NeoPixel"],
+    "includes": ["#include <Adafruit_NeoPixel.h>"],
+    "defines": ["#define {instance}_NUM_LEDS 12"],
+    "globals": ["static Adafruit_NeoPixel {instance}_pixels({instance}_NUM_LEDS, {gpio}, NEO_GRB + NEO_KHZ800);"],
+    "setup": ["{instance}_pixels.begin();", "{instance}_pixels.setBrightness(40);"],
+    "functions": [
+      "void {instance}_set_color(float r, float g, float b) {",
+      "  {instance}_pixels.clear();",
+      "  for (int i = 0; i < {instance}_NUM_LEDS; i++) {",
+      "    {instance}_pixels.setPixelColor(i, (uint8_t)r, (uint8_t)g, (uint8_t)b);",
+      "  }",
+      "  {instance}_pixels.show();",
+      "}"
+    ],
+    "api": [
+      {"name": "set_color", "kind": "write", "returns": "void", "unit": "rgb", "param": "float,float,float", "fn": "{instance}_set_color"}
+    ]
+  }
+}

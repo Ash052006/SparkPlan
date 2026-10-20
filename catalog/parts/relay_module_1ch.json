@@ -1,0 +1,42 @@
+{
+  "part_id": "relay_module_1ch",
+  "name": "1-channel relay module (5 V coil, opto-isolated)",
+  "category": "actuator",
+  "description": "SPDT relay board switching up to 10 A at 250 V AC; active-low logic input works at 3.3 V.",
+  "supply": {
+    "rail": "5v",
+    "voltage_min": 4.75,
+    "voltage_max": 5.25,
+    "i_ma_typ": 40,
+    "i_ma_max": 90,
+    "notes": "Coil is 5 V. IN is active-low and 3.3 V compatible on this board."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 5.0},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0},
+    {"name": "IN", "kind": "digital_out", "logic_v": 3.3, "active": "low"}
+  ],
+  "mechanical": {
+    "width_mm": 27.5,
+    "length_mm": 22.5,
+    "height_mm": 20.0,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": [
+      {"x_mm": 1.5, "y_mm": 1.5, "diameter_mm": 2.2},
+      {"x_mm": 26.0, "y_mm": 21.0, "diameter_mm": 2.2}
+    ]
+  },
+  "firmware": {
+    "libraries": [],
+    "includes": [],
+    "defines": [],
+    "globals": [],
+    "setup": ["pinMode({gpio}, OUTPUT);", "digitalWrite({gpio}, HIGH);"],
+    "functions": [
+      "void {instance}_set_state(bool on) { digitalWrite({gpio}, on ? LOW : HIGH); }"
+    ],
+    "api": [
+      {"name": "set_state", "kind": "write", "returns": "void", "unit": "boolean", "param": "bool", "fn": "{instance}_set_state"}
+    ]
+  }
+}

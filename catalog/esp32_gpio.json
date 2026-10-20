@@ -1,0 +1,39 @@
+{
+  "controller": "esp32_devkit_v4",
+  "gpios": {
+    "0":  {"caps": ["digital", "input", "output", "adc2"], "strap": "boot", "notes": "Boot strap; keep HIGH at reset unless flashing."},
+    "1":  {"caps": ["digital", "input", "output", "uart0"], "reserved": "uart0_tx", "notes": "USB serial TX; do not use."},
+    "2":  {"caps": ["digital", "input", "output", "adc2", "pwm"], "strap": "boot", "notes": "Must be floating or LOW at reset."},
+    "3":  {"caps": ["digital", "input", "output", "uart0"], "reserved": "uart0_rx", "notes": "USB serial RX; do not use."},
+    "4":  {"caps": ["digital", "input", "output", "adc2", "pwm", "dac"], "notes": "Stray capacitance on some boards; good general purpose."},
+    "5":  {"caps": ["digital", "input", "output", "pwm"], "strap": "timing", "notes": "Strap pin; pull-up affects boot timing."},
+    "12": {"caps": ["digital", "input", "output", "adc2", "pwm"], "strap": "mtmdi", "notes": "Strap pin for flash voltage; AVOID (must be LOW at boot)."},
+    "13": {"caps": ["digital", "input", "output", "adc2", "pwm"], "notes": "Good general purpose."},
+    "14": {"caps": ["digital", "input", "output", "adc2", "pwm"], "notes": "Good general purpose."},
+    "15": {"caps": ["digital", "input", "output", "adc2", "pwm"], "strap": "mtdo", "notes": "Strap pin; avoid if possible."},
+    "16": {"caps": ["digital", "input", "output", "pwm"], "notes": "Often wired to PSRAM on WROVER boards."},
+    "17": {"caps": ["digital", "input", "output", "pwm"], "notes": "Free."},
+    "18": {"caps": ["digital", "input", "output", "pwm", "spi_sck"], "notes": "VSPI SCK default."},
+    "19": {"caps": ["digital", "input", "output", "pwm", "spi_miso"], "notes": "VSPI MISO default."},
+    "21": {"caps": ["digital", "input", "output", "pwm", "i2c_sda"], "notes": "Default I2C SDA."},
+    "22": {"caps": ["digital", "input", "output", "pwm", "i2c_scl"], "notes": "Default I2C SCL."},
+    "23": {"caps": ["digital", "input", "output", "pwm", "spi_mosi"], "notes": "VSPI MOSI default."},
+    "25": {"caps": ["digital", "input", "output", "adc2", "pwm", "dac"], "notes": "Free; DAC1."},
+    "26": {"caps": ["digital", "input", "output", "adc2", "pwm", "dac"], "notes": "Free; DAC2."},
+    "27": {"caps": ["digital", "input", "output", "adc2", "pwm"], "notes": "Free."},
+    "32": {"caps": ["digital", "input", "output", "adc1", "pwm", "touch"], "notes": "ADC1_CH4; free."},
+    "33": {"caps": ["digital", "input", "output", "adc1", "pwm", "touch"], "notes": "ADC1_CH5; free."},
+    "34": {"caps": ["input_only", "adc1"], "notes": "INPUT ONLY, no pull-ups."},
+    "35": {"caps": ["input_only", "adc1"], "notes": "INPUT ONLY, no pull-ups."},
+    "36": {"caps": ["input_only", "adc1"], "notes": "INPUT ONLY (VP); no pull-ups."},
+    "39": {"caps": ["input_only", "adc1"], "notes": "INPUT ONLY (VN); no pull-ups."}
+  },
+  "defaults": {
+    "i2c_sda": 21,
+    "i2c_scl": 22,
+    "spi_sck": 18,
+    "spi_mosi": 23,
+    "spi_miso": 19,
+    "spi_cs": 5
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "part_id": "dht22",
+  "name": "DHT22 / AM2302 temperature-humidity sensor",
+  "category": "sensor",
+  "description": "Single-wire digital temperature (-40..80 C) and humidity (0..100 %RH) sensor.",
+  "supply": {
+    "rail": "3v3",
+    "voltage_min": 3.0,
+    "voltage_max": 6.0,
+    "i_ma_typ": 1.5,
+    "i_ma_max": 2.5,
+    "notes": "Works on 3.3V; data line is open-drain with pull-up."
+  },
+  "pins": [
+    {"name": "VCC", "kind": "power_in", "logic_v": 3.3},
+    {"name": "DATA", "kind": "digital_in", "logic_v": 3.3, "pull": "external_10k"},
+    {"name": "GND", "kind": "ground", "logic_v": 0.0}
+  ],
+  "mechanical": {
+    "width_mm": 15.1,
+    "length_mm": 25.0,
+    "height_mm": 7.7,
+    "board_thickness_mm": 1.2,
+    "mounting_holes": []
+  },
+  "firmware": {
+    "libraries": ["DHT sensor library", "Adafruit Unified Sensor"],
+    "includes": ["#include <DHT.h>"],
+    "defines": ["#ifndef DHTTYPE", "#define DHTTYPE DHT22", "#endif"],
+    "globals": ["static DHT {instance}_dht({gpio}, DHTTYPE);"],
+    "setup": ["{instance}_dht.begin();"],
+    "functions": [
+      "float {instance}_read_temperature_c() { return {instance}_dht.readTemperature(); }",
+      "float {instance}_read_humidity_pct() { return {instance}_dht.readHumidity(); }"
+    ],
+    "api": [
+      {"name": "read_temperature_c", "kind": "read", "returns": "float", "unit": "celsius", "fn": "{instance}_read_temperature_c"},
+      {"name": "read_humidity_pct", "kind": "read", "returns": "float", "unit": "percent_rh", "fn": "{instance}_read_humidity_pct"}
+    ]
+  }
+}
