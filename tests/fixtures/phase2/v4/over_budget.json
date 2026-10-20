@@ -1,0 +1,113 @@
+{
+  "status": "ok",
+  "title": "Soil moisture monitor",
+  "summary": "Reads soil moisture and temperature, shows them on an OLED.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "screen",
+      "part_id": "ssd1306_oled_096"
+    },
+    {
+      "instance_id": "servo",
+      "part_id": "sg90_servo"
+    },
+    {
+      "instance_id": "strip",
+      "part_id": "ws2812b_strip_8"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "screen",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SDA",
+      "to_instance": "board",
+      "to_pin": "D21",
+      "signal_role": "sda"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SCL",
+      "to_instance": "board",
+      "to_pin": "D22",
+      "signal_role": "scl"
+    },
+    {
+      "from_instance": "servo",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "5V",
+      "signal_role": "rail",
+      "rail_name": "5V"
+    },
+    {
+      "from_instance": "servo",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "servo",
+      "from_pin": "SIG",
+      "to_instance": "board",
+      "to_pin": "D13",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "strip",
+      "from_pin": "5V",
+      "to_instance": "board",
+      "to_pin": "5V",
+      "signal_role": "rail",
+      "rail_name": "5V"
+    },
+    {
+      "from_instance": "strip",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "strip",
+      "from_pin": "DIN",
+      "to_instance": "board",
+      "to_pin": "D14",
+      "signal_role": "signal"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "ssd1306_oled_096",
+      "mount": "lid"
+    },
+    {
+      "part_id": "sg90_servo",
+      "mount": "base"
+    },
+    {
+      "part_id": "ws2812b_strip_8",
+      "mount": "wall"
+    }
+  ],
+  "behaviors": []
+}

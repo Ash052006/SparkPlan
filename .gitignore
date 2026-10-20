@@ -2,8 +2,12 @@
 __pycache__/
 *.py[cod]
 .venv/
+# Testing / coverage
 .pytest_cache/
 .ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 build/
 dist/
 *.egg-info/
