@@ -237,3 +237,82 @@ UNVERIFIED.
   available on the current provider tier; prompt guidance is used instead.
 - The legacy planner/client/validators are untouched and still serve the API,
   eval and pipeline; reconciliation remains deferred.
+
+## Phase 3 stabilization — token reduction and wiring guidance
+
+Branch `phase-3-stabilize` (off `main` after `phase-3`). No architecture change;
+the legacy planner/API/pipeline/eval paths are untouched. This section records
+the audit and the changes made from it.
+
+**Audit (concrete causes)**
+
+1. Excessive tokens.
+   - The digest sent a per-part prose `description` (`desc`, truncated to 60
+     chars) that duplicates the capability list and is read by no validator.
+   - The system prompt (digest + compact schema) is re-sent on every one of up
+     to four calls; nothing was trimmed between rounds.
+2. Repair rounds burning quota.
+   - `_repair_prompt` echoed the **entire previous spec** plus the full user
+     message (idea re-wrapped) plus indented issues on every round.
+3. Infeasible power not pre-recognized.
+   - The prompt stated the rail rule abstractly but never told the model to sum
+     draw per rail, to use peak current for surging parts, or to refuse rather
+     than emit an over-budget build.
+4. Missing wiring.
+   - The prompt conflated two rules: V4 wants VCC+GND, but V7 wants **every**
+     non-board pin connected. The digest listed pins but did not say all of them
+     must appear on a connection endpoint.
+
+   Confirmed **not** bugs: the drone `unsupported` and the night-light
+   `RAIL_OVER_BUDGET` are the validators working correctly.
+
+**Changes**
+
+- `sparkplan/planner/phase3/prompt.py`
+  - Dropped the per-part `desc` from the digest (pure token saving; capabilities
+    remain the selection signal). Digest legend now notes `mount` is omitted when
+    `base`.
+  - Rule 4 rewritten: sum each rail's draw, use PEAK `i_ma` for surging parts
+    (servos, LED strips) else typical, and reply `unsupported` (with the rail
+    reason) if the only catalog parts that fit would exceed a rail budget.
+  - Rule 5 rewritten: connect **every** listed pin, not just VCC/GND (mirrors V7).
+- `sparkplan/planner/phase3/planner.py`
+  - `_repair_prompt(idea, issues)` now sends the idea once plus only the
+    `error`-severity issues (code/message/fix_hint/part_ids, compact JSON). The
+    previous spec is no longer echoed.
+- `sparkplan/planner/phase3/models.py`
+  - `Attempt` gained `estimated_request_tokens` (per-round local size estimate).
+- `scripts/try_plan.py`
+  - Prints the last-call request estimate and a per-attempt token breakdown.
+
+**Measured effect (local estimate, this session)**
+
+- System prompt: 10,097 -> 9,456 chars (~5,049 -> ~4,729 est tokens).
+- Catalog digest: 4,203 -> 3,236 chars (~2,102 -> ~1,619 est tokens).
+- Repair prompt for a failing soil-monitor spec: ~2,861 -> 844 chars
+  (~1,432 -> ~423 est tokens), roughly 70% smaller per repair round. The echoed
+  spec alone was ~2,017 chars.
+
+**Tests**
+
+- Added: digest omits `desc`; prompt states the concrete power pre-check and the
+  "every pin" rule; repair prompt omits the previous spec; repair prompt filters
+  to error severity; attempts record `estimated_request_tokens`.
+- `make test`: 269 passed (was 263). `make lint`: ruff and black clean.
+- Coverage (new packages): 99% (`sparkplan.llm.phase3` 99%,
+  `sparkplan.planner.phase3` 98-100%).
+
+**UNVERIFIED**
+
+- All savings above are local `estimate_tokens` figures (~2.0 chars/token,
+  deliberately conservative), not provider-measured. No live Groq run was made
+  in this stabilization pass (offline verification only, by request).
+- The new power pre-check and every-pin rules are prompt guidance; whether the
+  model obeys them on the 1,000-output-token/min tier was not re-tested live.
+- The catalog's current figures and rail budgets remain approximate.
+
+**Known gaps / deferred (unchanged from Phase 3)**
+
+- Persistent over-budget validation still yields `failed`, not `unsupported`
+  (approved: only LLM refusals are `unsupported`).
+- The legacy planner/client/validators remain separate and unreconciled.
