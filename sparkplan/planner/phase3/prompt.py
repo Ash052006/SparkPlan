@@ -99,10 +99,9 @@ def _part_digest(part: Part) -> dict:
         entry["i2c"] = part.i2c_address
     if part.mount.value != "base":
         entry["mount"] = part.mount.value
-    if part.description:
-        # Short hint only; capabilities drive selection. Truncated to keep the
-        # request small (the full text is not needed to pick a part).
-        entry["desc"] = part.description[:60].rstrip()
+    # ``description`` is intentionally omitted: it is prose that duplicates the
+    # capability list (the actual selection signal) and is not read by any
+    # validator. Dropping it is a pure token saving with no loss of fact.
     return entry
 
 
@@ -205,17 +204,23 @@ HARD RULES:
 3. Use GPIOs only from BOARD.gpio; respect its lists exactly: never a forbidden
    pin; never drive an output from input_only (these are input/ADC only); analog
    reads need adc; PWM outputs need pwm. Prefer i2c_default for sda/scl.
-4. Power must not exceed any rail's max_ma when summing the parts' i_ma; current
-   figures are APPROXIMATE and unverified - never claim electrical or physical
-   safety. Ground every claim in CATALOG; omit anything not present.
-5. REQUIRED: every BuildSpec you output must have ALL of these keys present and
-   non-empty where full: `parts` (board + every peripheral), `connections`
-   (for EVERY non-board part: VCC -> a rail, signal_role "rail" + rail_name;
-   GND -> a board GND, signal_role "gnd"; and every other required pin -> a
-   board pin), `layout` (one {{part_id, mount}} entry for every non-board part),
-   and `behaviors`. Do not omit `layout` or `behaviors`. Emit the keys in this
-   order so a cut-off response still contains `layout`: parts, layout,
-   behaviors, connections.
+4. Power: before choosing parts, sum each rail's draw and keep it <= that rail's
+   max_ma. Use the PEAK i_ma for parts that surge (servos, LED strips); otherwise
+   the typical i_ma. If the ONLY catalog parts that fit the idea would exceed a
+   rail budget, do NOT emit an over-budget build: reply "unsupported" with that
+   as a reason (e.g. "5V rail budget exceeded"). Figures are APPROXIMATE and
+   unverified - never claim electrical or physical safety. Ground every claim in
+   CATALOG; omit anything not present.
+5. REQUIRED sections - omit none, and connect EVERY pin, not just VCC/GND:
+   `parts` (board + every peripheral),
+   `connections` (every pin listed for a non-board part must appear on a
+   connection endpoint: VCC -> a rail, signal_role "rail" + rail_name; GND -> a
+   board GND, signal_role "gnd"; each remaining pin -> a board pin, or
+   "passive" between two parts),
+   `layout` (one {{part_id, mount}} entry for every non-board part),
+   `behaviors`.
+   Emit the keys in this order so a cut-off response still contains `layout`:
+   parts, layout, behaviors, connections.
 6. Keep every string terse (title/summary/behavior text <= a few words). The
    response must be COMPLETE within the token budget: emit the whole object
    (including `layout` and `behaviors`) rather than stopping early.
@@ -223,7 +228,8 @@ HARD RULES:
    NOTHING else - no prose, no code fences. <BuildSpec> is the union below.
 
 CATALOG (board + parts + capabilities, compact JSON; i_ma=[typical,peak] mA;
-pins name:role; v=supply volts; logic_v omitted when 3.3):
+pins name:role; v=supply volts; logic_v omitted when 3.3; mount omitted when
+base):
 {digest}
 
 BUILDSPEC JSON SCHEMA (the {"build"} value; union on "status"):

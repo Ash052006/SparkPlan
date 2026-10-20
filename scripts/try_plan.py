@@ -49,11 +49,21 @@ def _print_report(result: PlanResult) -> None:
         print(f"title       : {result.title}")
     print(f"llm_calls   : {result.llm_calls}")
     print(f"repair_round: {result.repair_rounds}")
+    print(f"est_request : ~{result.estimated_request_tokens} tokens (last call, local estimate)")
     usage = "known" if result.total_prompt_tokens or result.total_completion_tokens else "unknown"
     print(
         f"tokens      : prompt={result.total_prompt_tokens} "
         f"completion={result.total_completion_tokens} ({usage})"
     )
+    if result.attempts:
+        print("attempts    :")
+        for a in result.attempts:
+            counts = (
+                f"prompt={a.prompt_tokens} completion={a.completion_tokens}"
+                if a.usage_present
+                else "usage=unknown"
+            )
+            print(f"  round {a.round}: {a.kind} ({counts}) {a.detail}".rstrip())
 
     if result.status is PlanStatus.OK and result.spec is not None:
         print("\n--- BuildSpec ---")

@@ -42,6 +42,7 @@ class Attempt:
     completion_tokens: int = 0
     usage_present: bool = False
     detail: str = ""
+    estimated_request_tokens: int = 0
 
 
 @dataclass

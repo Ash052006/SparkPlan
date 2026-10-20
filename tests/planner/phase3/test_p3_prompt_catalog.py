@@ -92,3 +92,27 @@ def test_digest_omits_default_logic_level(catalog):
     for p in digest["parts"]:
         if "logic_v" in p:
             assert p["logic_v"] != 3.3
+
+
+def test_digest_omits_prose_description(catalog):
+    # Token saving: prose descriptions duplicate the capability list and are not
+    # read by any validator, so they are not sent.
+    digest = json.loads(catalog_digest(catalog))
+    for p in digest["parts"]:
+        assert "desc" not in p
+        assert "description" not in p
+        assert p["caps"]  # the actual selection signal is retained
+
+
+def test_prompt_states_concrete_power_precheck(catalog):
+    system = build_system_prompt(catalog)
+    # The model is told to sum per-rail draw, use peak current for surging parts,
+    # and to refuse rather than emit an over-budget build.
+    assert "PEAK i_ma" in system
+    assert "max_ma" in system
+    assert "unsupported" in system
+
+
+def test_prompt_requires_every_pin_connected(catalog):
+    system = build_system_prompt(catalog)
+    assert "EVERY pin" in system

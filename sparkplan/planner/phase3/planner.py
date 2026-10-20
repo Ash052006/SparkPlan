@@ -85,7 +85,14 @@ class Planner:
             try:
                 response = self.llm.complete_json(self._system, user, self._schema)
             except LLMError as exc:
-                attempts.append(Attempt(round=round_no, kind="transport_error", detail=str(exc)))
+                attempts.append(
+                    Attempt(
+                        round=round_no,
+                        kind="transport_error",
+                        detail=str(exc),
+                        estimated_request_tokens=estimated_request,
+                    )
+                )
                 return _failed(
                     idea,
                     attempts,
@@ -126,11 +133,12 @@ class Planner:
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
                         detail="finish_reason=length",
+                        estimated_request_tokens=estimated_request,
                     )
                 )
                 if round_no >= MAX_REPAIR_ROUNDS:
                     break
-                user = _repair_prompt(raw, response.data, trunc_issues)
+                user = _repair_prompt(raw, trunc_issues)
                 continue
 
             parsed, parse_issues = _parse(response)
@@ -145,11 +153,12 @@ class Planner:
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
                         detail="response did not satisfy the BuildSpec schema",
+                        estimated_request_tokens=estimated_request,
                     )
                 )
                 if round_no >= MAX_REPAIR_ROUNDS:
                     break
-                user = _repair_prompt(raw, response.data, parse_issues)
+                user = _repair_prompt(raw, parse_issues)
                 continue
 
             if isinstance(parsed, UnsupportedBuild):
@@ -161,6 +170,7 @@ class Planner:
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
                         detail="; ".join(parsed.reasons),
+                        estimated_request_tokens=estimated_request,
                     )
                 )
                 return PlanResult(
@@ -192,6 +202,7 @@ class Planner:
                         prompt_tokens=usage.prompt_tokens,
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
+                        estimated_request_tokens=estimated_request,
                     )
                 )
                 return PlanResult(
@@ -219,11 +230,12 @@ class Planner:
                     completion_tokens=usage.completion_tokens,
                     usage_present=usage.present,
                     detail=f"{len(report.errors)} error(s)",
+                    estimated_request_tokens=estimated_request,
                 )
             )
             if round_no >= MAX_REPAIR_ROUNDS:
                 break
-            user = _repair_prompt(raw, response.data, report.errors)
+            user = _repair_prompt(raw, report.errors)
 
         return _failed(
             idea,
@@ -306,7 +318,14 @@ def _unsupported_issues(parsed: UnsupportedBuild) -> list[Issue]:
     ]
 
 
-def _repair_prompt(idea: str, previous: dict[str, Any] | None, issues: list[Issue]) -> str:
+def _repair_prompt(idea: str, issues: list[Issue]) -> str:
+    """Minimal repair feedback: the idea, then only the failing issues.
+
+    The previous response is deliberately NOT echoed back: re-sending a large
+    spec each round burns the provider's token quota, and the model can rebuild
+    every section from the system prompt. Only the machine-readable issues and
+    their fix hints are sent.
+    """
     machine = json.dumps(
         [
             {
@@ -317,14 +336,14 @@ def _repair_prompt(idea: str, previous: dict[str, Any] | None, issues: list[Issu
                 "fix_hint": i.fix_hint,
             }
             for i in issues
+            if i.severity == "error"
         ],
-        indent=1,
+        separators=(",", ":"),
     )
     return (
         f"{build_user_message(idea)}\n\n"
-        "YOUR PREVIOUS REPLY WAS INVALID:\n"
-        f"{json.dumps(unwrap_provider_response(previous), separators=(',', ':'))}\n\n"
-        f"DETERMINISTIC VALIDATOR ERRORS (fix every error):\n{machine}\n\n"
+        f"Your previous reply was INVALID. Fix every error below and return the "
+        f"FULL corrected BuildSpec (all required sections):\n{machine}\n\n"
         'Reply with the corrected BuildSpec inside {"build": <BuildSpec>} JSON only.'
     )
 

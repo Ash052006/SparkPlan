@@ -141,6 +141,39 @@ def test_warning_only_does_not_trigger_repair(catalog):
     assert result.report.passed
 
 
+def test_repair_prompt_does_not_echo_previous_spec(catalog):
+    # Token saving: the repair message carries the idea and the errors, never
+    # the whole prior (large) spec.
+    llm = FakeLLM(script=[_bad_part(valid_spec()), valid_spec()])
+    Planner(llm, catalog).plan("a desk plant monitor")
+    repair_user = llm.calls[1]["user"]
+    assert "UNKNOWN_PART" in repair_user
+    # The prior spec's unrelated fields must not be re-sent.
+    assert "Plant Monitor" not in repair_user
+    assert "connections" not in repair_user
+
+
+def test_attempts_record_estimated_request_tokens(catalog):
+    llm = FakeLLM(script=[valid_spec()])
+    result = Planner(llm, catalog).plan("a desk plant monitor")
+    assert result.attempts
+    assert all(a.estimated_request_tokens > 0 for a in result.attempts)
+
+
+def test_repair_prompt_filters_to_error_severity(catalog):
+    # Warnings are advisory and must not be sent to the model as repair items.
+    from sparkplan.models.spec import Issue
+    from sparkplan.planner.phase3.planner import _repair_prompt
+
+    issues = [
+        Issue(code="E1", severity="error", message="bad pin", fix_hint="fix it"),
+        Issue(code="W1", severity="warning", message="strapping", fix_hint="watch it"),
+    ]
+    prompt = _repair_prompt("a monitor", issues)
+    assert "E1" in prompt and "bad pin" in prompt
+    assert "W1" not in prompt
+
+
 # ---------------------------------------------------------------------------
 # Missing / empty inputs
 # ---------------------------------------------------------------------------
