@@ -396,3 +396,78 @@ forbidden without explicit authorization.
 - Re-running needs either a higher Groq tier, a different model, a much smaller
   prompt, or spreading calls across days. All three prompts should then be
   re-run and recorded here.
+
+## Phase 3 convergence fix (offline)
+
+Branch `phase-3-stabilize`. No merge, no tag move. Focused on the desk-monitor
+non-convergence found in the previous live run.
+
+**Root cause (audited, not a validator bug)**
+
+1. Truncation drops the tail. The prompt orders keys
+   `parts, layout, behaviors, connections`, so with `connections` last the
+   fixed `max_tokens=900` cap cuts it first. The model's replies hit
+   `finish_reason=length` and lost the connections (and sometimes the layout),
+   producing `NO_GROUND`/`NO_POWER`/`PIN_UNCONNECTED`/`NO_MOUNT_ZONE`.
+2. Repair regenerated from scratch. `_repair_prompt` sent only the idea and the
+   errors, no prior spec (an earlier token-saving choice). Each round the model
+   re-derived "desk plant monitor" and added an unrequested
+   `piezo_buzzer_passive`, then re-truncated the same way - so errors never
+   shrank and the run ended `failed` with 12 errors.
+3. The schema does not require `layout`/`connections` (`SupportedBuild` defaults
+   both to `[]`; only `title/summary/parts` are required), so omitting them is
+   schema-valid and only prompt rule 5 pushes for them - which truncation
+   defeats.
+
+V7 (completeness) and V9 (layout) are correct and were left unchanged.
+
+**Change**
+
+`sparkplan/planner/phase3/planner.py` - `_repair_prompt(idea, candidate, issues)`
+now sends, in order: the idea, the compact CURRENT_SPEC anchor
+(`_compact_candidate`, empties stripped), the error-severity issues with
+per-issue `part_ids`, and an explicit checklist. The instructions now: preserve
+every already-valid part/connection/layout entry; change only what the errors
+require; do NOT add a component the user did not ask for; ensure every non-board
+part has VCC->rail and GND->board-GND; every remaining pin is a connection
+endpoint; exactly one layout entry per non-board part. Parser path errors
+(no valid candidate yet) pass `candidate=None`. Call bound is unchanged at four
+(1 + 3 repairs), and `ok` is still only returned when the Phase 2 report has no
+errors.
+
+`tests/fixtures/phase3/attempts/desk_monitor_missing_wiring.json` - redacted
+offline reproduction of the live failure (an unrequested buzzer plus missing
+buzzer/bme/oled wiring and no layout). It parses to a SupportedBuild and yields
+the same error classes as the live run (1 BEHAVIOR_UNIT_MISMATCH, 3 NO_GROUND,
+4 NO_MOUNT_ZONE, 2 NO_POWER, 3 PIN_UNCONNECTED). No credentials or provider
+metadata are included.
+
+`tests/planner/phase3/test_p3_convergence.py` - new offline tests covering:
+targeted feedback per error class; the anchor preserves already-valid
+connections; the no-unrequested-component instruction and that an unrequested
+component never yields `ok`; bounded termination at four calls; a
+truncated-but-parseable response is accepted only if it both parses and
+validates; and no invalid supported build ever returns `ok`.
+
+**Results**
+
+- `make test`: 281 passed (was 270; +11 convergence tests). `make lint`: clean.
+- Coverage (new packages): 99% (`planner.py` 98%, `prompt.py` 99%,
+  `client.py` 99%). Uncovered lines are pre-existing defensive branches.
+
+**UNVERIFIED / still blocked**
+
+- The night-light and door-alarm live runs remain BLOCKED by Groq's
+  tokens-per-day quota (200k/day). No live call was made in this pass; no
+  tiny-token probing was done either.
+- Whether the anchored repair actually converges against the live model is
+  UNVERIFIED - the offline tests pin the contract, not the model's obedience.
+- The compact anchor grows each repair round (~1-2k tokens estimated), which
+  matters under the tight daily quota.
+
+**Next recommended live verification (needs approval)**
+
+- One desk-monitor run with the anchored repair, spaced to respect the daily
+  quota, to see whether errors shrink round-over-round and whether the buzzer
+  stops appearing. Then the night-light (RAIL_OVER_BUDGET inspection) and
+  door-alarm runs when quota allows.
