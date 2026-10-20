@@ -40,8 +40,18 @@ def test_fails_once_then_repairs(catalog):
     assert "SPEC_PARSE_ERROR" in llm.calls[1]["user"]
 
 
-def test_truncated_response_triggers_repair(catalog):
-    llm = FakeLLM(script=[(valid_spec(), None, "length"), (valid_spec(), None, "stop")])
+def test_truncated_but_parseable_valid_spec_is_accepted(catalog):
+    # finish_reason=length can still carry complete JSON; a valid spec must be
+    # accepted rather than discarded and re-requested.
+    llm = FakeLLM(script=[(valid_spec(), None, "length")])
+    result = Planner(llm, catalog).plan("a desk plant monitor")
+    assert result.status is PlanStatus.OK
+    assert result.repair_rounds == 0
+    assert result.llm_calls == 1
+
+
+def test_truncated_unparseable_triggers_repair(catalog):
+    llm = FakeLLM(script=[('{"build": {"parts"', None, "length"), (valid_spec(), None, "stop")])
     result = Planner(llm, catalog).plan("a desk plant monitor")
     assert result.status is PlanStatus.OK
     assert result.repair_rounds == 1
@@ -50,8 +60,8 @@ def test_truncated_response_triggers_repair(catalog):
     assert result.attempts[0].kind == "truncated"
 
 
-def test_always_truncated_is_failed_not_ok(catalog):
-    llm = FakeLLM(script=[(valid_spec(), None, "length")] * 10)
+def test_always_truncated_unparseable_is_failed_not_ok(catalog):
+    llm = FakeLLM(script=[('{"build": {"parts"', None, "length")] * 10)
     result = Planner(llm, catalog).plan("a desk plant monitor")
     assert result.status is PlanStatus.FAILED
     assert result.llm_calls == MAX_LLM_CALLS

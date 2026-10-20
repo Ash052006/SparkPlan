@@ -108,51 +108,29 @@ class Planner:
             completion_tokens += response.usage.completion_tokens
             usage = response.usage
 
-            if response.truncated:
-                trunc_issues = [
-                    Issue(
-                        code="LLM_TRUNCATED",
-                        severity="error",
-                        message=(
-                            "The LLM response hit the completion token cap and was "
-                            "cut off, so the JSON is incomplete."
-                        ),
-                        fix_hint=(
-                            "Be terser: keep all strings short and emit the entire "
-                            "object (including layout and behaviors) within the budget."
-                        ),
-                    )
-                ]
-                last_issues = trunc_issues
-                attempts.append(
-                    Attempt(
-                        round=round_no,
-                        kind="truncated",
-                        issues=trunc_issues,
-                        prompt_tokens=usage.prompt_tokens,
-                        completion_tokens=usage.completion_tokens,
-                        usage_present=usage.present,
-                        detail="finish_reason=length",
-                        estimated_request_tokens=estimated_request,
-                    )
-                )
-                if round_no >= MAX_REPAIR_ROUNDS:
-                    break
-                user = _repair_prompt(raw, trunc_issues)
-                continue
-
+            # A ``finish_reason=length`` response is NOT rejected up-front: the
+            # provider can truncate at the cap yet still emit complete, parseable
+            # JSON. We always try to parse; truncation only changes how an
+            # unparseable response is reported (and the repair hint).
             parsed, parse_issues = _parse(response)
             if parsed is None:
+                if response.truncated:
+                    kind = "truncated"
+                    parse_issues = _truncation_issues()
+                    detail = "finish_reason=length"
+                else:
+                    kind = "parse_error"
+                    detail = "response did not satisfy the BuildSpec schema"
                 last_issues = parse_issues
                 attempts.append(
                     Attempt(
                         round=round_no,
-                        kind="parse_error",
+                        kind=kind,
                         issues=parse_issues,
                         prompt_tokens=usage.prompt_tokens,
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
-                        detail="response did not satisfy the BuildSpec schema",
+                        detail=detail,
                         estimated_request_tokens=estimated_request,
                     )
                 )
@@ -303,6 +281,23 @@ def _transport_issues(exc: LLMError) -> list[Issue]:
             severity="error",
             message=str(exc),
             fix_hint="Check the LLM provider, base URL, key and model, then retry.",
+        )
+    ]
+
+
+def _truncation_issues() -> list[Issue]:
+    return [
+        Issue(
+            code="LLM_TRUNCATED",
+            severity="error",
+            message=(
+                "The LLM response hit the completion token cap and was cut off, "
+                "so the JSON is incomplete."
+            ),
+            fix_hint=(
+                "Be terser: keep all strings short and emit the entire object "
+                "(including layout and behaviors) within the budget."
+            ),
         )
     ]
 
