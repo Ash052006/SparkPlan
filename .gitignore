@@ -21,6 +21,7 @@ out/
 runs/
 eval/results/
 *.stl
+bin/
 
 # Env
 .env

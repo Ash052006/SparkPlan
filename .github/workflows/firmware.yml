@@ -1,0 +1,49 @@
+name: firmware
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Install arduino-cli (pinned)
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh -s -- 1.5.1
+          echo "$PWD/bin" >> $GITHUB_PATH
+      - name: Configure arduino-cli and ESP32 core (cached)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.arduino15
+            ~/Arduino
+          key: arduino-${{ runner.os }}-esp32-3.3.12
+      - name: Update index and install ESP32 core
+        run: |
+          arduino-cli config init || true
+          arduino-cli core update-index
+          arduino-cli core install esp32:esp32@3.3.12
+      - name: Install the pinned libraries from the manifest
+        run: |
+          uv run python -m sparkplan.firmware.manifest --install-specs \
+            | xargs arduino-cli lib install
+      - name: Generate and compile supported fixtures
+        run: |
+          uv run python scripts/ci_compile_firmware.py
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-builds
+          path: |
+            build/firmware/**
+          if-no-files-found: error
