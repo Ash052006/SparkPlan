@@ -243,17 +243,20 @@ def libraries_txt(names: list[str] | tuple[str, ...]) -> str:
     return "\n".join(lines) + ("\n" if lines else "")
 
 
-def write_manifest(out_dir: Path, names: list[str] | tuple[str, ...] = ()) -> tuple[Path, Path]:
+def write_manifest(
+    out_dir: Path, names: list[str] | tuple[str, ...] | None = None
+) -> tuple[Path, Path]:
     """Write ``libraries.txt`` and ``library_manifest.json`` into a folder.
 
-    ``names`` are the library names the sketch uses.  When it is empty the
-    whole pinned registry is written.
+    ``names`` are the library names the sketch uses.  An empty list means the
+    sketch needs no library and an empty manifest is written; ``None`` means
+    the whole pinned registry is written.
     """
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     resolution = (
         resolve_libraries(names)
-        if names
+        if names is not None
         else LibraryResolution(
             entries=tuple(PINNED_LIBRARIES[name] for name in sorted(PINNED_LIBRARIES)),
             requested=tuple(sorted(PINNED_LIBRARIES)),

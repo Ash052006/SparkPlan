@@ -80,3 +80,15 @@ def test_write_manifest_writes_both_files(tmp_path):
     entry = next(e for e in data["libraries"] if e["arduino_name"] == "DHT sensor library")
     assert entry["pinned_version"] == "1.4.7"
     assert entry["checksum"].startswith("SHA-256:")
+
+
+def test_write_manifest_of_a_sketch_without_libraries_is_empty(tmp_path):
+    """A sketch that needs no library must not claim the whole registry."""
+    txt, js = write_manifest(tmp_path, [])
+    assert txt.read_text() == ""
+    assert json.loads(js.read_text())["libraries"] == []
+
+
+def test_write_manifest_without_names_writes_the_whole_registry(tmp_path):
+    txt, _ = write_manifest(tmp_path)
+    assert len(txt.read_text().splitlines()) == len(PINNED_LIBRARIES)

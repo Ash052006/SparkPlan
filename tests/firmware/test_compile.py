@@ -187,6 +187,25 @@ def test_compile_firmware_refuses_an_unpinned_library(tmp_path, monkeypatch):
     assert "FIRMWARE_UNPINNED_LIBRARY" in {issue.code for issue in compiled.issues}
 
 
+def test_compile_firmware_of_a_sketch_without_libraries(tmp_path, monkeypatch):
+    """A sketch that needs no library must not claim the whole registry."""
+    log = tmp_path / "cli.log"
+    cli = _fake_cli(
+        tmp_path,
+        f"""\
+        #!/bin/sh
+        echo "$@" >> {log}
+        exit 0
+        """,
+    )
+    monkeypatch.setenv("SPARKPLAN_ARDUINO_CLI", cli)
+    result = FirmwareResult(sketch="void setup() {}\nvoid loop() {}\n", libraries=[])
+    compiled = compile_firmware(result, tmp_path / "ino")
+    assert compiled.compile_status == "ok"
+    assert (tmp_path / "ino" / "libraries.txt").read_text() == ""
+    assert "lib install" not in log.read_text()
+
+
 def test_build_properties_environment_is_not_leaked(monkeypatch):
     monkeypatch.delenv("SPARKPLAN_ARDUINO_BUILD_PROPERTIES", raising=False)
     assert "SPARKPLAN_ARDUINO_BUILD_PROPERTIES" not in os.environ

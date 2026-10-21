@@ -381,7 +381,8 @@ UNVERIFIED.
 - `.github/workflows/firmware.yml` — CI job: pinned `arduino-cli` 1.5.1,
   pinned ESP32 core `esp32:esp32@3.3.12` (cached), the pinned libraries
   taken from the manifest (`python -m sparkplan.firmware.manifest
-  --install-specs`), the compile run, and the build artifacts.
+  --install-specs`, one library per line so a name with spaces is not
+  split), the compile run, and the build artifacts.
 - New fixture `tests/fixtures/phase3/supported/desk_weather_bme280.json`
   (BME280 + OLED, two display lines, one rule); it passes every Phase 2
   validator.
@@ -399,13 +400,25 @@ UNVERIFIED.
   (`"T=%.1fC"`), and the argument is cast to match.
 - A rule or a display line that could not be rendered still produced a
   sketch. The build is now `supported = False` with the issue attached.
+- Found in the pre-merge audit: `write_manifest` fell back to the whole
+  pinned registry when a sketch needed no library, so the manifest of a
+  library-free sketch (for example the `hc_sr04` fixture) listed all ten
+  pinned libraries. `write_manifest(out_dir, names)` now writes exactly the
+  requested libraries, an empty list writes an empty manifest and only
+  `None` (the command line default) writes the whole registry.
+- Found in the pre-merge audit: the CI step fed the install specs to
+  `xargs`, which splits a library name at its spaces, so
+  `Adafruit BME280 Library@2.3.0` reached `arduino-cli lib install` as three
+  arguments and the step failed with `Library 'Adafruit@latest' not found`
+  before anything was compiled. The specs are now installed one per line
+  with a `while read` loop; all ten pins install locally with exit 0.
 
 **Tests**
 
 - `tests/firmware/test_behaviors.py` (14), `test_template.py` (12),
-  `test_manifest.py` (8), `test_compile.py` (11) — all offline; the compile
+  `test_manifest.py` (10), `test_compile.py` (12) — all offline; the compile
   tests use a fake CLI script.
-- `make test`: 339 passed. `make lint`: ruff and black clean.
+- `make test`: 342 passed. `make lint`: ruff and black clean.
 
 **Verified in this session**
 
@@ -418,8 +431,13 @@ UNVERIFIED.
   | `ultrasonic_distance` | legacy actions | 271 880 B (20 %) | 22 116 B (6 %) |
   | `servo_test` | legacy actions | 283 431 B (21 %) | 22 480 B (6 %) |
   | `soil_monitor` | behaviours | 314 016 B (23 %) | 23 812 B (7 %) |
-  | `desk_weather_bme280` | behaviours | 311 992 B (23 %) | 23 780 B (7 %) |
+  | `desk_weather_bme280` | behaviours | 311 980 B (23 %) | 23 780 B (7 %) |
   | `valid` (phase2/v8) | behaviours | 314 016 B (23 %) | 23 812 B (7 %) |
+
+  The compile run was repeated from scratch during the pre-merge audit
+  (the build folder was deleted first); the script exited 0 and every log
+  in `build/firmware/<fixture>/compile.log` shows the compiler's own
+  "Sketch uses ... bytes" line.
 
 - The library pins were taken from the Arduino library index and every
   pinned version was installed locally; the dependency graph was read from
