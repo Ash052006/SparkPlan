@@ -1,0 +1,99 @@
+{
+  "status": "ok",
+  "title": "Ultrasonic alarm",
+  "summary": "Sounds a buzzer when an object comes closer than a set distance.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "range",
+      "part_id": "hc_sr04"
+    },
+    {
+      "instance_id": "div",
+      "part_id": "voltage_divider_5v_3v3"
+    },
+    {
+      "instance_id": "beep",
+      "part_id": "piezo_buzzer_passive"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "range",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "5V",
+      "signal_role": "rail",
+      "rail_name": "5V"
+    },
+    {
+      "from_instance": "range",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "range",
+      "from_pin": "TRIG",
+      "to_instance": "board",
+      "to_pin": "D27",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "range",
+      "from_pin": "ECHO",
+      "to_instance": "div",
+      "to_pin": "VIN",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "div",
+      "from_pin": "VOUT",
+      "to_instance": "board",
+      "to_pin": "D34",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "div",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "beep",
+      "from_pin": "POS",
+      "to_instance": "board",
+      "to_pin": "D25",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "beep",
+      "from_pin": "NEG",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "hc_sr04",
+      "mount": "wall",
+      "note": "transducers face out through the wall"
+    },
+    {
+      "part_id": "piezo_buzzer_passive",
+      "mount": "wall",
+      "note": "sound exits through a wall opening"
+    },
+    {
+      "part_id": "voltage_divider_5v_3v3",
+      "mount": "base",
+      "note": "small resistor pack on the floor"
+    }
+  ]
+}
