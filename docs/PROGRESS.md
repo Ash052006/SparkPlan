@@ -445,9 +445,12 @@ UNVERIFIED.
 
 **UNVERIFIED**
 
-- The CI workflow itself was not run (no GitHub Actions run in this
-  session); the local compile of the same fixtures with the same pinned
-  toolchain is the evidence above.
+- The `firmware` workflow has never run. It triggers on pushes to `main` and
+  on pull requests only, so it does not run on this branch; the `ci` workflow
+  did run on the pushed commits (ruff, black and pytest green). The local
+  compile of the same fixtures with the same pinned toolchain is the
+  firmware evidence above, and the workflow's install step was verified
+  locally.
 - The sketches were compiled, not flashed: no board was connected, so no
   reading, rule or display line was observed on real hardware.
 - The pinned library versions are the ones this project pins and installs;
