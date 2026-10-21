@@ -21,6 +21,9 @@ without a toolchain can never look like a successful compile.
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +33,31 @@ from sparkplan.firmware.manifest import resolve_libraries, write_manifest
 from sparkplan.models.buildspec import SupportedBuild
 from sparkplan.models.catalog import load_catalog as load_catalog_v2
 from sparkplan.models.spec import BuildSpec
+
+FQBN = "esp32:esp32:esp32"
+
+
+def _cli_path() -> str:
+    return os.environ.get("SPARKPLAN_ARDUINO_CLI") or shutil.which("arduino-cli") or ""
+
+
+def _toolchain_header() -> str:
+    """The toolchain that produced a log, so a compile is self-describing."""
+    lines = [f"# fqbn: {FQBN}"]
+    cli = _cli_path()
+    if not cli:
+        return "\n".join(lines) + "\n"
+    for args in (["version"], ["core", "list"]):
+        try:
+            proc = subprocess.run(  # noqa: S603
+                [cli, *args], capture_output=True, text=True, timeout=60
+            )
+        except (OSError, subprocess.SubprocessError):
+            continue
+        output = (proc.stdout + proc.stderr).strip()
+        if output:
+            lines.append(f"# {output}")
+    return "\n".join(lines) + "\n"
 
 
 def _write_sketch(sketch_dir: Path, sketch: str) -> Path:
@@ -54,10 +82,11 @@ def _compile_one(
     write_manifest(sketch_dir, libraries)
     artifacts = compile_sketch(
         sketch_dir,
-        fqbn="esp32:esp32:esp32",
+        fqbn=FQBN,
         libraries=list(resolution.specs),
     )
-    (sketch_dir / "compile.log").write_text(artifacts.logs, encoding="utf-8")
+    header = _toolchain_header()
+    (sketch_dir / "compile.log").write_text(header + artifacts.logs, encoding="utf-8")
     if artifacts.status != "passed":
         codes = ", ".join(issue.code for issue in artifacts.issues) or artifacts.status
         return False, f"{artifacts.status} ({codes})"

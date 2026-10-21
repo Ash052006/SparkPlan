@@ -436,8 +436,9 @@ UNVERIFIED.
 
   The compile run was repeated from scratch during the pre-merge audit
   (the build folder was deleted first); the script exited 0 and every log
-  in `build/firmware/<fixture>/compile.log` shows the compiler's own
-  "Sketch uses ... bytes" line.
+  in `build/firmware/<fixture>/compile.log` is self-describing: it starts
+  with the FQBN, the `arduino-cli` version and the installed core version,
+  and ends with the compiler's own "Sketch uses ... bytes" line.
 
 - The library pins were taken from the Arduino library index and every
   pinned version was installed locally; the dependency graph was read from
