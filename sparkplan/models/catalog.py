@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
@@ -140,8 +141,30 @@ class Exposure(_Strict):
 
 
 class FirmwareReading(_Strict):
+    """One value the part can produce.
+
+    ``type`` is the C++ type of the generated variable (``float``, ``int`` or
+    ``bool``).  It is optional: when empty the generator falls back to the
+    documented unit table (``bool``/``boolean`` -> bool, ``adc_counts`` -> int,
+    anything else -> float).
+
+    ``expression`` is the C++ expression that yields the value, evaluated in
+    the scope of the part's ``read_snippet`` (so it usually names a local
+    declared there).  It is what binds a catalog reading to a snippet local
+    without guessing.
+    """
+
     name: str = Field(min_length=1)
     unit: str = ""
+    type: str = ""
+    expression: str = ""
+
+    @field_validator("type")
+    @classmethod
+    def _known_type(cls, v: str) -> str:
+        if v and v not in {"float", "int", "bool"}:
+            raise ValueError(f"reading type must be float, int or bool, got {v!r}")
+        return v
 
 
 class FirmwareAction(_Strict):
@@ -151,6 +174,24 @@ class FirmwareAction(_Strict):
 
 
 class Firmware(_Strict):
+    """Per-part firmware template.
+
+    ``object_name`` is the C++ object the template declares (``dht`` for the
+    DHT22).  The generator scopes it per instance so two instances of the
+    same part do not collide.
+
+    ``pin_map`` maps a template pin placeholder (``LED_PIN``) to a catalog pin
+    name (``ANODE``).  A placeholder that already matches the convention
+    ``<PIN NAME>_PIN`` needs no entry.
+
+    ``min_interval_ms`` is the shortest interval at which the part may be
+    sampled, in milliseconds.  It is a property of the part protocol, not a
+    user choice: the DHT sensor library refuses a second read within 2000 ms
+    and answers with the previous measurement, and the HC-SR04 needs 60 ms
+    between triggers so its echoes do not overlap.  Zero means "no constraint
+    beyond the sketch tick".
+    """
+
     library_deps: list[str] = Field(default_factory=list)
     includes: list[str] = Field(default_factory=list)
     globals: list[str] = Field(default_factory=list)
@@ -158,6 +199,29 @@ class Firmware(_Strict):
     readings: list[FirmwareReading] = Field(default_factory=list)
     read_snippet: str = ""
     actions: list[FirmwareAction] = Field(default_factory=list)
+    object_name: str = ""
+    pin_map: dict[str, str] = Field(default_factory=dict)
+    min_interval_ms: int = Field(default=0, ge=0)
+
+    @field_validator("object_name")
+    @classmethod
+    def _identifier(cls, v: str) -> str:
+        if v and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", v):
+            raise ValueError(f"object_name must be a C++ identifier, got {v!r}")
+        return v
+
+    @field_validator("pin_map")
+    @classmethod
+    def _placeholders(cls, v: dict[str, str]) -> dict[str, str]:
+        for placeholder, pin_name in v.items():
+            if not re.fullmatch(r"[A-Z][A-Z0-9_]*_PIN", placeholder):
+                raise ValueError(
+                    f"pin_map key {placeholder!r} must be an upper-case placeholder "
+                    "such as 'AOUT_PIN'"
+                )
+            if not pin_name:
+                raise ValueError(f"pin_map[{placeholder!r}] must name a catalog pin")
+        return v
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +356,12 @@ class Part(_Strict):
 
         if self.peak_current_ma and self.peak_current_ma < self.typical_current_ma:
             raise ValueError(f"part {self.id!r} peak current below typical current")
+
+        for placeholder, pin_name in self.firmware.pin_map.items():
+            if self.pin(pin_name) is None:
+                raise ValueError(
+                    f"part {self.id!r} pin_map[{placeholder!r}] names unknown pin {pin_name!r}"
+                )
         return self
 
     def pin(self, name: str) -> Pin | None:

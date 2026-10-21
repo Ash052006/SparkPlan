@@ -168,11 +168,13 @@
       "globals": ["DHT dht(DATA_PIN, DHT22);"],
       "setup_lines": ["dht.begin();"],
       "readings": [
-        { "name": "temperature_c", "unit": "C" },
-        { "name": "humidity_pct", "unit": "%RH" }
+        { "name": "temperature_c", "unit": "C", "type": "float", "expression": "t" },
+        { "name": "humidity_pct", "unit": "%RH", "type": "float", "expression": "h" }
       ],
       "read_snippet": "float t = dht.readTemperature();\nfloat h = dht.readHumidity();",
-      "actions": []
+      "actions": [],
+      "object_name": "dht",
+      "min_interval_ms": 2000
     },
     "notes": "Dimensions approximate (dimensions_verified=false); the bare sensor and the module differ. Needs a data wire only; VCC on 3V3."
   },
@@ -208,7 +210,7 @@
       "includes": [],
       "globals": [],
       "setup_lines": [],
-      "readings": [{ "name": "soil_raw", "unit": "adc_counts" }],
+      "readings": [{ "name": "soil_raw", "unit": "adc_counts", "type": "int", "expression": "soil" }],
       "read_snippet": "int soil = analogRead(AOUT_PIN);",
       "actions": []
     },
@@ -268,10 +270,11 @@
       "actions": [
         {
           "name": "show_line",
-          "snippet": "display.clearDisplay();\ndisplay.setCursor(0, 0);\ndisplay.println(value);\ndisplay.display();",
+          "snippet": "display.clearDisplay();\ndisplay.setCursor(0, 0);\ndisplay.print(value);\ndisplay.display();",
           "params": ["value"]
         }
-      ]
+      ],
+      "object_name": "display"
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Mount on the lid so the screen faces the user through the top opening. I2C address 0x3C fixed on this module."
   },
@@ -310,12 +313,13 @@
       "globals": ["Adafruit_BME280 bme;"],
       "setup_lines": ["bme.begin(0x76);"],
       "readings": [
-        { "name": "temperature_c", "unit": "C" },
-        { "name": "humidity_pct", "unit": "%RH" },
-        { "name": "pressure_hpa", "unit": "hPa" }
+        { "name": "temperature_c", "unit": "C", "type": "float", "expression": "t" },
+        { "name": "humidity_pct", "unit": "%RH", "type": "float", "expression": "h" },
+        { "name": "pressure_hpa", "unit": "hPa", "type": "float", "expression": "p" }
       ],
       "read_snippet": "float t = bme.readTemperature();\nfloat h = bme.readHumidity();\nfloat p = bme.readPressure() / 100.0F;",
-      "actions": []
+      "actions": [],
+      "object_name": "bme"
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Must run on 3V3 (max 3.6 V). Address 0x76 assumed; verify the SDO jumper."
   },
@@ -354,9 +358,11 @@
       "includes": ["#include <Wire.h>", "#include <BH1750.h>"],
       "globals": ["BH1750 lightMeter;"],
       "setup_lines": ["lightMeter.begin();"],
-      "readings": [{ "name": "light_lux", "unit": "lx" }],
+      "readings": [{ "name": "light_lux", "unit": "lx", "type": "float", "expression": "lux" }],
       "read_snippet": "float lux = lightMeter.readLightLevel();",
-      "actions": []
+      "actions": [],
+      "object_name": "lightMeter",
+      "min_interval_ms": 200
     },
     "notes": "Dimensions approximate (dimensions_verified=false). ADDR pin sets 0x23 (low) or 0x5C (high); this catalog assumes 0x23. Must run on 3V3."
   },
@@ -401,9 +407,10 @@
         "pinMode(TRIG_PIN, OUTPUT);",
         "pinMode(ECHO_PIN, INPUT);"
       ],
-      "readings": [{ "name": "distance_cm", "unit": "cm" }],
+      "readings": [{ "name": "distance_cm", "unit": "cm", "type": "float", "expression": "cm" }],
       "read_snippet": "digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);\ndigitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);\ndigitalWrite(TRIG_PIN, LOW);\nunsigned long us = pulseIn(ECHO_PIN, HIGH, 30000UL);\nfloat cm = us * 0.0343f / 2.0f;",
-      "actions": []
+      "actions": [],
+      "min_interval_ms": 60
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Runs on 5 V; ECHO is 5 V logic, so use the voltage divider part to protect the ESP32 input pin."
   },
@@ -480,7 +487,8 @@
           "snippet": "servo.write(angle);",
           "params": ["angle"]
         }
-      ]
+      ],
+      "object_name": "servo"
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Stall current ~650 mA exceeds the USB 5 V budget; power servos from the 5 V rail with care or a separate supply. Control signal is 3.3 V tolerant on this servo."
   },
@@ -528,7 +536,8 @@
           "snippet": "ledcWriteTone(TONE_PIN, 0);",
           "params": []
         }
-      ]
+      ],
+      "pin_map": { "TONE_PIN": "POS" }
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Passive buzzer needs a PWM frequency (not a plain HIGH); an active buzzer would beep on HIGH but this part is the passive type."
   },
@@ -571,7 +580,8 @@
           "snippet": "digitalWrite(LED_PIN, on ? HIGH : LOW);",
           "params": ["on"]
         }
-      ]
+      ],
+      "pin_map": { "LED_PIN": "ANODE" }
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Required series resistor is resistor_220r; the LED must be wired ANODE -> 220 ohm -> GPIO and CATHODE -> GND (or GPIO-driven with current limiting). Mount on the lid so light exits the top opening."
   },
@@ -637,9 +647,10 @@
       "includes": [],
       "globals": [],
       "setup_lines": ["pinMode(BUTTON_PIN, INPUT_PULLUP);"],
-      "readings": [{ "name": "button_pressed", "unit": "bool" }],
+      "readings": [{ "name": "button_pressed", "unit": "bool", "type": "bool", "expression": "pressed" }],
       "read_snippet": "bool pressed = digitalRead(BUTTON_PIN) == LOW;",
-      "actions": []
+      "actions": [],
+      "pin_map": { "BUTTON_PIN": "A" }
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Active-low; needs the internal pull-up (INPUT_PULLUP). Mount on the lid so the cap is reachable through the top opening."
   },
@@ -680,9 +691,10 @@
       "includes": [],
       "globals": [],
       "setup_lines": ["pinMode(PIR_PIN, INPUT);"],
-      "readings": [{ "name": "motion", "unit": "bool" }],
+      "readings": [{ "name": "motion", "unit": "bool", "type": "bool", "expression": "motion" }],
       "read_snippet": "bool motion = digitalRead(PIR_PIN) == HIGH;",
-      "actions": []
+      "actions": [],
+      "pin_map": { "PIR_PIN": "OUT" }
     },
     "notes": "Dimensions approximate (dimensions_verified=false); the dome and PCB vary. 5 V supply; OUT is 3.3 V TTL on most units, verify with a meter. Has a warm-up settle time after power-on."
   },
@@ -727,7 +739,9 @@
           "snippet": "for (int i = 0; i < strip.numPixels(); i++) { strip.setPixelColor(i, c); }\nstrip.show();",
           "params": ["c"]
         }
-      ]
+      ],
+      "object_name": "strip",
+      "pin_map": { "LED_PIN": "DIN" }
     },
     "notes": "Dimensions approximate (dimensions_verified=false); 8-LED strip assumed at about 10 mm pitch. Data line expects 5 V logic; at 3.3 V it often works but level-shift for reliability. Full-white current exceeds the USB budget."
   }

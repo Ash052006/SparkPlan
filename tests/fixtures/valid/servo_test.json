@@ -1,0 +1,29 @@
+{
+  "idea": "servo control",
+  "controller": "esp32_devkit_v4",
+  "parts": [
+    {
+      "instance_id": "arm",
+      "part_id": "sg90_servo"
+    }
+  ],
+  "connections": [
+    {
+      "instance_id": "arm",
+      "peripheral_pin": "SIG",
+      "controller_pin": "GPIO13"
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "move",
+      "kind": "write",
+      "instance_id": "arm",
+      "api": "write_angle",
+      "params": {
+        "angle": 90
+      }
+    }
+  ],
+  "notes": ""
+}

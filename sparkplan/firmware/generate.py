@@ -3,26 +3,45 @@
 The LLM never writes firmware. Sketches are assembled deterministically
 from per-part templates in the catalog, with GPIOs taken from the
 validated BuildSpec. Unresolved placeholders are hard errors.
+
+Two spec shapes are supported:
+
+* ``sparkplan.models.spec.BuildSpec`` with actions and the split catalog
+  (``catalog/parts/*.json``) - the legacy action pipeline, unchanged.
+* ``sparkplan.models.buildspec.SupportedBuild`` with behaviours and the
+  Phase 2+ catalog (``catalog/parts.json``) - see
+  :mod:`sparkplan.firmware.behaviors`.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from sparkplan.catalog import Catalog
-from sparkplan.models.spec import Action, BuildSpec, PartInstance
+from sparkplan.firmware.behaviors import (
+    BehaviorFirmware,
+    generate_behavior_firmware,
+    unsupported_error,
+)
+from sparkplan.firmware.context import make_context
+from sparkplan.firmware.errors import FirmwareError, FirmwareUnsupportedError
+from sparkplan.firmware.template import canonical_hash, canonical_payload
+from sparkplan.models.buildspec import SupportedBuild
+from sparkplan.models.catalog import Catalog as CatalogV2
+from sparkplan.models.spec import Action, BuildSpec, Issue, PartInstance
 
-
-class FirmwareError(RuntimeError):
-    """Template assembly failed (e.g. unresolved placeholder)."""
-
-
-_COMPILE_TIMEOUT_S = 300
+__all__ = [
+    "FirmwareError",
+    "FirmwareResult",
+    "FirmwareUnsupportedError",
+    "compile_firmware",
+    "generate_firmware",
+    "write_sketch",
+]
 
 
 @dataclass(frozen=True)
@@ -32,6 +51,8 @@ class FirmwareResult:
     action_vars: dict[str, str] = field(default_factory=dict)
     compile_status: Literal["ok", "failed", "skipped"] = "skipped"
     compile_log: str = ""
+    readings: dict[str, str] = field(default_factory=dict)
+    issues: list[Issue] = field(default_factory=list)
 
     @property
     def sketch_path_hint(self) -> str:
@@ -42,16 +63,44 @@ def _sanitize(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
+def _gpio_number(catalog: Catalog, controller_pin: str) -> int | None:
+    """The GPIO number of a legacy board pin label.
+
+    The legacy catalog names the broken out pins of the controller
+    ``GPIO4``, ``GPIO13`` and so on, and the legacy pin validator derives the
+    number the same way.  The ESP32 core has no ``GPIO4`` symbol, so the
+    firmware has to use the number: ``DHT env_dht(4, DHTTYPE);``.  The
+    number is taken from the catalog pin, never guessed.
+    """
+    pin = catalog.controller.pin(controller_pin)
+    if pin is not None and pin.gpio is not None:
+        return pin.gpio
+    cleaned = controller_pin.strip().upper()
+    if cleaned.startswith("GPIO") and cleaned[4:].isdigit():
+        return int(cleaned[4:])
+    return None
+
+
 def _gpio_map(spec: BuildSpec, inst: PartInstance, catalog: Catalog) -> dict[str, str]:
-    """Placeholders for one instance: {'gpio': 'GPIO4', 'gpio_trig': 'GPIO13', ...}"""
+    """Placeholders for one instance: {'gpio': '4', 'gpio_trig': '13', ...}"""
     conns = [c for c in spec.connections if c.instance_id == inst.instance_id]
     mapping: dict[str, str] = {"instance": inst.instance_id}
     if len(conns) == 1:
-        mapping["gpio"] = conns[0].controller_pin
+        mapping["gpio"] = _gpio_expression(catalog, conns[0].controller_pin, inst.instance_id)
     for c in conns:
         key = "gpio_" + _sanitize(c.peripheral_pin)
-        mapping[key] = c.controller_pin
+        mapping[key] = _gpio_expression(catalog, c.controller_pin, inst.instance_id)
     return mapping
+
+
+def _gpio_expression(catalog: Catalog, controller_pin: str, instance_id: str) -> str:
+    """The C++ expression of a board pin: the GPIO number."""
+    number = _gpio_number(catalog, controller_pin)
+    if number is None:
+        raise FirmwareError(
+            f"board pin {controller_pin!r} of instance {instance_id!r} has no GPIO number"
+        )
+    return str(number)
 
 
 def _subst(line: str, mapping: dict[str, str], instance_id: str) -> str:
@@ -94,26 +143,91 @@ def _cpp_args(action: Action, api_param: str | None) -> list[str]:
     return args
 
 
-def _format_snippet(fmt: str) -> tuple[str, str, int]:
-    """Convert 'T={value:.1f}C' into (c_format, buffer_size_expr_note, n_args)."""
-    n_args = 0
+# C conversions that take a floating point argument.
+_FLOAT_CONVERSIONS = "feEgG"
+# C conversions that take an integer argument.
+_INT_CONVERSIONS = "diuxXo"
 
-    def repl(m: re.Match[str]) -> str:
-        nonlocal n_args
-        n_args += 1
-        spec = m.group(1)
-        if not spec:
-            return "%s"
-        conv = {"f": "f", "d": "d", "s": "s", "g": "g", "x": "x", "02d": "02d", "03d": "03d"}
-        py_conv = spec.split(":")[-1] if ":" in spec else "s"
-        py_conv = py_conv.replace(".", "0").replace("d", "d").replace("f", "f")
-        if py_conv not in conv and py_conv.replace("0", "d") not in conv:
-            py_conv = "s"
-        return f"%{py_conv}"
 
-    c_fmt = re.sub(r"\{value(?::([^}]+))?\}", repl, fmt)
-    buf = max(len(fmt) + 16, 32)
-    return c_fmt, f"{buf}", n_args
+def _escape_c_literal(text: str) -> str:
+    """Escape the literal part of a format string for C."""
+    return text.replace("%", "%%").replace('"', '\\"')
+
+
+def _default_conversion(value_type: str) -> str:
+    """The natural printf conversion for a value of the given C++ type."""
+    if value_type in {"float", "double"}:
+        return "%g"
+    if value_type in {"int", "long", "unsigned", "unsigned long", "short"}:
+        return "%d"
+    if value_type in {"bool"}:
+        return "%s"
+    return "%s"
+
+
+def _format_snippet(fmt: str, value_type: str, value_expr: str) -> tuple[str, str]:
+    """Convert ``'T={value:.1f}C'`` into a C format and its argument expression.
+
+    The conversion always matches the type of the value, so a float is never
+    handed to a ``%s`` conversion (which is undefined behaviour) and an int is
+    never handed to a ``%f`` conversion.
+    """
+    match = re.search(r"\{value(?::([^}]+))?\}", fmt)
+    if match is None:
+        return _escape_c_literal(fmt), value_expr
+    spec = (match.group(1) or "").strip()
+    literal_before = _escape_c_literal(fmt[: match.start()])
+    literal_after = _escape_c_literal(fmt[match.end() :])
+
+    conversion = ""
+    precision = re.fullmatch(r"\.(\d+)([a-zA-Z])", spec)
+    zero_padded = re.fullmatch(r"0(\d+)([diouxX])", spec)
+    single = re.fullmatch(r"([a-zA-Z])", spec)
+    if precision is not None:
+        conversion = f"%.{precision.group(1)}{precision.group(2)}"
+    elif zero_padded is not None:
+        conversion = f"%0{zero_padded.group(1)}{zero_padded.group(2)}"
+    elif single is not None:
+        conversion = f"%{single.group(1)}"
+    else:
+        conversion = _default_conversion(value_type)
+
+    is_float_value = value_type in {"float", "double"}
+    is_int_value = value_type in {"int", "long", "unsigned", "unsigned long", "short"}
+    is_bool_value = value_type == "bool"
+
+    conv_char = conversion[-1]
+    if conv_char in _FLOAT_CONVERSIONS:
+        arg = f"(double){value_expr}" if not is_float_value else value_expr
+    elif conv_char in _INT_CONVERSIONS:
+        arg = f"(int){value_expr}" if is_float_value else value_expr
+    elif conv_char == "s":
+        if is_bool_value:
+            arg = f'({value_expr} ? "true" : "false")'
+        elif is_float_value or is_int_value:
+            # A numeric value printed as a string: convert it explicitly.
+            arg = f"String({value_expr}).c_str()"
+        else:
+            arg = value_expr
+    else:
+        conversion = _default_conversion(value_type)
+        arg = value_expr
+    return f"{literal_before}{conversion}{literal_after}", arg
+
+
+def _source_type(spec: BuildSpec, catalog: Catalog, action_id: str) -> str:
+    """The C++ type of the value produced by another action."""
+    for other in spec.actions:
+        if other.action_id != action_id:
+            continue
+        inst = spec.instance(other.instance_id)
+        if inst is None:
+            return ""
+        api = catalog.api_fn(inst.part_id, other.api)
+        if api is None:
+            return ""
+        return api.returns
+    return ""
 
 
 def _render_action(action: Action, spec: BuildSpec, catalog: Catalog, var: str) -> list[str]:
@@ -131,10 +245,12 @@ def _render_action(action: Action, spec: BuildSpec, catalog: Catalog, var: str) 
         src = f"v_{action.consumes}"
         fmt = (action.params or {}).get("format")
         if isinstance(fmt, str) and "{value" in fmt:
-            c_fmt, buf_size, n_args = _format_snippet(fmt)
-            lines.append(f"  char {var}[{buf_size}];")
-            lines.append(f'  snprintf({var}, sizeof({var}), "{c_fmt}", {src});')
-            assert n_args >= 1
+            c_fmt, arg_expr = _format_snippet(
+                fmt, _source_type(spec, catalog, action.consumes), src
+            )
+            buf = max(len(fmt) + 16, 32)
+            lines.append(f"  char {var}[{buf}];")
+            lines.append(f'  snprintf({var}, sizeof({var}), "{c_fmt}", {arg_expr});')
             args = [var, *args]
         else:
             # Coerce integer sources to float where the parameter expects float.
@@ -148,7 +264,64 @@ def _render_action(action: Action, spec: BuildSpec, catalog: Catalog, var: str) 
     return lines
 
 
-def generate_firmware(spec: BuildSpec, catalog: Catalog) -> FirmwareResult:
+def _legacy_header(spec: BuildSpec, ctx: object) -> list[str]:
+    """Deterministic header comment: components, GPIOs and the spec hash."""
+    digest = canonical_hash(canonical_payload(spec))
+    instances = sorted(ctx.instances.items())  # type: ignore[attr-defined]
+    connections = sorted(
+        ctx.connections,  # type: ignore[attr-defined]
+        key=lambda c: (c.instance_id, c.peripheral_pin, c.controller_pin),
+    )
+    lines = [
+        "// Generated by SparkPlan. Do not hand-edit; change the catalog template instead.",
+        f"// Idea: {ctx.idea}",  # type: ignore[attr-defined]
+        "// Components:",
+    ]
+    for instance_id, instance in instances:
+        lines.append(f"//   {instance_id} = {instance.part_id}")
+    lines.append("// GPIO assignments:")
+    for connection in connections:
+        lines.append(
+            f"//   {connection.instance_id}.{connection.peripheral_pin} -> "
+            f"{connection.controller_pin}"
+        )
+    lines.append(f"// Spec hash (sha256/16): {digest}")
+    return lines
+
+
+def generate_firmware(
+    spec: BuildSpec | SupportedBuild, catalog: Catalog | CatalogV2
+) -> FirmwareResult:
+    """Render a sketch for a build spec.
+
+    A ``SupportedBuild`` is rendered by :mod:`sparkplan.firmware.behaviors`
+    and needs the Phase 2+ catalog; a legacy ``BuildSpec`` is rendered by the
+    action pipeline and needs the split catalog.
+    """
+    if isinstance(spec, SupportedBuild):
+        if not isinstance(catalog, CatalogV2):
+            raise FirmwareError(
+                "a SupportedBuild needs the Phase 2+ catalog (catalog/parts.json), "
+                f"got {type(catalog).__name__}"
+            )
+        behaviour_firmware: BehaviorFirmware = generate_behavior_firmware(spec, catalog)
+        if not behaviour_firmware.supported:
+            raise unsupported_error(behaviour_firmware)
+        return FirmwareResult(
+            sketch=behaviour_firmware.sketch,
+            libraries=behaviour_firmware.libraries,
+            readings=behaviour_firmware.readings,
+            issues=behaviour_firmware.issues,
+        )
+    if not isinstance(spec, BuildSpec):
+        raise FirmwareError(f"unsupported spec type for firmware: {type(spec).__name__}")
+    if not isinstance(catalog, Catalog):
+        raise FirmwareError(
+            "a legacy BuildSpec needs the split catalog (catalog/parts/*.json), "
+            f"got {type(catalog).__name__}"
+        )
+    # Normalize via context (preserves behavior for legacy specs)
+    ctx = make_context(spec)
     includes: list[str] = []
     defines: list[str] = []
     globals_: list[str] = []
@@ -156,6 +329,7 @@ def generate_firmware(spec: BuildSpec, catalog: Catalog) -> FirmwareResult:
     functions: list[str] = []
     libraries: list[str] = []
     action_vars: dict[str, str] = {}
+    header_lines = _legacy_header(spec, ctx)
 
     def _extend(target: list[str], items: list[str]) -> None:
         for item in items:
@@ -185,8 +359,7 @@ def generate_firmware(spec: BuildSpec, catalog: Catalog) -> FirmwareResult:
     loop_lines.append("  delay(200);")
 
     sketch_lines = [
-        "// Generated by SparkPlan. Do not hand-edit; change the catalog template instead.",
-        f"// Idea: {spec.idea}",
+        *header_lines,
         "",
         *includes,
         "",
@@ -224,56 +397,62 @@ def compile_firmware(
     cli_path: str | None = None,
     extra_lib_install: bool = True,
 ) -> FirmwareResult:
-    """Compile with arduino-cli when available; otherwise mark skipped."""
-    import os
-    import shutil
-    import tempfile
+    """Compile with arduino-cli when available; otherwise mark skipped.
+    Delegates to compile module for consistency while preserving API.
+    """
 
-    cli = cli_path or os.environ.get("SPARKPLAN_ARDUINO_CLI") or shutil.which("arduino-cli")
-    if not cli:
+    from sparkplan.firmware.compile import compile_sketch
+    from sparkplan.firmware.manifest import resolve_libraries, write_manifest
+
+    sketch_dir = Path(directory)
+    write_sketch(result, sketch_dir)
+    resolution = resolve_libraries(result.libraries)
+    if resolution.unknown:
+        issues = [
+            *result.issues,
+            *[
+                Issue(
+                    code="FIRMWARE_UNPINNED_LIBRARY",
+                    severity="error",
+                    message=f"library {name!r} is not pinned in the manifest",
+                    part_ids=[],
+                    fix_hint="Pin the library in sparkplan/firmware/manifest.py.",
+                )
+                for name in resolution.unknown
+            ],
+        ]
         return FirmwareResult(
             sketch=result.sketch,
             libraries=result.libraries,
             action_vars=result.action_vars,
             compile_status="skipped",
-            compile_log="arduino-cli not found; install it or set SPARKPLAN_ARDUINO_CLI",
+            compile_log="",
+            readings=result.readings,
+            issues=issues,
         )
-
-    sketch_dir = Path(directory)
-    write_sketch(result, sketch_dir)
-    log_parts: list[str] = []
-
-    if extra_lib_install and result.libraries:
-        install = subprocess.run(  # noqa: S603
-            [cli, "lib", "install", *result.libraries],
-            capture_output=True,
-            text=True,
-            timeout=_COMPILE_TIMEOUT_S,
-        )
-        log_parts.append(install.stdout + install.stderr)
-
-    with tempfile.TemporaryDirectory() as build_dir:
-        proc = subprocess.run(  # noqa: S603
-            [
-                cli,
-                "compile",
-                "--fqbn",
-                "esp32:esp32:esp32",
-                "--build-path",
-                build_dir,
-                str(sketch_dir),
-            ],
-            capture_output=True,
-            text=True,
-            timeout=_COMPILE_TIMEOUT_S,
-        )
-        log_parts.append(proc.stdout + proc.stderr)
-        status = "ok" if proc.returncode == 0 else "failed"
-
+    # The pinned manifest is written next to the sketch so the exact library
+    # versions of a build are recorded with the build.
+    write_manifest(sketch_dir, result.libraries)
+    artifacts = compile_sketch(
+        sketch_dir,
+        fqbn="esp32:esp32:esp32",
+        cli_path=cli_path,
+        libraries=list(resolution.specs) if extra_lib_install else None,
+        extra_lib_install=extra_lib_install,
+    )
+    # Map to old status
+    if artifacts.status == "passed":
+        status = "ok"
+    elif artifacts.status == "skipped":
+        status = "skipped"
+    else:  # failed/unsupported
+        status = "failed"
     return FirmwareResult(
         sketch=result.sketch,
         libraries=result.libraries,
         action_vars=result.action_vars,
         compile_status=status,
-        compile_log="\n".join(log_parts)[-8000:],
+        compile_log=artifacts.logs[-8000:],
+        readings=result.readings,
+        issues=[*result.issues, *artifacts.issues],
     )

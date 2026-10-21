@@ -323,3 +323,156 @@ UNVERIFIED.
 - Pass-through parts protrude from the shell by design; their cable/egress
   path (e.g. soil-probe cable) is not modelled.
 - Vent patterns are not cut (`GEOMETRY_VENT_OMITTED` warning) in this phase.
+
+## Phase 5 — Deterministic Firmware Generation and Compile Verification
+
+**Built**
+
+- `sparkplan/firmware/template.py` — template engine for the Phase 2+ catalog.
+  It renders per-instance C++ fragments from `catalog/parts.json`: pin
+  constants from validated connections only, instance-scoped objects
+  (`screen_display`), per-instance readings (`<instance>_<reading>` plus
+  `<var>_valid`), per-instance actions, `Wire.begin(SDA, SCL)` for I2C
+  parts, the board's setup lines, and the part's minimum sampling interval.
+  Unresolved placeholders, unknown parts and missing expressions are
+  issues, never guesses. `canonical_payload`/`canonical_hash` give the
+  deterministic spec hash (sha256/16) used in the sketch header.
+- `sparkplan/firmware/behaviors.py` — behaviour based generator for
+  `SupportedBuild`: readings, edge-triggered rules, display lines, the
+  `millis()` tick with rollover-safe unsigned arithmetic, `isnan` guards
+  that keep the last value and mark the reading invalid, rules that fire
+  only on valid readings, and one buffer per display target. A rule that
+  targets an actuator, an unknown reading, an ambiguous reading name or a
+  unit mismatch makes the whole build `supported = False` with a
+  machine-readable issue; nothing is dropped silently.
+- `sparkplan/firmware/generate.py` — public API. `generate_firmware` takes
+  either the legacy `BuildSpec` (split catalog, action pipeline) or the
+  Phase 2+ `SupportedBuild` (`catalog/parts.json`, behaviour pipeline) and
+  refuses a mismatched catalog. The legacy header now records components,
+  GPIO assignments and the spec hash.
+- `sparkplan/firmware/manifest.py` — pinned library registry. Every library
+  a catalog part can need is pinned to one version with the download URL and
+  the SHA-256 checksum from the official Arduino library index
+  (`https://downloads.arduino.cc/libraries/library_index.json`); the
+  transitive dependencies come from the `depends` field of the installed
+  `library.properties` of that exact version. `resolve_libraries` returns
+  the pinned closure of a sketch, `libraries.txt`/`library_manifest.json`
+  are written next to the sketch, and an unpinned library is an error, never
+  a floating "latest".
+- `sparkplan/firmware/compile.py` — compile wrapper. It detects the CLI
+  (`SPARKPLAN_ARDUINO_CLI`, `PATH`), installs the pinned libraries, compiles
+  with `--fqbn esp32:esp32:esp32`, and reports `passed`, `failed`,
+  `skipped` or `unsupported` with `Issue` objects
+  (`ARDUINO_CLI_MISSING`, `ESP32_PLATFORM_MISSING`, `LIBRARY_UNAVAILABLE`,
+  `LIB_INSTALL_ERROR`, `LIB_INSTALL_TIMEOUT`, `COMPILE_TIMEOUT`,
+  `COMPILE_ERROR`). Extra build properties can be passed with
+  `SPARKPLAN_ARDUINO_BUILD_PROPERTIES` (used below for the macOS ctags
+  shim).
+- `catalog/parts.json` — firmware templates completed for the parts the
+  behaviour path needs: readings with type and expression, per-part
+  `object_name`, `pin_map` entries and the protocol minimum intervals
+  (dht22 2000 ms, bh1750 200 ms, hc_sr04 60 ms). `sparkplan/models/catalog.py`
+  gained `Firmware.min_interval_ms`.
+- `scripts/ci_compile_firmware.py` — CI driver. It renders and compiles the
+  three legacy fixtures and the three behaviour fixtures, writes each sketch
+  as `<folder>/<folder>.ino` (arduino-cli requires the main file to be named
+  after its folder), writes the pinned manifest next to it, and fails when a
+  sketch does not compile.
+- `.github/workflows/firmware.yml` — CI job: pinned `arduino-cli` 1.5.1,
+  pinned ESP32 core `esp32:esp32@3.3.12` (cached), the pinned libraries
+  taken from the manifest (`python -m sparkplan.firmware.manifest
+  --install-specs`, one library per line so a name with spaces is not
+  split), the compile run, and the build artifacts.
+- New fixture `tests/fixtures/phase3/supported/desk_weather_bme280.json`
+  (BME280 + OLED, two display lines, one rule); it passes every Phase 2
+  validator.
+
+**Fixes found by compiling for real**
+
+- The legacy renderer emitted the board pin label (`GPIO4`) where the ESP32
+  core expects the GPIO number; the sketches never compiled
+  (`error: 'GPIO4' was not declared in this scope`). The legacy path now
+  emits the number the catalog pin stands for (`DHT env_dht(4, DHTTYPE);`),
+  resolved from the catalog board pinout, never parsed by guesswork.
+- The legacy renderer printed a float with a `%s` conversion
+  (`"T=%sC"` with a float argument), which is undefined behaviour. The
+  format is now converted to a conversion that matches the value type
+  (`"T=%.1fC"`), and the argument is cast to match.
+- A rule or a display line that could not be rendered still produced a
+  sketch. The build is now `supported = False` with the issue attached.
+- Found in the pre-merge audit: `write_manifest` fell back to the whole
+  pinned registry when a sketch needed no library, so the manifest of a
+  library-free sketch (for example the `hc_sr04` fixture) listed all ten
+  pinned libraries. `write_manifest(out_dir, names)` now writes exactly the
+  requested libraries, an empty list writes an empty manifest and only
+  `None` (the command line default) writes the whole registry.
+- Found in the pre-merge audit: the CI step fed the install specs to
+  `xargs`, which splits a library name at its spaces, so
+  `Adafruit BME280 Library@2.3.0` reached `arduino-cli lib install` as three
+  arguments and the step failed with `Library 'Adafruit@latest' not found`
+  before anything was compiled. The specs are now installed one per line
+  with a `while read` loop; all ten pins install locally with exit 0.
+
+**Tests**
+
+- `tests/firmware/test_behaviors.py` (14), `test_template.py` (12),
+  `test_manifest.py` (10), `test_compile.py` (12) — all offline; the compile
+  tests use a fake CLI script.
+- `make test`: 342 passed. `make lint`: ruff and black clean.
+
+**Verified in this session**
+
+- `python scripts/ci_compile_firmware.py` with `arduino-cli` 1.5.1 and ESP32
+  core `esp32:esp32@3.3.12`: all six supported fixtures compile.
+
+  | fixture | family | program storage | globals |
+  | --- | --- | --- | --- |
+  | `weather_station` | legacy actions | 307 404 B (23 %) | 23 692 B (7 %) |
+  | `ultrasonic_distance` | legacy actions | 271 880 B (20 %) | 22 116 B (6 %) |
+  | `servo_test` | legacy actions | 283 431 B (21 %) | 22 480 B (6 %) |
+  | `soil_monitor` | behaviours | 314 016 B (23 %) | 23 812 B (7 %) |
+  | `desk_weather_bme280` | behaviours | 311 980 B (23 %) | 23 780 B (7 %) |
+  | `valid` (phase2/v8) | behaviours | 314 016 B (23 %) | 23 812 B (7 %) |
+
+  The compile run was repeated from scratch during the pre-merge audit
+  (the build folder was deleted first); the script exited 0 and every log
+  in `build/firmware/<fixture>/compile.log` is self-describing: it starts
+  with the FQBN, the `arduino-cli` version and the installed core version,
+  and ends with the compiler's own "Sketch uses ... bytes" line.
+
+- The library pins were taken from the Arduino library index and every
+  pinned version was installed locally; the dependency graph was read from
+  the installed `library.properties` files.
+
+**UNVERIFIED**
+
+- The `firmware` workflow has never run. It triggers on pushes to `main` and
+  on pull requests only, so it does not run on this branch; the `ci` workflow
+  did run on the pushed commits (ruff, black and pytest green). The local
+  compile of the same fixtures with the same pinned toolchain is the
+  firmware evidence above, and the workflow's install step was verified
+  locally.
+- The sketches were compiled, not flashed: no board was connected, so no
+  reading, rule or display line was observed on real hardware.
+- The pinned library versions are the ones this project pins and installs;
+  whether a newer version exists upstream was not checked beyond the index
+  entries that were read.
+
+**Known gaps / deferred**
+
+- Hysteresis is still not representable in the schema, so a rule fires on
+  the rising edge only and no hysteresis band is generated.
+- A rule cannot drive an actuator: the schema says which actuator, not
+  which action or with which argument, so such a build is refused with
+  `FIRMWARE_UNSUPPORTED_RULE_ACTION` instead of guessing.
+- A reading name that two instances provide is ambiguous and is refused
+  (`FIRMWARE_AMBIGUOUS_READING`); the schema has no per-instance reading
+  reference for rules and display lines.
+- On this macOS host the Arduino `ctags` binary is Apple's `xcode-select`
+  shim, which the ESP32 build kills (`Error during build: signal: killed`,
+  then `exit status 1` with `ctags: illegal option -- -`). The local
+  compiles therefore used
+  `SPARKPLAN_ARDUINO_BUILD_PROPERTIES="tools.ctags.pattern=/usr/bin/true"`.
+  CI on ubuntu-latest uses the real Arduino `ctags` and needs no such flag.
+- Sampling intervals come from the part protocol, not from the user: the
+  build schema still has no interval or hysteresis field.
