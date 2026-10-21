@@ -211,14 +211,8 @@ def _wp_at(
     origin: tuple[float, float, float], axis: tuple[int, int, int], plane: str
 ) -> cq.Workplane:
     """Workplane on a wall plane whose extrude runs along ``axis``."""
-    normal = (0, 0, 0)
-    if plane == "YZ":
-        normal = (1, 0, 0)
-    elif plane == "XZ":
-        normal = (0, -1, 0)
-    if axis == normal:
-        return cq.Workplane(plane, origin=origin)
-    return cq.Workplane(plane, origin=origin, normal=axis)
+    xdir = (0, 1, 0) if plane == "YZ" else (1, 0, 0)
+    return cq.Workplane(cq.Plane(origin=origin, xDir=xdir, normal=axis))
 
 
 def _wall_bosses(
