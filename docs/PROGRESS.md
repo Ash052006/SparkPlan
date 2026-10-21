@@ -237,3 +237,89 @@ UNVERIFIED.
   available on the current provider tier; prompt guidance is used instead.
 - The legacy planner/client/validators are untouched and still serve the API,
   eval and pipeline; reconciliation remains deferred.
+
+## Phase 4 — enclosure geometry
+
+**Built**
+
+- `sparkplan/geometry/enclosure.py` — Phase 4 data model: `EnclosureConfig`
+  (defaults honour the 220x220x250 build volume with 3 mm walls and 3 mm
+  floor/lid), `PackedPart` (including `protrudes_mm`), `Opening`, `Post`,
+  `EnclosureLayout`, and `Mesh` (vertices/faces + `to_trimesh`).
+- `sparkplan/geometry/layout.py` — deterministic packing driven only by catalog
+  dimensions and the BuildSpec `layout` hints. Wall-mounted parts that must be
+  exposed to the outside (soil probe, USB/power) become *pass-through* items:
+  the shorter plan dimension runs along the wall, the long axis runs
+  vertically, no wall opening is generated for them and instead the floor/lid
+  gets a slot at their plan position. Parts taller than the cavity record how
+  far they protrude (`protrudes_mm`) but are not silently approved.
+- Sizing bug found by tests: cavity dimensions were compared against
+  `2 * keep`, which over-counted wall runs. Wall-mounted parts are now measured
+  against the two opposing wall *strips* (max of the -y/+y and -x/+x runs),
+  which removed spurious `GEOMETRY_WALL_FULL` errors while keeping the
+  clearance guarantees.
+- `sparkplan/geometry/shell.py` — CadQuery shell construction: base with wall
+  cutouts and floor slots, screw posts and standoff bosses unioned after the
+  cuts (so a boss inside a cutout survives), lid built in its own frame with
+  lip and bosses, and `build_assembled` translating the lid by
+  `floor_mm + inner_z_mm`. Lid-frame holes offset by the wall thickness.
+  Wall bosses on the +-x walls use `outer_x_mm - wall_mm` as their centre.
+- `sparkplan/geometry/checks.py` — seven checks as `Issue`s:
+  watertight/non-positive volume, build volume, part collisions (signed gap
+  with configurable clearance), cutouts inside their face, cutouts clashing
+  with screw posts, and minimum wall thickness.
+- `sparkplan/geometry/generate.py` — `generate_enclosure(spec, catalog, config,
+  out_dir)`: layout -> checks -> shells -> mesh checks -> STL export
+  (`base.stl`, `lid.stl`, `assembled.stl`) + `geometry_report.json`. STLs are
+  only written when no error-severity issue exists; a missing engine
+  (`ImportError` on `shell`) degrades to a warning and still reports the
+  layout.
+- Planner wiring: after phase-2 validation passes, the planner runs geometry
+  and feeds error issues back as a `geometry_error` repair attempt. A single
+  repair round is allowed; a second failure is terminal (`failed`) with the
+  geometry issues attached. Warnings merge into a successful result.
+- `scripts/render_geometry.py` — headless matplotlib preview (plan, X and Y
+  elevations) from layout numbers only, so it works without CadQuery;
+  `--export-dir` also writes the STLs.
+- New fixture `tests/fixtures/phase4/ultrasonic_alarm.json` (HC-SR04, divider,
+  buzzer, board) covering a wall window plus base and wall mounts.
+
+**Tests**
+
+- `tests/geometry/phase4/` — layout (packing, pass-through, openings, sizing
+  errors, determinism), checks (collision/clearance, cutout placement, post
+  clash, build volume, wall thickness, mesh watertightness), generator (STL
+  export, report contents, failure path, engine-unavailable fallback) and the
+  render script.
+- `tests/planner/phase3/test_p3_geometry_feedback.py` — geometry error ->
+  single repair -> ok, persistent error -> failed, warning-only -> ok
+  (monkeypatched `generate_enclosure`, offline).
+- `make test`: 294 passed. `make lint`: ruff and black clean.
+
+**Verified in this session**
+
+- `uv run pytest tests/geometry/phase4 tests/planner/phase3/test_p3_geometry_feedback.py`:
+  31 passed.
+- Both phase-owned fixtures build watertight meshes: soil monitor (base
+  24 614 mm^3, lid 10 972, assembled 35 586, z-extent 0..22.8 mm) and divider
+  (base 42 697, lid 16 550, assembled 59 247).
+- `scripts/render_geometry.py` on the ultrasonic fixture writes a 55 KB PNG and,
+  with `--export-dir`, three STLs plus `geometry_report.json`.
+
+**UNVERIFIED**
+
+- No STL was sliced, printed or test-fitted; wall clearances, screw-post
+  engagement and lid fit are simulated only.
+- The PNG preview was checked programmatically (dimensions, non-white content),
+  not inspected visually in this session.
+- Build-volume checks use the configured box only; no printer-specific
+  bed or adhesion margins are modelled.
+
+**Known gaps / deferred**
+
+- Packing is a deterministic shelf/row heuristic, not an optimiser; certain
+  combinations of large wall mounts can still fail with `LAYOUT_TOO_LARGE` and
+  are reported, never approximated.
+- Pass-through parts protrude from the shell by design; their cable/egress
+  path (e.g. soil-probe cable) is not modelled.
+- Vent patterns are not cut (`GEOMETRY_VENT_OMITTED` warning) in this phase.
