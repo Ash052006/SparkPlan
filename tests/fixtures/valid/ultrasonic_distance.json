@@ -1,0 +1,31 @@
+{
+  "idea": "ultrasonic distance sensor",
+  "controller": "esp32_devkit_v4",
+  "parts": [
+    {
+      "instance_id": "range",
+      "part_id": "hc_sr04"
+    }
+  ],
+  "connections": [
+    {
+      "instance_id": "range",
+      "peripheral_pin": "TRIG",
+      "controller_pin": "GPIO13"
+    },
+    {
+      "instance_id": "range",
+      "peripheral_pin": "ECHO",
+      "controller_pin": "GPIO34"
+    }
+  ],
+  "actions": [
+    {
+      "action_id": "read_dist",
+      "kind": "read",
+      "instance_id": "range",
+      "api": "read_distance_cm"
+    }
+  ],
+  "notes": ""
+}

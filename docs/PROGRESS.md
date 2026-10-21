@@ -323,3 +323,37 @@ UNVERIFIED.
 - Pass-through parts protrude from the shell by design; their cable/egress
   path (e.g. soil-probe cable) is not modelled.
 - Vent patterns are not cut (`GEOMETRY_VENT_OMITTED` warning) in this phase.
+
+## Phase 5 — Deterministic Firmware Generation and Compile Verification
+
+**Built**
+
+- `sparkplan/firmware/context.py` — normalization layer for legacy `sparkplan.models.spec.BuildSpec` (with `actions`) and `sparkplan.models.buildspec.SupportedBuild` (with `behaviors`/different connection shapes). Adapters preserve data without guessing; `from_buildspec` returns empty actions and marks `source_kind="buildspec"`.
+- `sparkplan/firmware/compile.py` — compile wrapper with detection of `arduino-cli`, ESP32 platform/core check, library install, `arduino-cli compile --fqbn esp32:esp32:esp32`, timeout handling, structured `CompileArtifacts`/`CompileIssue`, statuses `passed/failed/unsupported/skipped`. Skipped on missing tools/core with explanations; never marked passed.
+- `sparkplan/firmware/generate.py` — extended to accept both spec shapes via context; behavior-bearing `SupportedBuild` without actions now raises `FirmwareError` (no action synthesis). Kept legacy `compile_firmware()` as backward-compatible wrapper delegating to compile module. Added header placeholder; existing action/rendering logic unchanged.
+- `sparkplan/firmware/__init__.py` — exports compile helpers.
+- `tests/fixtures/valid/` — three legacy-shaped fixtures created: `weather_station.json`, `ultrasonic_distance.json`, `servo_test.json` (validated against `sparkplan.models.spec.BuildSpec`).
+
+**Regression baselines (verified)**
+- Legacy `tests/firmware/test_generate.py` all 8 pass.
+- Generated sketches for `make_spec()` weather station and multi-GPIO fixture byte-identical to saved baselines (no claimed byte-for-byte guarantee beyond these cases).
+
+**Tests**
+- `make test`: 294 passed. `make lint`: ruff and black clean.
+- Firmware tests: 8 passed (all offline; compile tests use mocked/fake CLI where appropriate).
+
+**Compile evidence (this session)**
+- Installed `arduino-cli` 1.5.1, ESP32 core `esp32:esp32@2.0.14` (with Rosetta/lib fixes for x86_64 tools), installed libraries `DHT sensor library`, `Adafruit Unified Sensor`, `Adafruit GFX Library`, `Adafruit SSD1306`, `ESP32Servo` with pinned versions (see `arduino-cli lib list`).
+- Attempted real compilation of all three `tests/fixtures/valid/` specs via `compile_sketch` → `status: failed` with `Error during build: signal: killed` (OOM/resource pressure on this machine). Not evidence of sketch errors.
+
+**UNVERIFIED**
+- Real successful compilation of the three supported fixtures on this host (toolchain installed but compilation killed by environment). Marked UNVERIFIED; compile wrapper correctly detects/mocks and reports statuses.
+- Library version “currentness” not fully verified against latest release notes in this session; versions pinned as installed and recorded.
+- Behavior rendering for `sparkplan.models.buildspec.SupportedBuild` (intervals, rules, display lines, hysteresis) not implemented - returns `unsupported`/error by design (schema lacks intervals/hysteresis semantics; no guessing).
+- `read_snippet` usage, `<instance_id>_<reading_name>` naming, full behavior/timing per requirements not fully implemented in this pass (focused on safe compatibility + compile wrapper + adapters).
+- CI firmware compile job not added in this pass.
+
+**Known gaps / deferred**
+- Action synthesis from buildspec behaviors not implemented (ambiguous without schema extensions). Must be explicit/unsupported.
+- Sampling intervals/hysteresis/threshold units for behaviors not representable in current schema → cannot implement faithfully.
+- Full Phase 5 template engine/behavior generation per detailed spec remains incomplete; done only what’s safe without guessing.
