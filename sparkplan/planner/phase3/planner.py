@@ -7,7 +7,12 @@ Loop contract (see the approved plan):
 * Transport retries (inside the client) are separate from planner repair
   rounds and are bounded to one per call.
 * ``ok`` is returned ONLY when parsing yields a ``SupportedBuild`` AND the
-  Phase 2 validator report contains no errors. Warnings pass through.
+  Phase 2 validator report contains no errors AND the Phase 4 enclosure
+  geometry attempt produced no error issues. Warnings pass through.
+* Geometry feedback: when the spec passes Phase 2 but the deterministic
+  enclosure generator reports errors, those errors get ONE repair round
+  (attempt kind ``geometry_error``); a second geometry failure is terminal.
+  An unavailable solid-modelling engine is only a warning.
 * Unsupported ideas return ``unsupported`` with the exact ``UnsupportedBuild``
   fields. Empty/whitespace input returns ``refused``.
 * After the calls are exhausted with remaining errors, return ``failed`` with
@@ -22,6 +27,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from sparkplan.geometry.generate import generate_enclosure
 from sparkplan.llm.phase3.client import LLMClient, LLMError, LLMResponse
 from sparkplan.models.buildspec import (
     SupportedBuild,
@@ -78,6 +84,7 @@ class Planner:
         last_issues: list[Issue] = []
         user = build_user_message(raw)
         llm_calls = 0
+        geometry_repaired = False
 
         for round_no in range(MAX_LLM_CALLS):
             llm_calls += 1
@@ -184,11 +191,31 @@ class Planner:
             last_report = report
 
             if report.passed:
+                geom_issues = self._geometry_issues(parsed)
+                geom_errors = [i for i in geom_issues if i.severity == "error"]
+                if geom_errors:
+                    last_issues = geom_errors
+                    attempts.append(
+                        Attempt(
+                            round=round_no,
+                            kind="geometry_error",
+                            issues=geom_errors,
+                            prompt_tokens=usage.prompt_tokens,
+                            completion_tokens=usage.completion_tokens,
+                            usage_present=usage.present,
+                            detail=f"{len(geom_errors)} enclosure geometry error(s)",
+                        )
+                    )
+                    if not geometry_repaired and round_no < MAX_REPAIR_ROUNDS:
+                        geometry_repaired = True
+                        user = _repair_prompt(raw, response.data, geom_errors)
+                        continue
+                    break
                 attempts.append(
                     Attempt(
                         round=round_no,
                         kind="ok",
-                        issues=report.issues,
+                        issues=report.issues + geom_issues,
                         prompt_tokens=usage.prompt_tokens,
                         completion_tokens=usage.completion_tokens,
                         usage_present=usage.present,
@@ -200,7 +227,7 @@ class Planner:
                     title=parsed.title,
                     spec=parsed,
                     report=report,
-                    issues=report.issues,
+                    issues=report.issues + geom_issues,
                     attempts=attempts,
                     repair_rounds=max(0, round_no),
                     llm_calls=llm_calls,
@@ -235,6 +262,16 @@ class Planner:
             last_report=last_report,
             estimated_request=estimated_request,
         )
+
+    def _geometry_issues(self, spec: SupportedBuild) -> list[Issue]:
+        """Run the deterministic enclosure geometry attempt for a valid spec.
+
+        In-memory only (no STL export). Warnings pass through to ``ok``;
+        error issues get one geometry-triggered repair round. A missing
+        solid-modelling engine is a warning, not a failure: the planner
+        then skips geometry feedback instead of blocking the run.
+        """
+        return generate_enclosure(spec, self.catalog).issues
 
 
 # ---------------------------------------------------------------------------
