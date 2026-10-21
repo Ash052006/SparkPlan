@@ -256,6 +256,7 @@ class Part(_Strict):
     mounting_holes: list[MountingHole] = Field(default_factory=list)
     mount: Mount
     exposure: Exposure = Field(default_factory=Exposure)
+    heat_source: bool = False
     capabilities: list[str] = Field(default_factory=list)
     firmware: Firmware = Field(default_factory=Firmware)
     notes: str = ""
