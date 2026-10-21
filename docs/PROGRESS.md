@@ -444,14 +444,28 @@ UNVERIFIED.
   pinned version was installed locally; the dependency graph was read from
   the installed `library.properties` files.
 
+**Phase 5 release**
+
+- Merged PR #1 (`phase-5-firmware-generation` → `main`) on 2026-10-21. Merge
+  commit `c6f4a52c3c60ac6c79b946f0c2f27a1fe5a6c523`. Tag `phase-5` points at
+  that commit and is pushed to `origin`.
+- Post-merge gates on `main`: `make test` → **342 passed, 2 warnings**;
+  `make lint` → ruff `All checks passed!`, black `110 files would be left
+  unchanged`.
+- GitHub Actions on the PR head `9ff587d`: `ci` (ruff, black, pytest) →
+  success; `firmware` (all six supported fixtures compiled, artifacts
+  uploaded) → success. Toolchain: arduino-cli 1.5.1, ESP32 core
+  `esp32:esp32@3.3.12`, FQBN `esp32:esp32:esp32`.
+- The `firmware` workflow trigger (`on: push branches [main], pull_request`)
+  was validated end to end by the PR run.
+
 **UNVERIFIED**
 
-- The `firmware` workflow has never run. It triggers on pushes to `main` and
-  on pull requests only, so it does not run on this branch; the `ci` workflow
-  did run on the pushed commits (ruff, black and pytest green). The local
-  compile of the same fixtures with the same pinned toolchain is the
-  firmware evidence above, and the workflow's install step was verified
-  locally.
+- The `firmware` workflow was validated end to end by PR #1: it ran on
+  `pull_request`, installed all ten pinned libraries and compiled all six
+  supported fixtures, uploading the `firmware-builds` artifact. The local
+  compile above used the same pinned toolchain with the macOS ctags
+  workaround.
 - The sketches were compiled, not flashed: no board was connected, so no
   reading, rule or display line was observed on real hardware.
 - The pinned library versions are the ones this project pins and installs;
