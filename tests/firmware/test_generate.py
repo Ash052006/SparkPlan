@@ -25,7 +25,9 @@ def test_weather_station_sketch(catalog):
     sketch = result.sketch
     assert "#include <DHT.h>" in sketch
     assert "Adafruit_SSD1306" in sketch
-    assert "env_dht(GPIO4)" in sketch or "DHT env_dht(GPIO4" in sketch
+    # The ESP32 core has no "GPIO4" symbol, so the catalog pin label
+    # "GPIO4" is emitted as the GPIO number the label stands for.
+    assert "DHT env_dht(4, DHTTYPE);" in sketch
     assert "auto v_read_temp = env_read_temperature_c();" in sketch
     assert "snprintf(v_show" in sketch
     assert "screen_print_line1(v_show);" in sketch
@@ -77,8 +79,8 @@ def test_multi_gpio_substitution(catalog):
         ],
     )
     sketch = generate_firmware(spec, catalog).sketch
-    assert "pinMode(GPIO13, OUTPUT);" in sketch
-    assert "pulseIn(GPIO34, HIGH" in sketch
+    assert "pinMode(13, OUTPUT);" in sketch
+    assert "pulseIn(34, HIGH" in sketch
     assert "auto v_read_dist = range_read_distance_cm();" in sketch
 
 

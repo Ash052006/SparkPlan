@@ -1,0 +1,134 @@
+{
+  "status": "ok",
+  "title": "Desk weather station with a BME280",
+  "summary": "Reads the air temperature and humidity with a BME280 and shows them on an OLED.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "weather",
+      "part_id": "bme280"
+    },
+    {
+      "instance_id": "screen",
+      "part_id": "ssd1306_oled_096"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "weather",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "weather",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "weather",
+      "from_pin": "SDA",
+      "to_instance": "board",
+      "to_pin": "D21",
+      "signal_role": "sda"
+    },
+    {
+      "from_instance": "weather",
+      "from_pin": "SCL",
+      "to_instance": "board",
+      "to_pin": "D22",
+      "signal_role": "scl"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SDA",
+      "to_instance": "board",
+      "to_pin": "D21",
+      "signal_role": "sda"
+    },
+    {
+      "from_instance": "screen",
+      "from_pin": "SCL",
+      "to_instance": "board",
+      "to_pin": "D22",
+      "signal_role": "scl"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "bme280",
+      "mount": "wall"
+    },
+    {
+      "part_id": "ssd1306_oled_096",
+      "mount": "lid"
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "report_weather",
+      "part_ids": [
+        "bme280"
+      ],
+      "description": "Show the air temperature and the relative humidity.",
+      "readings": [
+        {
+          "name": "temperature_c",
+          "unit": "C",
+          "instance_id": "weather"
+        },
+        {
+          "name": "humidity_pct",
+          "unit": "%RH",
+          "instance_id": "weather"
+        }
+      ],
+      "rules": [
+        {
+          "name": "too_warm",
+          "condition_reading": "temperature_c",
+          "condition_unit": "C",
+          "comparator": ">",
+          "threshold": 30,
+          "action_reading": "temperature_c"
+        }
+      ],
+      "display_lines": [
+        {
+          "target_instance": "screen",
+          "reading": "temperature_c",
+          "unit": "C",
+          "text": "Temp"
+        },
+        {
+          "target_instance": "screen",
+          "reading": "humidity_pct",
+          "unit": "%RH",
+          "text": "Hum"
+        }
+      ]
+    }
+  ]
+}
