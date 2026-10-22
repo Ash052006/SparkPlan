@@ -24,6 +24,13 @@ from sparkplan.geometry.params import (
     Placement,
     compute_enclosure_plan,
 )
+from sparkplan.geometry.slicing import (
+    SlicePartResult,
+    SliceResult,
+    resolve_slicer,
+    slicer_version,
+    verify_slice,
+)
 
 __all__ = [
     "Cutout",
@@ -39,11 +46,16 @@ __all__ = [
     "PackedPart",
     "Placement",
     "Post",
+    "SlicePartResult",
+    "SliceResult",
     "available_engines",
     "build_enclosure",
     "compute_enclosure_plan",
     "generate_enclosure",
     "pack_enclosure",
+    "resolve_slicer",
     "run_layout_checks",
     "run_mesh_checks",
+    "slicer_version",
+    "verify_slice",
 ]

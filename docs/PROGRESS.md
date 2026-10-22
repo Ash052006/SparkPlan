@@ -418,7 +418,7 @@ UNVERIFIED.
 - `tests/firmware/test_behaviors.py` (14), `test_template.py` (12),
   `test_manifest.py` (10), `test_compile.py` (12) — all offline; the compile
   tests use a fake CLI script.
-- `make test`: 342 passed. `make lint`: ruff and black clean.
+- `make test`: 342 passed (historical baseline at phase completion). `make lint`: ruff and black clean.
 
 **Verified in this session**
 
@@ -490,3 +490,253 @@ UNVERIFIED.
   CI on ubuntu-latest uses the real Arduino `ctags` and needs no such flag.
 - Sampling intervals come from the part protocol, not from the user: the
   build schema still has no interval or hysteresis field.
+
+## Trace infrastructure — per-run trace records
+
+**Built**
+
+- `sparkplan/trace.py`: `RunTrace`, `TraceStage`, `create_trace`, `write_trace`.
+  Schema version `1.0`; statuses `passed`, `failed`, `skipped`, `unverified`;
+  UTC timestamps; stage issues serialized from `Issue`; relative artifact
+  paths; deterministic JSON (`sort_keys=True`).
+- `run_pipeline` now accepts optional `trace_path` and writes `trace.json`
+  when `out_dir` is provided. Trace paths are atomically claimed and are not
+  overwritten. Concurrent default runs receive distinct trace filenames.
+- Stages recorded: `plan`, `validation`, `geometry_layout`,
+  `geometry_meshes`, `geometry_stl_export`, `firmware_generation`,
+  `firmware_compile`, `guide`, `slicing`, `simulation`.
+- Every finalized trace contains all ten stages. Early termination records
+  unattempted stages as `skipped` with a stage-specific reason; existing
+  stage records are never overwritten. Unexpected exceptions mark the active
+  stage as `failed` and complete the remaining stages without masking the
+  original exception.
+- `slicing` is `skipped` when `do_slice=False`; when requested it is
+  `passed` only if both base and lid produce nonempty G-code, otherwise
+  `failed` or `unverified` with a reason. `simulation` is `unverified`
+  (Wokwi/hardware not performed).
+- Atomic writes use a temporary file, `flush`, `fsync`, and `os.replace`.
+  Trace write failures do not mask pipeline exceptions or results.
+
+**Tests**
+
+- `tests/pipeline/test_trace.py` (27; 20 at trace-repair time), all offline.
+  Completeness regressions cover successful, refused, failed-planning,
+  geometry layout/mesh, firmware generation/compile, and unexpected-exception
+  traces, including retained prior statuses and later skipped reasons.
+- `make test` at trace repair: 377 passed, 1 skipped. `make lint`: ruff and
+  black clean.
+
+**Trace reliability repair**
+
+- Top-level trace status is now `failed` if any attempted required stage has
+  status `failed`, including a failed firmware compile.
+- `compile_firmware` verifies arduino-cli success, exit code, and the required
+  `sparkplan.ino` output before marking `firmware_compile` as `passed`.
+- Trace paths are claimed with `O_CREAT | O_EXCL`; default and explicit paths
+  no longer rely on check-then-write. Concurrent runs receive distinct trace
+  files.
+- The unreachable legacy block after `run_pipeline()` was removed.
+- Regression tests added for compile failure, missing compile output, successful
+  compile, explicit-path preservation, path claiming, deterministic collision
+  handling, and exception preservation.
+
+**Verified in this session**
+
+- Successful, refused, exhausted, geometry-failure, and unexpected-exception
+  runs all produced the expected trace statuses.
+- Compile failure and missing compile output now force a failed trace.
+- Explicit path collisions and deterministic default-path collisions are tested.
+- Explicit trace-path collisions raised `FileExistsError` without overwriting.
+- Two runs sharing one output directory received distinct trace files.
+
+**UNVERIFIED**
+
+- Slicing is implemented and locally verified on Ubuntu 24.04 amd64; the
+  GitHub Actions slicing job has not been verified on this repair branch.
+- Simulation remains unverified.
+- No physical hardware or Wokwi execution was performed.
+
+## Catalog provenance repair
+
+**Built**
+
+- `sparkplan/models/catalog.py`: added optional `dimensions_source` and
+  validated `dimensions_basis` (`manufacturer_spec`, `measured`, `estimate`,
+  `unknown`). Manufacturer/measured bases require a non-empty source;
+  estimated dimensions cannot be marked verified.
+- `catalog/parts.json`: all 15 parts now declare
+  `dimensions_basis: "estimate"` and `dimensions_source: null`.
+  `dimensions_verified` remains `false` for every part.
+- `tests/models/test_catalog_phase1.py`: added backward-compatibility,
+  valid/invalid basis, manufacturer-source, round-trip, and unverified-estimate
+  tests.
+
+**Verified in this session**
+
+- Catalog tests: `uv run pytest tests/models/test_catalog_phase1.py tests/catalog`
+  → 31 passed.
+- Provenance counts: 15 `estimate`, 0 `manufacturer_spec`, 0 `measured`,
+  0 `unknown`.
+- No manufacturer source references were verified; all unavailable sources are
+  `null`.
+- `make lint`: ruff and black clean.
+
+**UNVERIFIED**
+
+- No dimensions were verified against datasheets or measurements.
+- Full suite after this change: `make test` → 369 passed, 2 warnings; `make lint` clean; coverage 89% (4801 statements, 505 missed).
+- No manufacturer URLs or citations were added because none were verified in
+  this session.
+
+## Property-based validator tests
+
+**Built**
+
+- Added Hypothesis as a development dependency in `pyproject.toml`.
+- `tests/validators/phase2/test_p2_property.py`: 9 property tests using
+  `run_all` and the Phase 2 catalog.
+  - direct HC-SR04 echo connections are rejected with `LOGIC_LEVEL_HIGH`
+  - divider-routed echo connections avoid `LOGIC_LEVEL_HIGH`
+  - flash GPIO assignments are rejected with `GPIO_FLASH_RESERVED`
+  - non-flash GPIO assignments do not trigger `GPIO_FLASH_RESERVED`
+  - duplicate OLED addresses are rejected with `I2C_ADDRESS_CONFLICT`
+  - a single OLED does not report `I2C_ADDRESS_CONFLICT`
+  - a servo on the 5 V rail is rejected with `RAIL_OVER_BUDGET`
+  - renamed valid soil-monitor wirings remain valid
+  - a soil monitor without a servo is not over budget
+- Settings: bounded examples, `database=None`, `deadline=None`.
+
+**Verified in this session**
+
+- `uv run pytest tests/validators/phase2/test_p2_property.py` → 9 passed.
+- `uv run pytest tests/validators/phase2` → 75 passed.
+- `make lint`: ruff and black clean.
+
+**UNVERIFIED**
+
+- Properties are deterministic for the repository's current Hypothesis version,
+  but broader random input spaces are still bounded by the strategies used.
+- No mutation-testing tool was run to prove each property would fail if its
+  validator were removed.
+
+## Slicer verification
+
+**Slicer choice**
+
+- Selected **PrusaSlicer 2.7.2** from the Ubuntu 24.04 `universe` package
+  `prusa-slicer=2.7.2+dfsg-1build2`.
+- CuraEngine was checked first: `cura-engine` has no installation candidate on
+  Ubuntu 24.04 amd64. PrusaSlicer is packaged, runs from the CLI without a
+  display, and reports its version from `--help`.
+- Installation is pinned in CI to the exact Ubuntu package version:
+  `sudo apt-get install -y --no-install-recommends prusa-slicer=2.7.2+dfsg-1build2`
+  on `runs-on: ubuntu-24.04`.
+- Version observed from the installed CLI:
+  `PrusaSlicer-2.7.2+UNKNOWN based on Slic3r (with GUI support)`. The
+  executable reports `2.7.2+UNKNOWN`, not the exact package revision; the
+  `dpkg` package version above is the authoritative pin.
+
+**Built**
+
+- `sparkplan/geometry/prusaslicer.ini` — controlled profile: 220 x 220 x 250 mm
+  bed, 0.4 mm nozzle, PLA at 210 C / 60 C, 0.2 mm layers, 2 perimeters, 20 %
+  grid infill, explicit start/end G-code. It is version-controlled and always
+  passed with `--load`.
+- `sparkplan/geometry/slicing.py` — additive `verify_slice(base_stl, lid_stl,
+  output_dir=..., slicer=..., profile=..., timeout_s=..., enabled=...)`:
+  validates both inputs before launch, resolves an executable, reads the
+  version, runs PrusaSlicer with a temporary `--datadir` so local presets are
+  not used, captures diagnostics with home-path and secret-value redaction,
+  and checks exit code plus nonempty output for each part independently.
+  Statuses are `passed`, `failed`, `skipped`, and `unverified`.
+- `sparkplan/pipeline/pipeline.py` — new `do_slice=False` parameter, placed
+  after the pre-existing `trace_path` parameter so positional `trace_path`
+  callers keep their meaning, plus `PipelineResult.slice_result`. Slicing runs
+  only when requested and an output directory exists. Trace stage `slicing`
+  records requested state, slicer/version/profile, per-part status and paths,
+  exit codes, diagnostics, and a reason. A requested slicing stage that is not
+  `passed` forces the overall trace to `failed`; the pipeline result can still
+  be `ok` because slicing is verification, not artifact generation.
+- `.github/workflows/ci.yml` — new `slicing` job on `ubuntu-24.04` with the
+  pinned PrusaSlicer install, a `dpkg-query` assertion for the exact package
+  version, the executable-reported version recorded separately, and
+  `scripts/ci_verify_slice.py`. The step logs to `build/slicing-ci.log` with
+  `pipefail`, so a slicer failure still fails the job. An
+  `actions/upload-artifact@v4` step runs with `if: always()`, uploads
+  `build/slicing/*.gcode` and `build/slicing-ci.log`, warns rather than fails
+  when files are absent, and retains them for 7 days.
+- `scripts/ci_verify_slice.py` — generates the `soil_monitor` enclosure STLs,
+  invokes `verify_slice`, prints exact commands/output sizes, and exits 2 when
+  the slicer is unavailable.
+
+**Tests**
+
+- `tests/geometry/test_slicing.py` (13) covers missing/empty STLs, missing
+  executable, missing profile, timeout, nonzero exit, zero exit with missing
+  output, zero exit with empty output, separate base/lid outcomes, paths with
+  spaces, disabled/skipped behavior, version parsing, and diagnostic
+  redaction/truncation.
+- `tests/pipeline/test_trace.py` (27) adds passed, failed, unverified, and
+  missing-output-directory slicing cases alongside the existing trace tests.
+  It also covers a positional `trace_path` argument to prevent the
+  `do_slice` parameter from shifting it.
+- `uv run pytest tests/geometry/test_slicing.py tests/pipeline/test_trace.py -q`:
+  **40 passed**.
+- `uv run pytest tests/geometry tests/pipeline/test_trace.py -q`:
+  **77 passed, 1 skipped**.
+- `make test`: **397 passed, 1 skipped, 2 warnings in 93.94s**.
+- `make lint`: ruff `All checks passed!`; black
+  `116 files would be left unchanged.`
+- Coverage: full suite **89 %** (5019 statements, 541 missed);
+  `sparkplan/geometry/slicing.py` **91 %** (164 statements, 14 missed);
+  `sparkplan/pipeline/pipeline.py` **91 %** (278 statements, 24 missed);
+  `sparkplan/trace.py` **88 %** (107 statements, 13 missed).
+
+**Real project-native slicer invocation (Ubuntu 24.04, Python 3.12)**
+
+- Platform: Ubuntu 24.04 amd64, Python 3.12, in a clean virtual environment
+  with the real `sparkplan` package on `PYTHONPATH`. No project modules were
+  stubbed.
+- Installed package: `prusa-slicer=2.7.2+dfsg-1build2`.
+- Executable version reported by `--help`: `2.7.2+UNKNOWN`
+  (`PrusaSlicer-2.7.2+UNKNOWN based on Slic3r (with GUI support)`). The
+  executable does not identify the exact package revision; the `dpkg` package
+  version above is the authoritative pin.
+- Profile: `sparkplan/geometry/prusaslicer.ini`.
+- Generated fresh artifacts from
+  `tests/fixtures/phase3/supported/soil_monitor.json`:
+  `base.stl` 379,684 bytes and `lid.stl` 346,484 bytes.
+- Exact commands (from the module's recorded `command` fields):
+
+  ```text
+  /usr/bin/prusa-slicer --export-gcode --output /work/project-native-out/real-base.gcode --load /repo/sparkplan/geometry/prusaslicer.ini --datadir /tmp/sparkplan-slicer-a62uo15i --loglevel 2 /work/real-base.stl
+  /usr/bin/prusa-slicer --export-gcode --output /work/project-native-out/real-lid.gcode --load /repo/sparkplan/geometry/prusaslicer.ini --datadir /tmp/sparkplan-slicer-a62uo15i --loglevel 2 /work/real-lid.stl
+  ```
+
+- Both commands exited **0** and produced nonempty output:
+  `real-base.gcode` 2,853,302 bytes and `real-lid.gcode` 696,035 bytes.
+  `verify_slice` returned `passed` for both parts with no issues.
+- PrusaSlicer reported all five observed lid warnings:
+  `Floating object part`, `Floating bridge anchors`, `Low bed adhesion`,
+  `Loose extrusions`, and `Long bridging extrusions`. These are preserved as
+  diagnostic output and are not slicing failures.
+- Successful slicing only proves that PrusaSlicer emitted nonempty G-code. It
+  does not prove physical printability, mechanical strength, or dimensional
+  fit.
+- Running `scripts/ci_verify_slice.py` on this macOS host without PrusaSlicer
+  generated the STLs, reported `SLICER_UNAVAILABLE` / `unverified`, and exited
+  **2**. It did not claim a pass.
+
+**UNVERIFIED**
+
+- The GitHub Actions `slicing` job has not been verified on this repair branch.
+  No local workflow runner (`act`) is installed. The
+  pinned install, package-version assertion, and real-slicer command were
+  verified locally in Ubuntu 24.04 amd64, but the hosted runner and artifact
+  upload action remain unverified.
+- Slicing proves only that PrusaSlicer emitted nonempty G-code. No print was
+  made, and physical printability, fit, strength, and material suitability
+  remain unverified.
+- The profile is a generic enclosure profile, not tuned to a specific printer;
+  the five lid warnings may require supports, brim, or reorientation on a real
+  machine.

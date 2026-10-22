@@ -440,13 +440,52 @@ def compile_firmware(
         libraries=list(resolution.specs) if extra_lib_install else None,
         extra_lib_install=extra_lib_install,
     )
-    # Map to old status
+
+    # A zero exit status is necessary but not sufficient: verify the compile
+    # result and the sketch artifact that this wrapper is responsible for.
+    verification_issues: list[Issue] = []
     if artifacts.status == "passed":
+        if artifacts.exit_code not in (None, 0):
+            verification_issues.append(
+                Issue(
+                    code="COMPILE_EXIT_CODE_MISMATCH",
+                    severity="error",
+                    message=(
+                        "arduino-cli reported success but exited with code "
+                        f"{artifacts.exit_code}"
+                    ),
+                    part_ids=[],
+                    fix_hint="Inspect the arduino-cli output",
+                )
+            )
+        required_sketch = sketch_dir / result.sketch_path_hint
+        if (
+            artifacts.sketch_path is None
+            or not Path(artifacts.sketch_path).is_dir()
+            or not required_sketch.is_file()
+            or required_sketch.stat().st_size == 0
+        ):
+            verification_issues.append(
+                Issue(
+                    code="COMPILE_OUTPUT_MISSING",
+                    severity="error",
+                    message=(
+                        "arduino-cli reported success but the required sketch "
+                        f"output is missing or empty: {required_sketch}"
+                    ),
+                    part_ids=[],
+                    fix_hint="Check the arduino-cli build output and sketch path",
+                )
+            )
+
+    # Map to old status
+    if artifacts.status == "passed" and not verification_issues:
         status = "ok"
     elif artifacts.status == "skipped":
         status = "skipped"
-    else:  # failed/unsupported
+    else:  # failed/unsupported, or a failed output check
         status = "failed"
+    issues = [*result.issues, *artifacts.issues, *verification_issues]
     return FirmwareResult(
         sketch=result.sketch,
         libraries=result.libraries,
@@ -454,5 +493,5 @@ def compile_firmware(
         compile_status=status,
         compile_log=artifacts.logs[-8000:],
         readings=result.readings,
-        issues=[*result.issues, *artifacts.issues],
+        issues=issues,
     )

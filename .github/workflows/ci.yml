@@ -22,6 +22,43 @@ jobs:
       - name: Tests (no network; FakeLLM only)
         run: uv run pytest
 
+  slicing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and verify pinned PrusaSlicer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends prusa-slicer=2.7.2+dfsg-1build2
+          installed="$(dpkg-query -W -f='${Version}' prusa-slicer)"
+          test "$installed" = "2.7.2+dfsg-1build2"
+          echo "Installed package: prusa-slicer=$installed"
+          reported="$(prusa-slicer --help 2>&1 | sed -n 's/^PrusaSlicer-\([^ ]*\).*/\1/p')"
+          test -n "$reported"
+          echo "Executable reported version: $reported"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Generate STLs and run real slicer
+        run: |
+          set -o pipefail
+          mkdir -p build
+          uv run python scripts/ci_verify_slice.py 2>&1 | tee build/slicing-ci.log
+      - name: Upload slicing artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: slicing-gcode-and-diagnostics
+          path: |
+            build/slicing/*.gcode
+            build/slicing-ci.log
+          if-no-files-found: warn
+          retention-days: 7
+
   web:
     runs-on: ubuntu-latest
     defaults:
