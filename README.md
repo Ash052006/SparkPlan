@@ -114,8 +114,24 @@ Legacy API (kept for compatibility):
 
 ### Web
 
+The single-page UI polls the canonical `/plan` and `/runs/{id}` API, renders the
+validation, STL enclosure, firmware and Markdown guide, and downloads the run
+bundle. It respects the OS light/dark preference and has a manual toggle.
+
 ```sh
-cd web && npm install && npm run dev   # proxies /plan, /runs, /v1 and /v2 to localhost:8000
+cd web
+npm install
+npm run dev        # proxies /plan, /runs, /catalog and health routes to localhost:8000
+```
+
+Checks, including the mobile Playwright smoke tests, use mocked API responses and
+need no running backend:
+
+```sh
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## LLM configuration

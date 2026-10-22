@@ -24,7 +24,13 @@ from sparkplan.llm.phase3.client import LLMClient
 from sparkplan.models.buildspec import SupportedBuild
 from sparkplan.models.catalog import Catalog, get_catalog
 from sparkplan.models.spec import Issue
-from sparkplan.pipeline.run_models import RunResult, RunStageResult, RunStatus, StageStatus
+from sparkplan.pipeline.run_models import (
+    RunRefusal,
+    RunResult,
+    RunStageResult,
+    RunStatus,
+    StageStatus,
+)
 from sparkplan.pipeline.run_paths import RunExistsError, RunPaths, validate_run_id
 from sparkplan.planner.phase3.models import PlanResult, PlanStatus
 from sparkplan.planner.phase3.planner import Planner
@@ -280,10 +286,22 @@ def _redacted_result(result: RunResult, root: Path) -> RunResult:
         )
         for stage in result.stages
     ]
+    refusal = result.refusal
+    if refusal is not None:
+        refusal = refusal.model_copy(
+            update={
+                "reasons": [_redact_text(reason, root) for reason in refusal.reasons],
+                "missing_capabilities": list(refusal.missing_capabilities),
+                "closest_supported_alternative": _redact_text(
+                    refusal.closest_supported_alternative, root
+                ),
+            }
+        )
     return result.model_copy(
         update={
             "stages": stages,
             "issues": [_redact_issue(issue, root) for issue in result.issues],
+            "refusal": refusal,
         }
     )
 
@@ -345,6 +363,7 @@ def _result(
     issues: list[Issue],
     artifacts: dict[str, str],
     created_at: str,
+    refusal: RunRefusal | None = None,
 ) -> RunResult:
     finished_at = utc_now()
     return RunResult(
@@ -353,6 +372,7 @@ def _result(
         stages=stages,
         issues=_dedupe(issues),
         artifacts=artifacts,
+        refusal=refusal,
         created_at=created_at,
         updated_at=finished_at,
         finished_at=finished_at,
@@ -376,6 +396,17 @@ def _plan_reason(plan: PlanResult) -> str:
     if plan.status is PlanStatus.UNSUPPORTED:
         return _reason(plan.reasons[0] if plan.reasons else None, "the idea is unsupported")
     return _reason(plan.reasons[0] if plan.reasons else None, "planning failed")
+
+
+def _refusal_for_plan(plan: PlanResult) -> RunRefusal | None:
+    """Copy refusal details exactly as the planner reported them."""
+    if plan.status not in {PlanStatus.REFUSED, PlanStatus.UNSUPPORTED}:
+        return None
+    return RunRefusal(
+        reasons=list(plan.reasons),
+        missing_capabilities=list(plan.missing_capabilities),
+        closest_supported_alternative=plan.closest_supported_alternative,
+    )
 
 
 def run(
@@ -525,6 +556,7 @@ def run(
             issues=issues,
             artifacts={},
             created_at=created_at,
+            refusal=_refusal_for_plan(plan),
         )
 
     assert plan.spec is not None

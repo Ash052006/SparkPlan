@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 from sparkplan.models.spec import Issue
 from sparkplan.pipeline.run_models import (
+    RunRefusal,
     RunResult,
     RunStageResult,
     RunStatus,
@@ -98,6 +99,26 @@ def test_run_serialization_is_deterministic_and_includes_issue() -> None:
     assert first.to_json().endswith("\n")
     assert json.loads(first.to_json())["status"] == "ok"
     assert list(first.to_dict()["artifacts"]) == ["spec", "trace"]
+
+
+def test_refusal_is_serialized_only_when_present() -> None:
+    result = RunResult(
+        run_id="run_1",
+        status=RunStatus.UNSUPPORTED,
+        stages=[make_stage(name="plan", status=StageStatus.FAILED)],
+        refusal=RunRefusal(
+            reasons=["outside the catalog"],
+            missing_capabilities=["flight_control"],
+            closest_supported_alternative="A ground rover.",
+        ),
+    )
+
+    assert result.to_dict()["refusal"] == {
+        "reasons": ["outside the catalog"],
+        "missing_capabilities": ["flight_control"],
+        "closest_supported_alternative": "A ground rover.",
+    }
+    assert "refusal" not in RunResult(run_id="run_2", status=RunStatus.OK).to_dict()
 
 
 def test_duplicate_stage_names_are_rejected() -> None:

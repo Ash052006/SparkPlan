@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from sparkplan.llm.phase3 import FakeLLM
 from sparkplan.models.catalog import get_catalog
 from sparkplan.pipeline.run_models import (
+    RunRefusal,
     RunResult,
     RunStageResult,
     RunStatus,
@@ -69,6 +70,7 @@ def make_result(
     *,
     status: RunStatus = RunStatus.OK,
     artifacts: dict[str, str] | None = None,
+    refusal: RunRefusal | None = None,
 ) -> RunResult:
     if status is RunStatus.OK:
         stages = [RunStageResult(name=name, status=StageStatus.PASSED) for name in STAGE_NAMES]
@@ -87,6 +89,7 @@ def make_result(
         status=status,
         stages=stages,
         artifacts=artifacts or {},
+        refusal=refusal,
     )
 
 
@@ -198,6 +201,38 @@ def test_worker_failure_is_a_safe_failed_result(tmp_path: Path) -> None:
     assert body["issues"][0]["code"] == "RUN_WORKER_FAILED"
     assert "secret" not in detail.text
     assert "/tmp/private" not in detail.text
+
+
+def test_unsupported_run_exposes_planner_refusal_metadata(tmp_path: Path) -> None:
+    executor = DeferredExecutor()
+    manager = RunJobManager(executor=executor)
+    refusal = RunRefusal(
+        reasons=["SparkPlan has no flight controller."],
+        missing_capabilities=["flight_control", "imu_stabilization"],
+        closest_supported_alternative="A ground rover using DC motors.",
+    )
+
+    def runner(*args: Any, **kwargs: Any) -> RunResult:
+        return make_result(
+            kwargs["run_id"],
+            status=RunStatus.UNSUPPORTED,
+            refusal=refusal,
+        )
+
+    client = client_for(tmp_path, runner=runner, manager=manager)
+    response = client.post("/plan", json={"idea": "an autonomous drone"})
+    run_id = response.json()["run_id"]
+    executor.run_next()
+
+    detail = client.get(f"/runs/{run_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["status"] == "unsupported"
+    assert body["refusal"] == {
+        "reasons": ["SparkPlan has no flight controller."],
+        "missing_capabilities": ["flight_control", "imu_stabilization"],
+        "closest_supported_alternative": "A ground rover using DC motors.",
+    }
 
 
 def test_prompt_limit_and_extra_fields_are_validated(tmp_path: Path) -> None:

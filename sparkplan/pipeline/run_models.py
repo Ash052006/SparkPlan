@@ -69,6 +69,16 @@ def _safe_references(values: dict[str, str]) -> dict[str, str]:
     return dict(sorted(values.items()))
 
 
+class RunRefusal(BaseModel):
+    """Planner-provided refusal details for refused or unsupported ideas."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    reasons: list[str] = Field(default_factory=list)
+    missing_capabilities: list[str] = Field(default_factory=list)
+    closest_supported_alternative: str = ""
+
+
 class RunStageResult(BaseModel):
     """Outcome and safe references for one stage of a run.
 
@@ -141,6 +151,7 @@ class RunResult(BaseModel):
     stages: list[RunStageResult] = Field(default_factory=list)
     issues: list[Issue] = Field(default_factory=list)
     artifacts: dict[str, str] = Field(default_factory=dict)
+    refusal: RunRefusal | None = None
     created_at: str | None = Field(default=None, max_length=64)
     updated_at: str | None = Field(default=None, max_length=64)
     finished_at: str | None = Field(default=None, max_length=64)
@@ -177,7 +188,7 @@ class RunResult(BaseModel):
         return None
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "schema_version": self.schema_version,
             "run_id": self.run_id,
             "status": self.status.value,
@@ -188,6 +199,9 @@ class RunResult(BaseModel):
             "updated_at": self.updated_at,
             "finished_at": self.finished_at,
         }
+        if self.refusal is not None:
+            payload["refusal"] = self.refusal.model_dump(mode="json")
+        return payload
 
     def to_json(self) -> str:
         return (

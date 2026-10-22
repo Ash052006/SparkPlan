@@ -1147,3 +1147,82 @@ The guide states `Validated: true`, `Compiled: skipped`, `Sliced: skipped`,
   verbatim. Catalog-style `D21`/`D22` would be clearer.
 - The generated behavior description rendered as `No description.` because
   the LLM omitted it; the guide stays truthful rather than inventing text.
+
+## Phase 8 — web UI (GATE PASSED)
+
+**Status**
+
+The web UI is implemented on `phase-8-web-ui`, based on the Phase 6 API commit
+`be1ab97`. The offline web gate passes: typecheck, production build, two mobile
+Playwright smoke tests, full Python tests, and lint. The branch has not been
+merged, `main` has not been changed, and no `phase-8` tag has been created or
+moved. Phase 7 remains separately parked as a WIP commit and is not part of this
+branch.
+
+**Built**
+
+- Canonical typed web client in `web/src/api.ts` for `POST /plan`,
+  `GET /runs/{id}`, artifact text/JSON, `trace.json`, `GET /catalog`, and the
+  ZIP bundle. Polling handles queued/running/success/refused/failed and aborts
+  stale requests on reset/unmount.
+- Prompt view with a live 500-character counter, disabled submit while loading,
+  four example prompts, request errors, and retry.
+- Seven-stage progress stepper. Running runs show queued stages because the API
+  does not stream partial progress; completed stages are rendered from the run
+  result only.
+- Results: verification badges for validated/compiled/sliced/simulated with
+  `passed`/`failed`/`skipped`/unknown, plus a visible `Not physically built.`
+  statement; BOM; wiring with catalog pin facts; validation issues with severity;
+  read-only firmware with copy; rendered `GUIDE.md`; report/trace/spec artifact
+  links; and bundle download.
+- Dedicated refusal view using planner-provided reasons, missing capabilities,
+  and closest supported alternative. No artifacts or capabilities are invented.
+- Failure view with stage issues and retry.
+- `three.js` STL viewer with OrbitControls, base/lid/assembled modes, an
+  assembled lid offset derived from loaded bounds, an exploded slider, auto-fit,
+  resize handling, cleanup, theme updates, mouse/touch controls, and keyboard
+  orbit/zoom. It remains explicitly illustrative, not a fit check.
+- Responsive light/dark UI with persisted theme choice and a manual toggle.
+- Backend `RunRefusal` metadata on `RunResult`, populated only for planner
+  `refused`/`unsupported` outcomes and serialized only when present. Existing
+  success/failure serialization is unchanged.
+- Playwright smoke tests use mocked canonical API responses and cover the
+  success and refusal flows at 390×844 in light/dark mode, no horizontal
+  overflow, no browser console/page errors, no duplicate plan submission, and
+  an artifact-free refusal.
+
+**Verification**
+
+- `make test`: **544 passed, 1 skipped, 2 warnings in 284.46s (0:04:44)**.
+- `make lint`: ruff `All checks passed!`; black
+  `133 files would be left unchanged.`
+- `npm --prefix web run typecheck`: clean.
+- `npm --prefix web run build`: succeeded; Vite emitted the existing
+  >500 kB chunk-size warning (824.77 kB JS, 227.71 kB gzip).
+- `npm --prefix web run test:e2e`: **2 passed (3.7s)** with Chromium.
+- Mobile screenshots: `docs/phase8/success-390.png` (390×5275) and
+  `docs/phase8/refusal-390.png` (390×2324).
+- CI now installs Chromium and runs the Playwright smoke tests in the web job.
+
+**UNVERIFIED**
+
+- The Playwright tests use mocked API responses. The UI has not been driven
+  against a live FastAPI server plus a real LLM in a browser in this session.
+- The STL viewer was exercised in headless Chromium for mode/slider/keyboard
+  behavior and console cleanliness, not visually compared against a physical
+  enclosure or slicer.
+- GitHub Actions for this branch was not run in this session.
+- `arduino-cli` and a real slicer remain unavailable on this host; compile and
+  slice truthfulness still relies on the existing `skipped`/`unverified` paths.
+- No physical print, wiring, or hardware build was performed.
+
+**Known gaps**
+
+- Progress is polled; there is no server-sent stage streaming or cancellation.
+- Completed runs reload from `report.json` after restart. Refused/unsupported
+  runs with no artifacts remain in memory only, so old persisted reports have no
+  `refusal` object and fall back to the plan-stage reason.
+- Playwright covers smoke behavior, not pixel-level visual regression.
+- The production bundle is a single large chunk because `three.js` is imported
+  eagerly; the build passes with a warning.
+- Run background jobs and rate limits remain process-local.

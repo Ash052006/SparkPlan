@@ -258,6 +258,10 @@ def test_refusal_creates_no_run_directory(tmp_path: Path, catalog: Catalog) -> N
     )
 
     assert result.status is RunStatus.REFUSED
+    assert result.refusal is not None
+    assert result.refusal.reasons == ["empty idea: provide a plain-language hardware description"]
+    assert result.refusal.missing_capabilities == []
+    assert result.refusal.closest_supported_alternative == ""
     assert result.stages[0].name == "plan"
     assert result.stages[0].status is StageStatus.FAILED
     assert [stage.name for stage in result.stages] == list(run_module.STAGE_ORDER)
@@ -275,6 +279,24 @@ def test_unsupported_idea_creates_no_run_directory(tmp_path: Path, catalog: Cata
     )
 
     assert result.status is RunStatus.UNSUPPORTED
+    assert result.refusal is not None
+    assert result.refusal.reasons == [
+        "A drone needs a flight controller, brushless motors and an IMU for stabilization.",
+        "SparkPlan has no flight-control, motor-driver or IMU parts and must not approximate them.",
+    ]
+    assert result.refusal.missing_capabilities == [
+        "flight_control",
+        "brushless_motor_drive",
+        "imu_stabilization",
+    ]
+    assert result.refusal.closest_supported_alternative == (
+        "A ground rover using DC motors and a distance sensor to avoid obstacles."
+    )
+    assert result.to_dict()["refusal"] == {
+        "reasons": result.refusal.reasons,
+        "missing_capabilities": result.refusal.missing_capabilities,
+        "closest_supported_alternative": result.refusal.closest_supported_alternative,
+    }
     assert result.stages[0].status is StageStatus.FAILED
     assert result.stages[1].status is StageStatus.SKIPPED
     assert not (tmp_path / "runs").exists()
@@ -294,6 +316,7 @@ def test_planning_failure_creates_no_run_directory(tmp_path: Path, catalog: Cata
     )
 
     assert result.status is RunStatus.FAILED
+    assert result.refusal is None
     assert result.stage("plan").status is StageStatus.FAILED  # type: ignore[union-attr]
     assert result.stage("validation").status is StageStatus.FAILED  # type: ignore[union-attr]
     assert not (tmp_path / "runs").exists()
@@ -316,6 +339,7 @@ def test_planner_exception_is_reported_without_artifacts(
     )
 
     assert result.status is RunStatus.FAILED
+    assert result.refusal is None
     assert result.stage("plan").status is StageStatus.FAILED  # type: ignore[union-attr]
     assert any(i.code == "PLAN_EXCEPTION" for i in result.issues)
     assert not (tmp_path / "runs").exists()
@@ -547,6 +571,7 @@ def test_planning_failure_after_geometry_repair_has_no_artifacts(
     )
 
     assert result.status is RunStatus.FAILED
+    assert result.refusal is None
     assert result.stage("plan").status is StageStatus.FAILED  # type: ignore[union-attr]
     assert result.stage("validation").status is StageStatus.PASSED  # type: ignore[union-attr]
     assert not (tmp_path / "runs").exists()
@@ -572,6 +597,7 @@ def test_planner_ok_without_a_spec_is_failed_not_ok(
     )
 
     assert result.status is RunStatus.FAILED
+    assert result.refusal is None
     assert result.stage("plan").status is StageStatus.FAILED  # type: ignore[union-attr]
     assert any(i.code == "PLAN_SPEC_MISSING" for i in result.issues)
     assert not (tmp_path / "runs").exists()
