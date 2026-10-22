@@ -97,6 +97,8 @@ def _part_digest(part: Part) -> dict:
         entry["logic_v"] = part.logic_level_v
     if part.i2c_address is not None:
         entry["i2c"] = part.i2c_address
+    if part.firmware.readings:
+        entry["readings"] = [f"{r.name}:{r.unit}" for r in part.firmware.readings]
     if part.mount.value != "base":
         entry["mount"] = part.mount.value
     if part.description:
@@ -210,10 +212,15 @@ HARD RULES:
    safety. Ground every claim in CATALOG; omit anything not present.
 5. REQUIRED: every BuildSpec you output must have ALL of these keys present and
    non-empty where full: `parts` (board + every peripheral), `connections`
-   (for EVERY non-board part: VCC -> a rail, signal_role "rail" + rail_name;
-   GND -> a board GND, signal_role "gnd"; and every other required pin -> a
-   board pin), `layout` (one {{part_id, mount}} entry for every non-board part),
-   and `behaviors`. Do not omit `layout` or `behaviors`. Emit the keys in this
+   (written peripheral -> board: from_* is the non-board part, to_instance is
+   "board"; for EVERY non-board part: VCC -> a rail, signal_role "rail" +
+   rail_name; GND -> a board GND, signal_role "gnd"; and every other required
+   pin -> a board pin), `layout` (one {{part_id, mount}} entry for every non-board part;
+   part_id is the catalog id from `parts`, e.g. "ssd1306_oled_096", never the
+   instance_id such as "oled"), and `behaviors`. Behavior readings must use a
+   CATALOG part's exact `readings` name and unit, bound to the instance that
+   produces it; never rename them. Do not omit `layout` or `behaviors`. Emit
+   the keys in this
    order so a cut-off response still contains `layout`: parts, layout,
    behaviors, connections.
 6. Keep every string terse (title/summary/behavior text <= a few words). The

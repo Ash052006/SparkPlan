@@ -24,7 +24,7 @@ from sparkplan.planner.phase3.prompt import (
 # Budget: estimate_tokens is deliberately conservative (~2.0 chars/token); the
 # provider-measured system prompt is ~3.2k tokens. Keep the conservative
 # estimate under the 8,000 TPM input ceiling with room for output.
-_SYSTEM_TOKEN_BUDGET = 5200
+_SYSTEM_TOKEN_BUDGET = 5500
 
 
 def test_system_prompt_within_token_budget(catalog):
@@ -66,6 +66,13 @@ def test_digest_keeps_required_facts(catalog):
     assert digest["parts"]
     for p in digest["parts"]:
         assert p["id"] and p["caps"] and p["pins"] and p["i_ma"] and p["v"]
+    readings = {
+        "bme280": ["temperature_c:C", "humidity_pct:%RH", "pressure_hpa:hPa"],
+        "soil_moisture_capacitive": ["soil_raw:adc_counts"],
+    }
+    by_id = {p["id"]: p for p in digest["parts"]}
+    for part_id, expected in readings.items():
+        assert by_id[part_id]["readings"] == expected
 
 
 def test_schema_is_included_and_valid(catalog):
@@ -104,6 +111,20 @@ def test_compaction_preserved_electrical_requirements(catalog):
     system = build_system_prompt(catalog)
     assert "max_ma" in system
     assert "APPROXIMATE" in system
+
+
+def test_layout_part_id_is_distinct_from_instance_id(catalog):
+    system = build_system_prompt(catalog)
+    assert "catalog id from `parts`" in system
+    assert "never the\n   instance_id" in system
+    assert "ssd1306_oled_096" in system
+    assert '"oled"' in system
+
+
+def test_connections_are_documented_peripheral_first(catalog):
+    system = build_system_prompt(catalog)
+    assert "written peripheral -> board" in system
+    assert "from_* is the non-board part" in system
 
 
 def test_prompt_injection_defense_intact(catalog):

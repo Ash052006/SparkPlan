@@ -37,6 +37,10 @@ from sparkplan.models.buildspec import (
 from sparkplan.models.catalog import Catalog, get_catalog
 from sparkplan.models.spec import Issue
 from sparkplan.planner.phase3.models import Attempt, PlanResult, PlanStatus
+from sparkplan.planner.phase3.normalize import (
+    canonicalize_connection_directions,
+    canonicalize_layout_aliases,
+)
 from sparkplan.planner.phase3.prompt import (
     build_system_prompt,
     build_user_message,
@@ -119,7 +123,9 @@ class Planner:
                         ),
                         fix_hint=(
                             "Be terser: keep all strings short and emit the entire "
-                            "object (including layout and behaviors) within the budget."
+                            "object (including layout and behaviors) within the budget. "
+                            "If this repeats, raise SPARKPLAN_LLM_MAX_TOKENS; "
+                            "multi-part builds need roughly 1200-1800 completion tokens."
                         ),
                     )
                 ]
@@ -140,7 +146,7 @@ class Planner:
                 user = _repair_prompt(raw, response.data, trunc_issues)
                 continue
 
-            parsed, parse_issues = _parse(response)
+            parsed, parse_issues = _parse(response, self.catalog)
             if parsed is None:
                 last_issues = parse_issues
                 attempts.append(
@@ -285,8 +291,12 @@ def _response_schema() -> dict[str, Any]:
     return provider_response_schema()
 
 
-def _parse(response: LLMResponse) -> tuple[SupportedBuild | UnsupportedBuild | None, list[Issue]]:
+def _parse(
+    response: LLMResponse, catalog: Catalog
+) -> tuple[SupportedBuild | UnsupportedBuild | None, list[Issue]]:
     data = unwrap_provider_response(response.data)
+    data = canonicalize_layout_aliases(data, catalog)
+    data = canonicalize_connection_directions(data, catalog)
     try:
         return parse_build_spec(data), []
     except ValidationError as exc:

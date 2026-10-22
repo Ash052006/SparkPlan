@@ -6,14 +6,24 @@ in memory: id -> PipelineResult.
 
 from __future__ import annotations
 
+import os
 import uuid
 from dataclasses import asdict, is_dataclass
+from pathlib import Path
 from typing import Any
 
+from api.canonical import create_root_router
+from api.jobs import RunJobManager
+from api.limits import RateLimiter
+from api.v2 import CanonicalRunner, create_v2_router
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sparkplan.catalog import Catalog, load_catalog
 from sparkplan.llm.client import LLMClient, make_llm_from_env
+from sparkplan.llm.phase3.client import LLMClient as CanonicalLLMClient
+from sparkplan.models.catalog import Catalog as CanonicalCatalog
+from sparkplan.models.catalog import get_catalog as get_canonical_catalog
 from sparkplan.models.spec import PlanResult
 from sparkplan.pipeline import PipelineResult, run_pipeline
 from sparkplan.planner import Planner
@@ -53,11 +63,61 @@ def _jsonable(obj: Any) -> Any:
     return obj
 
 
-def create_app(llm: LLMClient | None = None, catalog: Catalog | None = None) -> FastAPI:
+def _cors_origins() -> list[str]:
+    raw = os.environ.get(
+        "SPARKPLAN_CORS_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    )
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
+def create_app(
+    llm: LLMClient | None = None,
+    catalog: Catalog | None = None,
+    *,
+    canonical_llm: CanonicalLLMClient | None = None,
+    canonical_catalog: CanonicalCatalog | None = None,
+    runs_root: str | Path | None = None,
+    canonical_run: CanonicalRunner | None = None,
+    job_manager: RunJobManager | None = None,
+    rate_limiter: RateLimiter | None = None,
+    cors_origins: list[str] | None = None,
+) -> FastAPI:
     app = FastAPI(title="SparkPlan", version="0.1.0")
     store = BuildStore()
     cat = catalog or load_catalog()
+    canonical_cat = canonical_catalog or get_canonical_catalog()
+    manager = job_manager if job_manager is not None else RunJobManager()
+    limiter = rate_limiter if rate_limiter is not None else RateLimiter.from_env()
     llm_holder: dict[str, LLMClient] = {"llm": llm} if llm is not None else {}
+
+    origins = cors_origins if cors_origins is not None else _cors_origins()
+    if origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=origins,
+            allow_methods=["GET", "POST", "OPTIONS"],
+            allow_headers=["Content-Type"],
+        )
+
+    app.include_router(
+        create_v2_router(
+            llm=canonical_llm,
+            catalog=canonical_cat,
+            runs_root=runs_root,
+            runner=canonical_run,
+        )
+    )
+    app.include_router(
+        create_root_router(
+            llm=canonical_llm,
+            catalog=canonical_cat,
+            runs_root=runs_root,
+            runner=canonical_run,
+            jobs=manager,
+            rate_limiter=limiter,
+        )
+    )
 
     def _require_llm() -> LLMClient:
         if "llm" not in llm_holder:

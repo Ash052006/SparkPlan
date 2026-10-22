@@ -7,6 +7,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       "/v1": "http://localhost:8000",
+      "/v2": "http://localhost:8000",
+      "/plan": "http://localhost:8000",
+      "/runs": "http://localhost:8000",
+      "/catalog": "http://localhost:8000",
+      "/health": "http://localhost:8000",
       "/healthz": "http://localhost:8000",
     },
   },

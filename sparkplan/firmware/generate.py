@@ -383,10 +383,30 @@ def generate_firmware(
     )
 
 
-def write_sketch(result: FirmwareResult, directory: str | Path) -> Path:
+def _sketch_filename(name: str | None, default: str) -> str:
+    filename = name or default
+    if (
+        not filename.endswith(".ino")
+        or Path(filename).name != filename
+        or filename in {".ino", "..ino"}
+    ):
+        raise FirmwareError(f"invalid sketch filename: {filename!r}")
+    return filename
+
+
+def write_sketch(
+    result: FirmwareResult,
+    directory: str | Path,
+    filename: str | None = None,
+    *,
+    sketch_name: str | None = None,
+) -> Path:
+    """Write the sketch, defaulting to the legacy ``sparkplan.ino`` name."""
+    if filename is not None and sketch_name is not None and filename != sketch_name:
+        raise ValueError("filename and sketch_name disagree")
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / result.sketch_path_hint
+    path = directory / _sketch_filename(sketch_name or filename, result.sketch_path_hint)
     path.write_text(result.sketch)
     return path
 
@@ -396,16 +416,26 @@ def compile_firmware(
     directory: str | Path,
     cli_path: str | None = None,
     extra_lib_install: bool = True,
+    *,
+    sketch_name: str | None = None,
+    write_sketch_file: bool = True,
 ) -> FirmwareResult:
     """Compile with arduino-cli when available; otherwise mark skipped.
     Delegates to compile module for consistency while preserving API.
+
+    ``sketch_name`` selects the primary ``.ino`` filename. The default stays
+    ``sparkplan.ino`` for legacy callers. ``write_sketch_file=False`` is for
+    callers that already persisted the sketch exclusively (for example the
+    canonical run pipeline).
     """
 
     from sparkplan.firmware.compile import compile_sketch
     from sparkplan.firmware.manifest import resolve_libraries, write_manifest
 
     sketch_dir = Path(directory)
-    write_sketch(result, sketch_dir)
+    filename = _sketch_filename(sketch_name, result.sketch_path_hint)
+    if write_sketch_file:
+        write_sketch(result, sketch_dir, filename=filename)
     resolution = resolve_libraries(result.libraries)
     if resolution.unknown:
         issues = [
@@ -458,7 +488,7 @@ def compile_firmware(
                     fix_hint="Inspect the arduino-cli output",
                 )
             )
-        required_sketch = sketch_dir / result.sketch_path_hint
+        required_sketch = sketch_dir / filename
         if (
             artifacts.sketch_path is None
             or not Path(artifacts.sketch_path).is_dir()

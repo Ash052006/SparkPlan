@@ -75,7 +75,8 @@ button:disabled {
   color: #6ee7a0;
 }
 
-.badge.refused {
+.badge.refused,
+.badge.unsupported {
   background: #3a1720;
   color: #ff8a9b;
 }
@@ -85,9 +86,86 @@ button:disabled {
   color: #ffd166;
 }
 
+.badge.passed {
+  background: #173a25;
+  color: #6ee7a0;
+}
+
+.badge.skipped {
+  background: #252a34;
+  color: #aeb6c5;
+}
+
+.badge.unverified {
+  background: #17313a;
+  color: #7dd3fc;
+}
+
+.badge.running {
+  background: #1d2a4a;
+  color: #9fb4ff;
+}
+
 ul {
   margin: 8px 0 0;
   padding-left: 18px;
+}
+
+h4 {
+  margin-bottom: 4px;
+}
+
+.run-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.run-id,
+.muted,
+.duration {
+  color: #8b93a3;
+  font-size: 13px;
+}
+
+.stages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.stage {
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #12151b;
+}
+
+.stage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stage-name {
+  flex: 1;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.reason {
+  color: #f4c777;
+  margin: 8px 0 0;
+}
+
+.issues {
+  color: #c8ced9;
+}
+
+.artifact-links {
+  columns: 2;
 }
 
 code,
