@@ -13,11 +13,15 @@ import httpx
 import pytest
 from sparkplan.llm.phase3 import (
     FakeLLM,
+    LLMAuthenticationError,
+    LLMConfigurationError,
     LLMError,
+    LLMQuotaOrRateLimitError,
     LLMResponse,
     LLMRetryableError,
     LLMUsage,
     OpenAICompatibleClient,
+    load_dotenv,
     make_llm_from_env,
 )
 
@@ -364,3 +368,116 @@ def test_connection_error_is_retryable():
     with pytest.raises(LLMRetryableError):
         _client(handler, max_transport_retries=1).complete_json("sys", "user", SCHEMA)
     assert calls["n"] == 2
+
+
+def test_load_dotenv_loads_missing_and_preserves_existing(tmp_path):
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        "# Comment line\n"
+        "\n"
+        "SPARKPLAN_TEST_KEY_ONE=loaded_one\n"
+        "SPARKPLAN_TEST_KEY_TWO='loaded_two'\n"
+        'SPARKPLAN_TEST_KEY_THREE="loaded_three"\n'
+        "SPARKPLAN_TEST_EXISTING=from_file\n"
+        "INVALID_LINE_NO_EQUALS\n"
+    )
+    import os
+
+    os.environ["SPARKPLAN_TEST_EXISTING"] = "already_present"
+    try:
+        assert load_dotenv(env_file) is True
+        assert os.environ["SPARKPLAN_TEST_KEY_ONE"] == "loaded_one"
+        assert os.environ["SPARKPLAN_TEST_KEY_TWO"] == "loaded_two"
+        assert os.environ["SPARKPLAN_TEST_KEY_THREE"] == "loaded_three"
+        assert os.environ["SPARKPLAN_TEST_EXISTING"] == "already_present"
+    finally:
+        for k in (
+            "SPARKPLAN_TEST_KEY_ONE",
+            "SPARKPLAN_TEST_KEY_TWO",
+            "SPARKPLAN_TEST_KEY_THREE",
+            "SPARKPLAN_TEST_EXISTING",
+        ):
+            os.environ.pop(k, None)
+
+
+def test_make_llm_from_env_reports_specific_missing_credentials(monkeypatch):
+    monkeypatch.delenv("SPARKPLAN_LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("SPARKPLAN_LLM_BASE_URL", raising=False)
+    monkeypatch.delenv("SPARKPLAN_LLM_API_KEY", raising=False)
+    monkeypatch.delenv("SPARKPLAN_LLM_MODEL", raising=False)
+
+    with pytest.raises(LLMConfigurationError) as exc_info:
+        make_llm_from_env()
+    msg = str(exc_info.value)
+    assert "SPARKPLAN_LLM_BASE_URL" in msg
+    assert "SPARKPLAN_LLM_API_KEY" in msg
+    assert "SPARKPLAN_LLM_MODEL" in msg
+
+    # Only API key missing
+    monkeypatch.setenv("SPARKPLAN_LLM_BASE_URL", "https://api.example.com/v1")
+    monkeypatch.setenv("SPARKPLAN_LLM_MODEL", "test-model")
+    with pytest.raises(LLMConfigurationError) as exc_info:
+        make_llm_from_env()
+    msg = str(exc_info.value)
+    assert "SPARKPLAN_LLM_API_KEY" in msg
+    assert "SPARKPLAN_LLM_BASE_URL" not in msg
+
+
+def test_make_llm_from_env_unknown_provider_names_provider(monkeypatch):
+    monkeypatch.setenv("SPARKPLAN_LLM_PROVIDER", "unsupported-provider")
+    with pytest.raises(LLMConfigurationError) as exc_info:
+        make_llm_from_env()
+    assert "unsupported-provider" in str(exc_info.value)
+
+
+def test_provider_429_raises_quota_or_rate_limit_error():
+    calls = {"n": 0}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        return httpx.Response(429, text="Rate limit reached", headers={"retry-after": "0"})
+
+    with pytest.raises(LLMQuotaOrRateLimitError) as exc_info:
+        _client(handler, max_transport_retries=1, backoff_base_s=0.01).complete_json(
+            "sys", "user", SCHEMA
+        )
+    assert "rate limit or quota exceeded" in str(exc_info.value).lower()
+    assert calls["n"] == 2
+
+
+def test_provider_401_403_raises_auth_error_without_leaking_key():
+    secret_key = "super-confidential-token-abc123"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, text=f"Unauthorized for bearer {secret_key}")
+
+    client = OpenAICompatibleClient(
+        base_url="https://example.invalid/v1",
+        api_key=secret_key,
+        model="test-model",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    with pytest.raises(LLMAuthenticationError) as exc_info:
+        client.complete_json("sys", "user", SCHEMA)
+    err_msg = str(exc_info.value)
+    assert "authentication failed" in err_msg.lower()
+    assert secret_key not in err_msg
+
+
+def test_provider_4xx_redacts_api_key_in_error_message():
+    secret_key = "super-confidential-token-abc123"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, text=f"Bad request with key {secret_key} in echo")
+
+    client = OpenAICompatibleClient(
+        base_url="https://example.invalid/v1",
+        api_key=secret_key,
+        model="test-model",
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    with pytest.raises(LLMError) as exc_info:
+        client.complete_json("sys", "user", SCHEMA)
+    err_msg = str(exc_info.value)
+    assert secret_key not in err_msg
+    assert "[REDACTED]" in err_msg

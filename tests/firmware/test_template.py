@@ -75,6 +75,76 @@ def test_missing_connection_is_an_error(catalog):
     assert "FIRMWARE_UNRESOLVED_PLACEHOLDER" in {issue.code for issue in rendered.issues}
 
 
+def test_led_anode_on_board_gpio_resolves(catalog):
+    spec = _spec(
+        [
+            {"instance_id": "led", "part_id": "led_5mm"},
+            {"instance_id": "res", "part_id": "resistor_220r"},
+        ],
+        [
+            _connection("led", "ANODE", "D4"),
+            {
+                "from_instance": "led",
+                "from_pin": "CATHODE",
+                "to_instance": "res",
+                "to_pin": "A",
+                "signal_role": "passive",
+            },
+            _connection("res", "B", "GND", "gnd"),
+        ],
+    )
+    rendered = TemplateEngine(spec, catalog).render()
+    assert not rendered.errors
+    led = next(instance for instance in rendered.instances if instance.instance_id == "led")
+    assert [(binding.pin_name, binding.gpio, binding.var) for binding in led.pins] == [
+        ("ANODE", 4, "led_LED_PIN")
+    ]
+    assert "pinMode(led_LED_PIN, OUTPUT);" in led.setup
+
+
+def test_led_without_anode_connection_is_an_error(catalog):
+    spec = _spec([{"instance_id": "led", "part_id": "led_5mm"}], [])
+    rendered = TemplateEngine(spec, catalog).render()
+    assert any(
+        issue.code == "FIRMWARE_UNRESOLVED_PLACEHOLDER"
+        and "no validated connection for pin 'ANODE'" in issue.message
+        for issue in rendered.issues
+    )
+
+
+def test_rail_powered_led_anode_is_unresolved(catalog):
+    spec = _spec(
+        [
+            {"instance_id": "led", "part_id": "led_5mm"},
+            {"instance_id": "res", "part_id": "resistor_220r"},
+        ],
+        [
+            {
+                "from_instance": "res",
+                "from_pin": "A",
+                "to_instance": "board",
+                "to_pin": "3V3",
+                "signal_role": "rail",
+                "rail_name": "3V3",
+            },
+            {
+                "from_instance": "res",
+                "from_pin": "B",
+                "to_instance": "led",
+                "to_pin": "ANODE",
+                "signal_role": "signal",
+            },
+            _connection("led", "CATHODE", "GND", "gnd"),
+        ],
+    )
+    rendered = TemplateEngine(spec, catalog).render()
+    assert any(
+        issue.code == "FIRMWARE_UNRESOLVED_PLACEHOLDER"
+        and "no validated connection for pin 'ANODE'" in issue.message
+        for issue in rendered.issues
+    )
+
+
 def test_gpio_assignments_are_reported(catalog):
     spec = _spec(
         [{"instance_id": "env", "part_id": "dht22"}],

@@ -97,6 +97,8 @@ def _part_digest(part: Part) -> dict:
         entry["logic_v"] = part.logic_level_v
     if part.i2c_address is not None:
         entry["i2c"] = part.i2c_address
+    if part.firmware.readings:
+        entry["readings"] = [f"{r.name}:{r.unit}" for r in part.firmware.readings]
     if part.mount.value != "base":
         entry["mount"] = part.mount.value
     if part.description:
@@ -195,30 +197,36 @@ You are SparkPlan. Convert ONE plain-language idea into a single JSON BuildSpec
 object. You never write geometry or firmware.
 
 HARD RULES:
-1. Always include the controller board exactly once as a PartRef in `parts`,
-   using BOARD.id as its part_id (e.g. instance_id "board"). Use ONLY the part
-   ids, pin names and capabilities in CATALOG; never invent parts or pins; never
-   substitute a "close enough" part.
+1. Include controller board once in `parts`, using BOARD.id as part_id (e.g.
+   instance_id "board"). Use ONLY part ids, pin names and capabilities in
+   CATALOG; never invent parts or pins; never substitute a "close enough" part.
 2. If the idea needs a capability the catalog lacks, do NOT approximate. Reply
    exactly: {{"status":"unsupported","title":"...","reasons":["..."],
    "missing_capabilities":["..."],"closest_supported_alternative":"..."}}.
 3. Use GPIOs only from BOARD.gpio; respect its lists exactly: never a forbidden
    pin; never drive an output from input_only (these are input/ADC only); analog
    reads need adc; PWM outputs need pwm. Prefer i2c_default for sda/scl.
-4. Power must not exceed any rail's max_ma when summing the parts' i_ma; current
-   figures are APPROXIMATE and unverified - never claim electrical or physical
-   safety. Ground every claim in CATALOG; omit anything not present.
-5. REQUIRED: every BuildSpec you output must have ALL of these keys present and
-   non-empty where full: `parts` (board + every peripheral), `connections`
-   (for EVERY non-board part: VCC -> a rail, signal_role "rail" + rail_name;
-   GND -> a board GND, signal_role "gnd"; and every other required pin -> a
-   board pin), `layout` (one {{part_id, mount}} entry for every non-board part),
-   and `behaviors`. Do not omit `layout` or `behaviors`. Emit the keys in this
-   order so a cut-off response still contains `layout`: parts, layout,
-   behaviors, connections.
-6. Keep every string terse (title/summary/behavior text <= a few words). The
-   response must be COMPLETE within the token budget: emit the whole object
-   (including `layout` and `behaviors`) rather than stopping early.
+4. Power must not exceed any rail's max_ma when summing parts' i_ma; current
+   figures are APPROXIMATE. Ground every claim in CATALOG; omit anything absent.
+5. REQUIRED keys: `parts` (board + every peripheral), `connections`, `layout`
+   (one {{part_id, mount}} entry for every non-board part; part_id is the
+   catalog id from `parts`, e.g. "ssd1306_oled_096", never the instance_id such
+   as "oled"), and `behaviors`. Behavior readings: exact CATALOG name/unit.
+   Rules: use action_reading for a declared reading (e.g. "motion"); never
+   invent reading names; action_actuator is unsupported (leave "").
+   Connections may target the board OR another part; from_* is the
+   source instance and to_* is the destination. Use ONLY pins declared by each
+   part; never invent GND, VCC, or any other pin. Add power/ground connections
+   only for parts whose declared pins include VCC/GND and whose wiring requires
+   them: VCC -> a rail with signal_role "rail" + rail_name; GND -> a board GND
+   with signal_role "gnd".
+   Parts without those pins use declared pins; resistor_220r has only A and B and
+   may connect in series between circuit nodes, including part-to-part.
+   Actuators: board GPIO; led_5mm ANODE->GPIO, CATHODE->220r->GND. Do not omit
+   `layout` or `behaviors`. Emit the keys in this order so a cut-off response
+   still contains `layout`: parts, layout, behaviors, connections.
+6. Keep strings terse. The response must be COMPLETE within token budget: emit
+   the whole object rather than stopping early.
 7. Output exactly one JSON object of the form {{"build": <BuildSpec>}} and
    NOTHING else - no prose, no code fences. <BuildSpec> is the union below.
 

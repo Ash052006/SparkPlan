@@ -4,50 +4,193 @@
     "name": "ESP32 DevKit 30-pin (ESP32-WROOM-32)",
     "category": "board",
     "description": "30-pin ESP32-WROOM-32 development board with USB-serial, onboard 3.3 V regulator and 5 V USB input.",
-    "supply_voltage_v": { "min_v": 4.5, "max_v": 5.5 },
+    "supply_voltage_v": {
+      "min_v": 4.5,
+      "max_v": 5.5
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 80,
     "peak_current_ma": 250,
     "interface": "none",
     "pins": [
-      { "name": "3V3", "role": "vcc", "direction": "power" },
-      { "name": "5V", "role": "vcc", "direction": "power" },
-      { "name": "GND", "role": "gnd", "direction": "power" },
-      { "name": "EN", "role": "signal", "direction": "in" },
-      { "name": "VP", "role": "signal", "direction": "in" },
-      { "name": "VN", "role": "signal", "direction": "in" },
-      { "name": "D34", "role": "signal", "direction": "in" },
-      { "name": "D35", "role": "signal", "direction": "in" },
-      { "name": "D32", "role": "signal", "direction": "bidir" },
-      { "name": "D33", "role": "signal", "direction": "bidir" },
-      { "name": "D25", "role": "signal", "direction": "bidir" },
-      { "name": "D26", "role": "signal", "direction": "bidir" },
-      { "name": "D27", "role": "signal", "direction": "bidir" },
-      { "name": "D14", "role": "signal", "direction": "bidir" },
-      { "name": "D12", "role": "signal", "direction": "bidir" },
-      { "name": "D13", "role": "signal", "direction": "bidir" },
-      { "name": "D23", "role": "signal", "direction": "bidir" },
-      { "name": "D22", "role": "signal", "direction": "bidir" },
-      { "name": "D1", "role": "signal", "direction": "bidir" },
-      { "name": "D3", "role": "signal", "direction": "bidir" },
-      { "name": "D21", "role": "signal", "direction": "bidir" },
-      { "name": "D19", "role": "signal", "direction": "bidir" },
-      { "name": "D18", "role": "signal", "direction": "bidir" },
-      { "name": "D5", "role": "signal", "direction": "bidir" },
-      { "name": "D17", "role": "signal", "direction": "bidir" },
-      { "name": "D16", "role": "signal", "direction": "bidir" },
-      { "name": "D4", "role": "signal", "direction": "bidir" },
-      { "name": "D2", "role": "signal", "direction": "bidir" },
-      { "name": "D15", "role": "signal", "direction": "bidir" },
-      { "name": "D0", "role": "signal", "direction": "bidir" }
+      {
+        "name": "3V3",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "5V",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "EN",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "VP",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "VN",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "D34",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "D35",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "D32",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D33",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D25",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D26",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D27",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D14",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D12",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D13",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D23",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D22",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D1",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D3",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D21",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D19",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D18",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D5",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D17",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D16",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D4",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D2",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D15",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "D0",
+        "role": "signal",
+        "direction": "bidir"
+      }
     ],
-    "dimensions_mm": { "x": 28.0, "y": 52.0, "z": 13.0 },
+    "dimensions_mm": {
+      "x": 28.0,
+      "y": 52.0,
+      "z": 13.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [
-      { "x": 2.5, "y": 2.5, "diameter": 3.0 },
-      { "x": 25.5, "y": 2.5, "diameter": 3.0 },
-      { "x": 2.5, "y": 49.5, "diameter": 3.0 },
-      { "x": 25.5, "y": 49.5, "diameter": 3.0 }
+      {
+        "x": 2.5,
+        "y": 2.5,
+        "diameter": 3.0
+      },
+      {
+        "x": 25.5,
+        "y": 2.5,
+        "diameter": 3.0
+      },
+      {
+        "x": 2.5,
+        "y": 49.5,
+        "diameter": 3.0
+      },
+      {
+        "x": 25.5,
+        "y": 49.5,
+        "diameter": 3.0
+      }
     ],
     "mount": "base",
     "exposure": {
@@ -57,12 +200,19 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": -20.0
     },
-    "capabilities": ["controls_gpio", "provides_3v3", "provides_5v", "runs_firmware"],
+    "capabilities": [
+      "controls_gpio",
+      "provides_3v3",
+      "provides_5v",
+      "runs_firmware"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
-      "setup_lines": ["Serial.begin(115200);"],
+      "setup_lines": [
+        "Serial.begin(115200);"
+      ],
       "readings": [],
       "read_snippet": "",
       "actions": []
@@ -100,57 +250,348 @@
       "source_note": "GPIO capabilities reflect common ESP32-WROOM-32 knowledge. Verify ADC2-vs-Wi-Fi conflicts and strapping behaviour against the Espressif datasheet before relying on them.",
       "verify_against_datasheet": true,
       "gpio": [
-        { "gpio": 0, "caps": { "adc": true, "pwm": true, "output": true }, "strapping": true, "source_note": "Boot strapping pin; must be HIGH at reset for normal boot. Avoid as general I/O.", "verify_against_datasheet": true },
-        { "gpio": 1, "caps": { "output": true }, "source_note": "UART0 TX by default; used for USB serial logging.", "verify_against_datasheet": true },
-        { "gpio": 2, "caps": { "adc": true, "pwm": true, "output": true }, "strapping": true, "source_note": "Boot strapping pin tied to onboard LED on many boards. Avoid.", "verify_against_datasheet": true },
-        { "gpio": 3, "caps": { "output": true }, "source_note": "UART0 RX by default; used for USB serial logging.", "verify_against_datasheet": true },
-        { "gpio": 4, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "General purpose I/O.", "verify_against_datasheet": true },
-        { "gpio": 5, "caps": { "pwm": true, "output": true }, "strapping": true, "source_note": "Strapping pin affecting SDIO timing. Prefer other pins.", "verify_against_datasheet": true },
-        { "gpio": 6, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 7, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 8, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 9, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 10, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 11, "caps": {}, "forbidden": true, "source_note": "Connected to SPI flash. Do not use.", "verify_against_datasheet": true },
-        { "gpio": 12, "caps": { "adc": true, "pwm": true, "output": true }, "strapping": true, "source_note": "MTDI strapping pin selects flash voltage; must be LOW at boot. Avoid.", "verify_against_datasheet": true },
-        { "gpio": 13, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "General purpose I/O.", "verify_against_datasheet": true },
-        { "gpio": 14, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "General purpose I/O.", "verify_against_datasheet": true },
-        { "gpio": 15, "caps": { "adc": true, "pwm": true, "output": true }, "strapping": true, "source_note": "MTDO strapping pin. Avoid.", "verify_against_datasheet": true },
-        { "gpio": 16, "caps": { "pwm": true, "output": true }, "source_note": "General purpose I/O.", "verify_against_datasheet": true },
-        { "gpio": 17, "caps": { "pwm": true, "output": true }, "source_note": "General purpose I/O.", "verify_against_datasheet": true },
-        { "gpio": 18, "caps": { "pwm": true, "spi": true, "output": true }, "source_note": "Default VSPI SCK.", "verify_against_datasheet": true },
-        { "gpio": 19, "caps": { "pwm": true, "spi": true, "output": true }, "source_note": "Default VSPI MISO.", "verify_against_datasheet": true },
-        { "gpio": 21, "caps": { "pwm": true, "i2c": true, "output": true }, "default_i2c_sda": true, "source_note": "Default I2C SDA.", "verify_against_datasheet": true },
-        { "gpio": 22, "caps": { "pwm": true, "i2c": true, "output": true }, "default_i2c_scl": true, "source_note": "Default I2C SCL.", "verify_against_datasheet": true },
-        { "gpio": 23, "caps": { "pwm": true, "spi": true, "output": true }, "source_note": "Default VSPI MOSI.", "verify_against_datasheet": true },
-        { "gpio": 25, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "ADC2 + DAC1. ADC2 is unavailable while Wi-Fi is active.", "verify_against_datasheet": true },
-        { "gpio": 26, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "ADC2 + DAC2. ADC2 is unavailable while Wi-Fi is active.", "verify_against_datasheet": true },
-        { "gpio": 27, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "ADC2. ADC2 is unavailable while Wi-Fi is active.", "verify_against_datasheet": true },
-        { "gpio": 32, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "ADC1 channel; safe with Wi-Fi.", "verify_against_datasheet": true },
-        { "gpio": 33, "caps": { "adc": true, "pwm": true, "output": true }, "source_note": "ADC1 channel; safe with Wi-Fi.", "verify_against_datasheet": true },
-        { "gpio": 34, "caps": { "adc": true, "output": false }, "input_only": true, "source_note": "Input only, ADC1. No internal pull-ups, cannot drive outputs.", "verify_against_datasheet": true },
-        { "gpio": 35, "caps": { "adc": true, "output": false }, "input_only": true, "source_note": "Input only, ADC1. No internal pull-ups, cannot drive outputs.", "verify_against_datasheet": true },
-        { "gpio": 36, "caps": { "adc": true, "output": false }, "input_only": true, "source_note": "Input only (VP), ADC1. Cannot drive outputs.", "verify_against_datasheet": true },
-        { "gpio": 39, "caps": { "adc": true, "output": false }, "input_only": true, "source_note": "Input only (VN), ADC1. Cannot drive outputs.", "verify_against_datasheet": true }
+        {
+          "gpio": 0,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "strapping": true,
+          "source_note": "Boot strapping pin; must be HIGH at reset for normal boot. Avoid as general I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 1,
+          "caps": {
+            "output": true
+          },
+          "source_note": "UART0 TX by default; used for USB serial logging.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 2,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "strapping": true,
+          "source_note": "Boot strapping pin tied to onboard LED on many boards. Avoid.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 3,
+          "caps": {
+            "output": true
+          },
+          "source_note": "UART0 RX by default; used for USB serial logging.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 4,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "General purpose I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 5,
+          "caps": {
+            "pwm": true,
+            "output": true
+          },
+          "strapping": true,
+          "source_note": "Strapping pin affecting SDIO timing. Prefer other pins.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 6,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 7,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 8,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 9,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 10,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 11,
+          "caps": {},
+          "forbidden": true,
+          "source_note": "Connected to SPI flash. Do not use.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 12,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "strapping": true,
+          "source_note": "MTDI strapping pin selects flash voltage; must be LOW at boot. Avoid.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 13,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "General purpose I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 14,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "General purpose I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 15,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "strapping": true,
+          "source_note": "MTDO strapping pin. Avoid.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 16,
+          "caps": {
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "General purpose I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 17,
+          "caps": {
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "General purpose I/O.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 18,
+          "caps": {
+            "pwm": true,
+            "spi": true,
+            "output": true
+          },
+          "source_note": "Default VSPI SCK.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 19,
+          "caps": {
+            "pwm": true,
+            "spi": true,
+            "output": true
+          },
+          "source_note": "Default VSPI MISO.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 21,
+          "caps": {
+            "pwm": true,
+            "i2c": true,
+            "output": true
+          },
+          "default_i2c_sda": true,
+          "source_note": "Default I2C SDA.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 22,
+          "caps": {
+            "pwm": true,
+            "i2c": true,
+            "output": true
+          },
+          "default_i2c_scl": true,
+          "source_note": "Default I2C SCL.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 23,
+          "caps": {
+            "pwm": true,
+            "spi": true,
+            "output": true
+          },
+          "source_note": "Default VSPI MOSI.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 25,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "ADC2 + DAC1. ADC2 is unavailable while Wi-Fi is active.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 26,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "ADC2 + DAC2. ADC2 is unavailable while Wi-Fi is active.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 27,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "ADC2. ADC2 is unavailable while Wi-Fi is active.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 32,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "ADC1 channel; safe with Wi-Fi.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 33,
+          "caps": {
+            "adc": true,
+            "pwm": true,
+            "output": true
+          },
+          "source_note": "ADC1 channel; safe with Wi-Fi.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 34,
+          "caps": {
+            "adc": true,
+            "output": false
+          },
+          "input_only": true,
+          "source_note": "Input only, ADC1. No internal pull-ups, cannot drive outputs.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 35,
+          "caps": {
+            "adc": true,
+            "output": false
+          },
+          "input_only": true,
+          "source_note": "Input only, ADC1. No internal pull-ups, cannot drive outputs.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 36,
+          "caps": {
+            "adc": true,
+            "output": false
+          },
+          "input_only": true,
+          "source_note": "Input only (VP), ADC1. Cannot drive outputs.",
+          "verify_against_datasheet": true
+        },
+        {
+          "gpio": 39,
+          "caps": {
+            "adc": true,
+            "output": false
+          },
+          "input_only": true,
+          "source_note": "Input only (VN), ADC1. Cannot drive outputs.",
+          "verify_against_datasheet": true
+        }
       ]
-    }
+    },
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "dht22",
     "name": "DHT22 temperature and humidity sensor",
     "category": "sensor",
     "description": "Single-wire digital temperature (-40 to 80 C) and humidity (0 to 100 %RH) sensor.",
-    "supply_voltage_v": { "min_v": 3.3, "max_v": 5.5 },
+    "supply_voltage_v": {
+      "min_v": 3.3,
+      "max_v": 5.5
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 1.5,
     "peak_current_ma": 2.5,
     "interface": "digital",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "DATA", "role": "signal", "direction": "bidir" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "DATA",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 15.1, "y": 25.0, "z": 7.7 },
+    "dimensions_mm": {
+      "x": 15.1,
+      "y": 25.0,
+      "z": 7.7
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -161,39 +602,82 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["senses_temperature", "senses_humidity"],
+    "capabilities": [
+      "senses_temperature",
+      "senses_humidity"
+    ],
     "firmware": {
-      "library_deps": ["DHT sensor library", "Adafruit Unified Sensor"],
-      "includes": ["#include <DHT.h>"],
-      "globals": ["DHT dht(DATA_PIN, DHT22);"],
-      "setup_lines": ["dht.begin();"],
+      "library_deps": [
+        "DHT sensor library",
+        "Adafruit Unified Sensor"
+      ],
+      "includes": [
+        "#include <DHT.h>"
+      ],
+      "globals": [
+        "DHT dht(DATA_PIN, DHT22);"
+      ],
+      "setup_lines": [
+        "dht.begin();"
+      ],
       "readings": [
-        { "name": "temperature_c", "unit": "C", "type": "float", "expression": "t" },
-        { "name": "humidity_pct", "unit": "%RH", "type": "float", "expression": "h" }
+        {
+          "name": "temperature_c",
+          "unit": "C",
+          "type": "float",
+          "expression": "t"
+        },
+        {
+          "name": "humidity_pct",
+          "unit": "%RH",
+          "type": "float",
+          "expression": "h"
+        }
       ],
       "read_snippet": "float t = dht.readTemperature();\nfloat h = dht.readHumidity();",
       "actions": [],
       "object_name": "dht",
       "min_interval_ms": 2000
     },
-    "notes": "Dimensions approximate (dimensions_verified=false); the bare sensor and the module differ. Needs a data wire only; VCC on 3V3."
+    "notes": "Dimensions approximate (dimensions_verified=false); the bare sensor and the module differ. Needs a data wire only; VCC on 3V3.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "soil_moisture_capacitive",
     "name": "Capacitive soil moisture sensor v2",
     "category": "sensor",
     "description": "Corrosion-resistant capacitive soil moisture probe with an analog output proportional to wetness.",
-    "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+    "supply_voltage_v": {
+      "min_v": 3.3,
+      "max_v": 5.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 5.0,
     "peak_current_ma": 15.0,
     "interface": "analog",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "AOUT", "role": "signal", "direction": "out" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "AOUT",
+        "role": "signal",
+        "direction": "out"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 20.0, "y": 98.0, "z": 2.0 },
+    "dimensions_mm": {
+      "x": 20.0,
+      "y": 98.0,
+      "z": 2.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -204,42 +688,92 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["senses_soil_moisture"],
+    "capabilities": [
+      "senses_soil_moisture"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
       "setup_lines": [],
-      "readings": [{ "name": "soil_raw", "unit": "adc_counts", "type": "int", "expression": "soil" }],
+      "readings": [
+        {
+          "name": "soil_raw",
+          "unit": "adc_counts",
+          "type": "int",
+          "expression": "soil"
+        }
+      ],
       "read_snippet": "int soil = analogRead(AOUT_PIN);",
       "actions": []
     },
-    "notes": "Dimensions approximate (dimensions_verified=false); probe is a long pronged stick, only the head needs enclosure access. Power from 3V3 so AOUT stays in the ESP32 ADC range."
+    "notes": "Dimensions approximate (dimensions_verified=false); probe is a long pronged stick, only the head needs enclosure access. Power from 3V3 so AOUT stays in the ESP32 ADC range.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "ssd1306_oled_096",
     "name": "SSD1306 0.96 inch I2C OLED (128x64)",
     "category": "display",
     "description": "Monochrome 128x64 OLED over I2C at address 0x3C.",
-    "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+    "supply_voltage_v": {
+      "min_v": 3.3,
+      "max_v": 5.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 20.0,
     "peak_current_ma": 25.0,
     "interface": "i2c",
     "i2c_address": "0x3C",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "GND", "role": "gnd", "direction": "power" },
-      { "name": "SCL", "role": "scl", "direction": "in" },
-      { "name": "SDA", "role": "sda", "direction": "bidir" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SCL",
+        "role": "scl",
+        "direction": "in"
+      },
+      {
+        "name": "SDA",
+        "role": "sda",
+        "direction": "bidir"
+      }
     ],
-    "dimensions_mm": { "x": 27.0, "y": 27.0, "z": 4.5 },
+    "dimensions_mm": {
+      "x": 27.0,
+      "y": 27.0,
+      "z": 4.5
+    },
     "dimensions_verified": false,
     "mounting_holes": [
-      { "x": 1.5, "y": 1.5, "diameter": 2.0 },
-      { "x": 25.5, "y": 1.5, "diameter": 2.0 },
-      { "x": 1.5, "y": 25.5, "diameter": 2.0 },
-      { "x": 25.5, "y": 25.5, "diameter": 2.0 }
+      {
+        "x": 1.5,
+        "y": 1.5,
+        "diameter": 2.0
+      },
+      {
+        "x": 25.5,
+        "y": 1.5,
+        "diameter": 2.0
+      },
+      {
+        "x": 1.5,
+        "y": 25.5,
+        "diameter": 2.0
+      },
+      {
+        "x": 25.5,
+        "y": 25.5,
+        "diameter": 2.0
+      }
     ],
     "mount": "lid",
     "exposure": {
@@ -249,15 +783,23 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["shows_text", "shows_numbers"],
+    "capabilities": [
+      "shows_text",
+      "shows_numbers"
+    ],
     "firmware": {
-      "library_deps": ["Adafruit GFX Library", "Adafruit SSD1306"],
+      "library_deps": [
+        "Adafruit GFX Library",
+        "Adafruit SSD1306"
+      ],
       "includes": [
         "#include <Wire.h>",
         "#include <Adafruit_GFX.h>",
         "#include <Adafruit_SSD1306.h>"
       ],
-      "globals": ["Adafruit_SSD1306 display(128, 64, &Wire, -1);"],
+      "globals": [
+        "Adafruit_SSD1306 display(128, 64, &Wire, -1);"
+      ],
       "setup_lines": [
         "display.begin(SSD1306_SWITCHCAPVCC, 0x3C);",
         "display.clearDisplay();",
@@ -271,31 +813,58 @@
         {
           "name": "show_line",
           "snippet": "display.clearDisplay();\ndisplay.setCursor(0, 0);\ndisplay.print(value);\ndisplay.display();",
-          "params": ["value"]
+          "params": [
+            "value"
+          ]
         }
       ],
       "object_name": "display"
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Mount on the lid so the screen faces the user through the top opening. I2C address 0x3C fixed on this module."
+    "notes": "Dimensions approximate (dimensions_verified=false). Mount on the lid so the screen faces the user through the top opening. I2C address 0x3C fixed on this module.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "bme280",
     "name": "BME280 temperature, humidity and pressure sensor",
     "category": "sensor",
     "description": "I2C precision temperature, humidity and pressure sensor at address 0x76.",
-    "supply_voltage_v": { "min_v": 1.8, "max_v": 3.6 },
+    "supply_voltage_v": {
+      "min_v": 1.8,
+      "max_v": 3.6
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 0.7,
     "peak_current_ma": 1.2,
     "interface": "i2c",
     "i2c_address": "0x76",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "GND", "role": "gnd", "direction": "power" },
-      { "name": "SCL", "role": "scl", "direction": "in" },
-      { "name": "SDA", "role": "sda", "direction": "bidir" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SCL",
+        "role": "scl",
+        "direction": "in"
+      },
+      {
+        "name": "SDA",
+        "role": "sda",
+        "direction": "bidir"
+      }
     ],
-    "dimensions_mm": { "x": 15.0, "y": 12.0, "z": 3.0 },
+    "dimensions_mm": {
+      "x": 15.0,
+      "y": 12.0,
+      "z": 3.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -306,42 +875,99 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["senses_temperature", "senses_humidity", "senses_pressure"],
+    "capabilities": [
+      "senses_temperature",
+      "senses_humidity",
+      "senses_pressure"
+    ],
     "firmware": {
-      "library_deps": ["Adafruit BME280 Library"],
-      "includes": ["#include <Wire.h>", "#include <Adafruit_BME280.h>"],
-      "globals": ["Adafruit_BME280 bme;"],
-      "setup_lines": ["bme.begin(0x76);"],
+      "library_deps": [
+        "Adafruit BME280 Library"
+      ],
+      "includes": [
+        "#include <Wire.h>",
+        "#include <Adafruit_BME280.h>"
+      ],
+      "globals": [
+        "Adafruit_BME280 bme;"
+      ],
+      "setup_lines": [
+        "bme.begin(0x76);"
+      ],
       "readings": [
-        { "name": "temperature_c", "unit": "C", "type": "float", "expression": "t" },
-        { "name": "humidity_pct", "unit": "%RH", "type": "float", "expression": "h" },
-        { "name": "pressure_hpa", "unit": "hPa", "type": "float", "expression": "p" }
+        {
+          "name": "temperature_c",
+          "unit": "C",
+          "type": "float",
+          "expression": "t"
+        },
+        {
+          "name": "humidity_pct",
+          "unit": "%RH",
+          "type": "float",
+          "expression": "h"
+        },
+        {
+          "name": "pressure_hpa",
+          "unit": "hPa",
+          "type": "float",
+          "expression": "p"
+        }
       ],
       "read_snippet": "float t = bme.readTemperature();\nfloat h = bme.readHumidity();\nfloat p = bme.readPressure() / 100.0F;",
       "actions": [],
       "object_name": "bme"
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Must run on 3V3 (max 3.6 V). Address 0x76 assumed; verify the SDO jumper."
+    "notes": "Dimensions approximate (dimensions_verified=false). Must run on 3V3 (max 3.6 V). Address 0x76 assumed; verify the SDO jumper.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "bh1750",
     "name": "BH1750 ambient light sensor",
     "category": "sensor",
     "description": "I2C digital ambient light sensor reporting lux at address 0x23.",
-    "supply_voltage_v": { "min_v": 2.4, "max_v": 3.6 },
+    "supply_voltage_v": {
+      "min_v": 2.4,
+      "max_v": 3.6
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 0.12,
     "peak_current_ma": 0.19,
     "interface": "i2c",
     "i2c_address": "0x23",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "GND", "role": "gnd", "direction": "power" },
-      { "name": "SCL", "role": "scl", "direction": "in" },
-      { "name": "SDA", "role": "sda", "direction": "bidir" },
-      { "name": "ADDR", "role": "signal", "direction": "in" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SCL",
+        "role": "scl",
+        "direction": "in"
+      },
+      {
+        "name": "SDA",
+        "role": "sda",
+        "direction": "bidir"
+      },
+      {
+        "name": "ADDR",
+        "role": "signal",
+        "direction": "in"
+      }
     ],
-    "dimensions_mm": { "x": 13.9, "y": 15.0, "z": 2.0 },
+    "dimensions_mm": {
+      "x": 13.9,
+      "y": 15.0,
+      "z": 2.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -352,43 +978,102 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["senses_light"],
+    "capabilities": [
+      "senses_light"
+    ],
     "firmware": {
-      "library_deps": ["BH1750"],
-      "includes": ["#include <Wire.h>", "#include <BH1750.h>"],
-      "globals": ["BH1750 lightMeter;"],
-      "setup_lines": ["lightMeter.begin();"],
-      "readings": [{ "name": "light_lux", "unit": "lx", "type": "float", "expression": "lux" }],
+      "library_deps": [
+        "BH1750"
+      ],
+      "includes": [
+        "#include <Wire.h>",
+        "#include <BH1750.h>"
+      ],
+      "globals": [
+        "BH1750 lightMeter;"
+      ],
+      "setup_lines": [
+        "lightMeter.begin();"
+      ],
+      "readings": [
+        {
+          "name": "light_lux",
+          "unit": "lx",
+          "type": "float",
+          "expression": "lux"
+        }
+      ],
       "read_snippet": "float lux = lightMeter.readLightLevel();",
       "actions": [],
       "object_name": "lightMeter",
       "min_interval_ms": 200
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). ADDR pin sets 0x23 (low) or 0x5C (high); this catalog assumes 0x23. Must run on 3V3."
+    "notes": "Dimensions approximate (dimensions_verified=false). ADDR pin sets 0x23 (low) or 0x5C (high); this catalog assumes 0x23. Must run on 3V3.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "hc_sr04",
     "name": "HC-SR04 ultrasonic distance sensor",
     "category": "sensor",
     "description": "Ultrasonic ranging module, ~2 to 400 cm, 5 V supply. ECHO outputs 5 V logic.",
-    "supply_voltage_v": { "min_v": 4.5, "max_v": 5.5 },
+    "supply_voltage_v": {
+      "min_v": 4.5,
+      "max_v": 5.5
+    },
     "logic_level_v": 5.0,
     "typical_current_ma": 15.0,
     "peak_current_ma": 40.0,
     "interface": "digital",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "TRIG", "role": "trig", "direction": "in" },
-      { "name": "ECHO", "role": "echo", "direction": "out" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "TRIG",
+        "role": "trig",
+        "direction": "in"
+      },
+      {
+        "name": "ECHO",
+        "role": "echo",
+        "direction": "out"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 45.0, "y": 20.0, "z": 15.0 },
+    "dimensions_mm": {
+      "x": 45.0,
+      "y": 20.0,
+      "z": 15.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [
-      { "x": 3.0, "y": 3.0, "diameter": 2.0 },
-      { "x": 42.0, "y": 3.0, "diameter": 2.0 },
-      { "x": 3.0, "y": 17.0, "diameter": 2.0 },
-      { "x": 42.0, "y": 17.0, "diameter": 2.0 }
+      {
+        "x": 3.0,
+        "y": 3.0,
+        "diameter": 2.0
+      },
+      {
+        "x": 42.0,
+        "y": 3.0,
+        "diameter": 2.0
+      },
+      {
+        "x": 3.0,
+        "y": 17.0,
+        "diameter": 2.0
+      },
+      {
+        "x": 42.0,
+        "y": 17.0,
+        "diameter": 2.0
+      }
     ],
     "mount": "wall",
     "exposure": {
@@ -398,7 +1083,9 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["measures_distance"],
+    "capabilities": [
+      "measures_distance"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
@@ -407,34 +1094,66 @@
         "pinMode(TRIG_PIN, OUTPUT);",
         "pinMode(ECHO_PIN, INPUT);"
       ],
-      "readings": [{ "name": "distance_cm", "unit": "cm", "type": "float", "expression": "cm" }],
+      "readings": [
+        {
+          "name": "distance_cm",
+          "unit": "cm",
+          "type": "float",
+          "expression": "cm"
+        }
+      ],
       "read_snippet": "digitalWrite(TRIG_PIN, LOW); delayMicroseconds(2);\ndigitalWrite(TRIG_PIN, HIGH); delayMicroseconds(10);\ndigitalWrite(TRIG_PIN, LOW);\nunsigned long us = pulseIn(ECHO_PIN, HIGH, 30000UL);\nfloat cm = us * 0.0343f / 2.0f;",
       "actions": [],
       "min_interval_ms": 60
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Runs on 5 V; ECHO is 5 V logic, so use the voltage divider part to protect the ESP32 input pin."
+    "notes": "Dimensions approximate (dimensions_verified=false). Runs on 5 V; ECHO is 5 V logic, so use the voltage divider part to protect the ESP32 input pin.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "voltage_divider_5v_3v3",
     "name": "Voltage divider 5 V to 3.3 V (two resistors)",
     "category": "passive",
     "description": "Two-resistor divider (e.g. 1 kOhm + 2 kOhm) used to bring a 5 V signal down to ~3.3 V for ESP32 inputs.",
-    "supply_voltage_v": { "min_v": 0.0, "max_v": 5.0 },
+    "supply_voltage_v": {
+      "min_v": 0.0,
+      "max_v": 5.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 0.0,
     "peak_current_ma": 0.0,
     "interface": "none",
     "pins": [
-      { "name": "VIN", "role": "signal", "direction": "in" },
-      { "name": "VOUT", "role": "signal", "direction": "out" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "VIN",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "VOUT",
+        "role": "signal",
+        "direction": "out"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 10.0, "y": 5.0, "z": 3.0 },
+    "dimensions_mm": {
+      "x": 10.0,
+      "y": 5.0,
+      "z": 3.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "base",
-    "exposure": { "face": "none" },
-    "capabilities": ["shifts_logic_level"],
+    "exposure": {
+      "face": "none"
+    },
+    "capabilities": [
+      "shifts_logic_level"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
@@ -444,24 +1163,45 @@
       "read_snippet": "",
       "actions": []
     },
-    "notes": "Dimensions are a placeholder footprint (dimensions_verified=false); this represents two discrete resistors wired as a divider, not a physical module. Pass-through part with no enclosure opening."
+    "notes": "Dimensions are a placeholder footprint (dimensions_verified=false); this represents two discrete resistors wired as a divider, not a physical module. Pass-through part with no enclosure opening.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "sg90_servo",
     "name": "SG90 micro servo (9 g)",
     "category": "actuator",
     "description": "180-degree micro servo on a 5 V rail with a 3-wire interface.",
-    "supply_voltage_v": { "min_v": 4.8, "max_v": 6.0 },
+    "supply_voltage_v": {
+      "min_v": 4.8,
+      "max_v": 6.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 150.0,
     "peak_current_ma": 650.0,
     "interface": "pwm",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "GND", "role": "gnd", "direction": "power" },
-      { "name": "SIG", "role": "signal", "direction": "in" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SIG",
+        "role": "signal",
+        "direction": "in"
+      }
     ],
-    "dimensions_mm": { "x": 22.8, "y": 12.2, "z": 28.5 },
+    "dimensions_mm": {
+      "x": 22.8,
+      "y": 12.2,
+      "z": 28.5
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "base",
@@ -473,40 +1213,69 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["rotates_arm"],
+    "capabilities": [
+      "rotates_arm"
+    ],
     "firmware": {
-      "library_deps": ["ESP32Servo"],
-      "includes": ["#include <ESP32Servo.h>"],
-      "globals": ["Servo servo;"],
-      "setup_lines": ["servo.attach(SIG_PIN, 500, 2400);"],
+      "library_deps": [
+        "ESP32Servo"
+      ],
+      "includes": [
+        "#include <ESP32Servo.h>"
+      ],
+      "globals": [
+        "Servo servo;"
+      ],
+      "setup_lines": [
+        "servo.attach(SIG_PIN, 500, 2400);"
+      ],
       "readings": [],
       "read_snippet": "",
       "actions": [
         {
           "name": "write_angle",
           "snippet": "servo.write(angle);",
-          "params": ["angle"]
+          "params": [
+            "angle"
+          ]
         }
       ],
       "object_name": "servo"
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Stall current ~650 mA exceeds the USB 5 V budget; power servos from the 5 V rail with care or a separate supply. Control signal is 3.3 V tolerant on this servo."
+    "notes": "Dimensions approximate (dimensions_verified=false). Stall current ~650 mA exceeds the USB 5 V budget; power servos from the 5 V rail with care or a separate supply. Control signal is 3.3 V tolerant on this servo.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "piezo_buzzer_passive",
     "name": "Passive piezo buzzer",
     "category": "actuator",
     "description": "Passive piezo element that plays a tone when driven with a square wave (PWM).",
-    "supply_voltage_v": { "min_v": 3.0, "max_v": 5.0 },
+    "supply_voltage_v": {
+      "min_v": 3.0,
+      "max_v": 5.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 5.0,
     "peak_current_ma": 15.0,
     "interface": "pwm",
     "pins": [
-      { "name": "POS", "role": "signal", "direction": "in" },
-      { "name": "NEG", "role": "gnd", "direction": "power" }
+      {
+        "name": "POS",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "NEG",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 12.0, "y": 12.0, "z": 6.5 },
+    "dimensions_mm": {
+      "x": 12.0,
+      "y": 12.0,
+      "z": 6.5
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -517,19 +1286,25 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["makes_sound"],
+    "capabilities": [
+      "makes_sound"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
-      "setup_lines": ["ledcAttach(TONE_PIN, 2000, 8);"],
+      "setup_lines": [
+        "ledcAttach(TONE_PIN, 2000, 8);"
+      ],
       "readings": [],
       "read_snippet": "",
       "actions": [
         {
           "name": "play_tone",
           "snippet": "ledcWriteTone(TONE_PIN, frequency);",
-          "params": ["frequency"]
+          "params": [
+            "frequency"
+          ]
         },
         {
           "name": "stop_tone",
@@ -537,25 +1312,44 @@
           "params": []
         }
       ],
-      "pin_map": { "TONE_PIN": "POS" }
+      "pin_map": {
+        "TONE_PIN": "POS"
+      }
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Passive buzzer needs a PWM frequency (not a plain HIGH); an active buzzer would beep on HIGH but this part is the passive type."
+    "notes": "Dimensions approximate (dimensions_verified=false). Passive buzzer needs a PWM frequency (not a plain HIGH); an active buzzer would beep on HIGH but this part is the passive type.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "led_5mm",
     "name": "5 mm LED",
     "category": "actuator",
     "description": "Single-colour 5 mm through-hole LED. Requires the 220 ohm series resistor (part resistor_220r) when driven from a 3.3 V GPIO.",
-    "supply_voltage_v": { "min_v": 1.8, "max_v": 3.3 },
+    "supply_voltage_v": {
+      "min_v": 1.8,
+      "max_v": 3.3
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 6.0,
     "peak_current_ma": 20.0,
     "interface": "digital",
     "pins": [
-      { "name": "ANODE", "role": "signal", "direction": "in" },
-      { "name": "CATHODE", "role": "gnd", "direction": "power" }
+      {
+        "name": "ANODE",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "CATHODE",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 5.0, "y": 5.0, "z": 8.6 },
+    "dimensions_mm": {
+      "x": 5.0,
+      "y": 5.0,
+      "z": 8.6
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "lid",
@@ -566,45 +1360,74 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["emits_light"],
+    "capabilities": [
+      "emits_light"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
-      "setup_lines": ["pinMode(LED_PIN, OUTPUT);"],
+      "setup_lines": [
+        "pinMode(LED_PIN, OUTPUT);"
+      ],
       "readings": [],
       "read_snippet": "",
       "actions": [
         {
           "name": "set_led",
           "snippet": "digitalWrite(LED_PIN, on ? HIGH : LOW);",
-          "params": ["on"]
+          "params": [
+            "on"
+          ]
         }
       ],
-      "pin_map": { "LED_PIN": "ANODE" }
+      "pin_map": {
+        "LED_PIN": "ANODE"
+      }
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Required series resistor is resistor_220r; the LED must be wired ANODE -> 220 ohm -> GPIO and CATHODE -> GND (or GPIO-driven with current limiting). Mount on the lid so light exits the top opening."
+    "notes": "Dimensions approximate (dimensions_verified=false). Required series resistor is resistor_220r; the LED must be wired ANODE -> 220 ohm -> GPIO and CATHODE -> GND (or GPIO-driven with current limiting). Mount on the lid so light exits the top opening.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "resistor_220r",
     "name": "220 ohm resistor (1/4 W)",
     "category": "passive",
     "description": "Current-limiting series resistor used with the 5 mm LED (part led_5mm) on a 3.3 V GPIO.",
-    "supply_voltage_v": { "min_v": 0.0, "max_v": 3.3 },
+    "supply_voltage_v": {
+      "min_v": 0.0,
+      "max_v": 3.3
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 0.0,
     "peak_current_ma": 0.0,
     "interface": "none",
     "pins": [
-      { "name": "A", "role": "signal", "direction": "bidir" },
-      { "name": "B", "role": "signal", "direction": "bidir" }
+      {
+        "name": "A",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "B",
+        "role": "signal",
+        "direction": "bidir"
+      }
     ],
-    "dimensions_mm": { "x": 6.5, "y": 2.3, "z": 2.3 },
+    "dimensions_mm": {
+      "x": 6.5,
+      "y": 2.3,
+      "z": 2.3
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "base",
-    "exposure": { "face": "none" },
-    "capabilities": ["limits_current"],
+    "exposure": {
+      "face": "none"
+    },
+    "capabilities": [
+      "limits_current"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
@@ -614,23 +1437,40 @@
       "read_snippet": "",
       "actions": []
     },
-    "notes": "Dimensions approximate (dimensions_verified=false); standard axial 1/4 W body. Passive pass-through part with no enclosure opening. Pairs with led_5mm."
+    "notes": "Dimensions approximate (dimensions_verified=false); standard axial 1/4 W body. Passive pass-through part with no enclosure opening. Pairs with led_5mm.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "tactile_button",
     "name": "Tactile push button (6x6 mm)",
     "category": "input",
     "description": "Momentary tactile switch, normally open, used with an internal pull-up.",
-    "supply_voltage_v": { "min_v": 3.3, "max_v": 5.0 },
+    "supply_voltage_v": {
+      "min_v": 3.3,
+      "max_v": 5.0
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 0.0,
     "peak_current_ma": 0.0,
     "interface": "digital",
     "pins": [
-      { "name": "A", "role": "signal", "direction": "bidir" },
-      { "name": "B", "role": "gnd", "direction": "power" }
+      {
+        "name": "A",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "B",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 6.0, "y": 6.0, "z": 5.0 },
+    "dimensions_mm": {
+      "x": 6.0,
+      "y": 6.0,
+      "z": 5.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "lid",
@@ -641,41 +1481,91 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["detects_press"],
+    "capabilities": [
+      "detects_press"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
-      "setup_lines": ["pinMode(BUTTON_PIN, INPUT_PULLUP);"],
-      "readings": [{ "name": "button_pressed", "unit": "bool", "type": "bool", "expression": "pressed" }],
+      "setup_lines": [
+        "pinMode(BUTTON_PIN, INPUT_PULLUP);"
+      ],
+      "readings": [
+        {
+          "name": "button_pressed",
+          "unit": "bool",
+          "type": "bool",
+          "expression": "pressed"
+        }
+      ],
       "read_snippet": "bool pressed = digitalRead(BUTTON_PIN) == LOW;",
       "actions": [],
-      "pin_map": { "BUTTON_PIN": "A" }
+      "pin_map": {
+        "BUTTON_PIN": "A"
+      }
     },
-    "notes": "Dimensions approximate (dimensions_verified=false). Active-low; needs the internal pull-up (INPUT_PULLUP). Mount on the lid so the cap is reachable through the top opening."
+    "notes": "Dimensions approximate (dimensions_verified=false). Active-low; needs the internal pull-up (INPUT_PULLUP). Mount on the lid so the cap is reachable through the top opening.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "pir_hc_sr501",
     "name": "PIR motion sensor HC-SR501",
     "category": "input",
     "description": "Passive-infrared motion detector on a 5 V rail with a 3.3 V-compatible digital output.",
-    "supply_voltage_v": { "min_v": 4.5, "max_v": 5.5 },
+    "supply_voltage_v": {
+      "min_v": 4.5,
+      "max_v": 5.5
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 50.0,
     "peak_current_ma": 65.0,
     "interface": "digital",
     "pins": [
-      { "name": "VCC", "role": "vcc", "direction": "power" },
-      { "name": "OUT", "role": "signal", "direction": "out" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "OUT",
+        "role": "signal",
+        "direction": "out"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 32.0, "y": 24.0, "z": 25.0 },
+    "dimensions_mm": {
+      "x": 32.0,
+      "y": 24.0,
+      "z": 25.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [
-      { "x": 3.0, "y": 3.0, "diameter": 2.5 },
-      { "x": 29.0, "y": 3.0, "diameter": 2.5 },
-      { "x": 3.0, "y": 21.0, "diameter": 2.5 },
-      { "x": 29.0, "y": 21.0, "diameter": 2.5 }
+      {
+        "x": 3.0,
+        "y": 3.0,
+        "diameter": 2.5
+      },
+      {
+        "x": 29.0,
+        "y": 3.0,
+        "diameter": 2.5
+      },
+      {
+        "x": 3.0,
+        "y": 21.0,
+        "diameter": 2.5
+      },
+      {
+        "x": 29.0,
+        "y": 21.0,
+        "diameter": 2.5
+      }
     ],
     "mount": "wall",
     "exposure": {
@@ -685,35 +1575,69 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["detects_motion"],
+    "capabilities": [
+      "detects_motion"
+    ],
     "firmware": {
       "library_deps": [],
       "includes": [],
       "globals": [],
-      "setup_lines": ["pinMode(PIR_PIN, INPUT);"],
-      "readings": [{ "name": "motion", "unit": "bool", "type": "bool", "expression": "motion" }],
+      "setup_lines": [
+        "pinMode(PIR_PIN, INPUT);"
+      ],
+      "readings": [
+        {
+          "name": "motion",
+          "unit": "bool",
+          "type": "bool",
+          "expression": "motion"
+        }
+      ],
       "read_snippet": "bool motion = digitalRead(PIR_PIN) == HIGH;",
       "actions": [],
-      "pin_map": { "PIR_PIN": "OUT" }
+      "pin_map": {
+        "PIR_PIN": "OUT"
+      }
     },
-    "notes": "Dimensions approximate (dimensions_verified=false); the dome and PCB vary. 5 V supply; OUT is 3.3 V TTL on most units, verify with a meter. Has a warm-up settle time after power-on."
+    "notes": "Dimensions approximate (dimensions_verified=false); the dome and PCB vary. 5 V supply; OUT is 3.3 V TTL on most units, verify with a meter. Has a warm-up settle time after power-on.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   },
   {
     "id": "ws2812b_strip_8",
     "name": "WS2812B addressable LED strip (8 LEDs)",
     "category": "actuator",
     "description": "Eight addressable RGB LEDs on a 5 V strip, single-wire data, up to ~480 mA at full white.",
-    "supply_voltage_v": { "min_v": 3.5, "max_v": 5.3 },
+    "supply_voltage_v": {
+      "min_v": 3.5,
+      "max_v": 5.3
+    },
     "logic_level_v": 3.3,
     "typical_current_ma": 60.0,
     "peak_current_ma": 480.0,
     "interface": "digital",
     "pins": [
-      { "name": "5V", "role": "vcc", "direction": "power" },
-      { "name": "DIN", "role": "signal", "direction": "in" },
-      { "name": "GND", "role": "gnd", "direction": "power" }
+      {
+        "name": "5V",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "DIN",
+        "role": "signal",
+        "direction": "in"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      }
     ],
-    "dimensions_mm": { "x": 80.0, "y": 10.0, "z": 3.0 },
+    "dimensions_mm": {
+      "x": 80.0,
+      "y": 10.0,
+      "z": 3.0
+    },
     "dimensions_verified": false,
     "mounting_holes": [],
     "mount": "wall",
@@ -725,24 +1649,43 @@
       "offset_x_mm": 0.0,
       "offset_y_mm": 0.0
     },
-    "capabilities": ["emits_light", "shows_color"],
+    "capabilities": [
+      "emits_light",
+      "shows_color"
+    ],
     "firmware": {
-      "library_deps": ["Adafruit NeoPixel"],
-      "includes": ["#include <Adafruit_NeoPixel.h>"],
-      "globals": ["Adafruit_NeoPixel strip(8, LED_PIN, NEO_GRB + NEO_KHZ800);"],
-      "setup_lines": ["strip.begin();", "strip.setBrightness(40);", "strip.show();"],
+      "library_deps": [
+        "Adafruit NeoPixel"
+      ],
+      "includes": [
+        "#include <Adafruit_NeoPixel.h>"
+      ],
+      "globals": [
+        "Adafruit_NeoPixel strip(8, LED_PIN, NEO_GRB + NEO_KHZ800);"
+      ],
+      "setup_lines": [
+        "strip.begin();",
+        "strip.setBrightness(40);",
+        "strip.show();"
+      ],
       "readings": [],
       "read_snippet": "",
       "actions": [
         {
           "name": "set_all",
           "snippet": "for (int i = 0; i < strip.numPixels(); i++) { strip.setPixelColor(i, c); }\nstrip.show();",
-          "params": ["c"]
+          "params": [
+            "c"
+          ]
         }
       ],
       "object_name": "strip",
-      "pin_map": { "LED_PIN": "DIN" }
+      "pin_map": {
+        "LED_PIN": "DIN"
+      }
     },
-    "notes": "Dimensions approximate (dimensions_verified=false); 8-LED strip assumed at about 10 mm pitch. Data line expects 5 V logic; at 3.3 V it often works but level-shift for reliability. Full-white current exceeds the USB budget."
+    "notes": "Dimensions approximate (dimensions_verified=false); 8-LED strip assumed at about 10 mm pitch. Data line expects 5 V logic; at 3.3 V it often works but level-shift for reliability. Full-white current exceeds the USB budget.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate"
   }
 ]

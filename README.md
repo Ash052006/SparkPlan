@@ -67,9 +67,42 @@ print(result.status, result.firmware.libraries)
 
 ### API
 
+The canonical root API runs plans in bounded background workers and is polled:
+
 ```sh
+set -a
+. ./.env
+set +a
 uv run uvicorn api.app:app --reload
 ```
+
+* `POST /plan` — `{"idea": "..."}` (maximum 500 characters) -> `202` and
+  `{"run_id": "..."}`. The request returns before planning starts.
+* `GET  /runs/{run_id}` — poll for `status: "running"` or the final
+  `RunResult`.
+* `GET  /runs/{run_id}/files/{filename}` — download one allowlisted file:
+  `spec.json`, `report.json`, `trace.json`, `base.stl`, `lid.stl`,
+  `assembled.stl`, `sketch.ino`, or `GUIDE.md`.
+* `GET  /runs/{run_id}/bundle.zip` — all available allowlisted files in one ZIP.
+* `GET  /catalog` — canonical catalog summary.
+* `GET  /health` — canonical health check; `/healthz` remains for compatibility.
+
+`POST /plan` is limited to 10 requests per 60 seconds per client IP by default
+(`SPARKPLAN_RATE_LIMIT`, `SPARKPLAN_RATE_WINDOW_S`). CORS allows the Vite
+development origins by default (`SPARKPLAN_CORS_ORIGINS`). Invalid requests
+return `422`, unknown runs/files return `404`, rate limiting returns `429` with
+`Retry-After`, a full job queue or missing LLM configuration returns `503`, and
+unexpected failures return a safe error envelope without internal exception
+text. Completed runs can be read from `report.json` after a restart; refused or
+unsupported runs have no artifacts and are only retained in memory.
+
+The synchronous `/v2` API remains available for compatibility:
+
+* `POST /v2/runs` — `{"idea": "..."}` -> `RunResult` (synchronous)
+* `GET  /v2/runs/{run_id}` — persisted `RunResult`
+* `GET  /v2/runs/{run_id}/artifacts/{name}` — download an available artifact
+
+Legacy API (kept for compatibility):
 
 * `GET  /v1/catalog`
 * `POST /v1/plan`   — `{"idea": "..."}`
@@ -81,8 +114,31 @@ uv run uvicorn api.app:app --reload
 
 ### Web
 
+The single-page UI polls the canonical `/plan` and `/runs/{id}` API, renders the
+validation, STL enclosure, firmware and Markdown guide, and downloads the run
+bundle. It respects the OS light/dark preference and has a manual toggle.
+
 ```sh
-cd web && npm install && npm run dev   # proxies /v1 to localhost:8000
+cd web
+npm install
+npm run dev        # proxies /plan, /runs, /catalog and health routes to localhost:8000
+```
+
+If port 8000 is occupied, point Vite at another API port:
+
+```sh
+uv run uvicorn api.app:app --host 127.0.0.1 --port 8010
+SPARKPLAN_API_URL=http://127.0.0.1:8010 npm run dev -- --port 5180
+```
+
+Checks, including the mobile Playwright smoke tests, use mocked API responses and
+need no running backend:
+
+```sh
+npm run typecheck
+npm run build
+npx playwright install chromium
+npm run test:e2e
 ```
 
 ## LLM configuration
@@ -94,6 +150,7 @@ export SPARKPLAN_LLM_PROVIDER=openai_compat   # or groq; both share this adapter
 export SPARKPLAN_LLM_BASE_URL=https://api.groq.com/openai/v1
 export SPARKPLAN_LLM_API_KEY=...
 export SPARKPLAN_LLM_MODEL=llama-3.3-70b-versatile
+export SPARKPLAN_LLM_MAX_TOKENS=1800  # multi-sensor specs need ~1.2k
 ```
 
 Unit tests never touch the network: they inject `FakeLLM` with scripted

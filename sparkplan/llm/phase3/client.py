@@ -14,8 +14,10 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 import httpx
@@ -35,6 +37,26 @@ class LLMRetryableError(LLMError):
     The client itself performs at most one transport retry for these; if the
     retry also fails the error surfaces to the planner as a transport failure.
     """
+
+
+class LLMConfigurationError(LLMError):
+    """Configuration failure (missing or invalid credentials, unknown provider, etc.).
+
+    This error indicates misconfiguration rather than a runtime transport
+    or format failure. It identifies the misconfigured field without
+    exposing secret values.
+    """
+
+
+class LLMAuthenticationError(LLMError):
+    """Authentication or authorization failure (HTTP 401/403) from provider.
+
+    Indicates rejected credentials (e.g., invalid or revoked API key).
+    """
+
+
+class LLMQuotaOrRateLimitError(LLMRetryableError):
+    """Provider rate limit or quota exceeded (HTTP 429)."""
 
 
 # ---------------------------------------------------------------------------
@@ -224,11 +246,24 @@ class OpenAICompatibleClient:
             except httpx.HTTPError as exc:
                 last_exc = LLMRetryableError(f"LLM connection error: {exc}")
             else:
-                if resp.status_code == 429 or 500 <= resp.status_code < 600:
+                if resp.status_code == 429:
+                    retry_after = _parse_retry_after(resp)
+                    last_exc = LLMQuotaOrRateLimitError(
+                        "LLM provider rate limit or quota exceeded (HTTP 429)"
+                    )
+                elif 500 <= resp.status_code < 600:
                     retry_after = _parse_retry_after(resp)
                     last_exc = LLMRetryableError(f"LLM transient HTTP {resp.status_code}")
+                elif resp.status_code in (401, 403):
+                    raise LLMAuthenticationError(
+                        f"LLM authentication failed (HTTP {resp.status_code}). "
+                        "Check SPARKPLAN_LLM_API_KEY."
+                    )
                 elif resp.status_code >= 400:
-                    raise LLMError(f"LLM HTTP {resp.status_code}: {resp.text[:200]}")
+                    safe_preview = resp.text[:200]
+                    if self.api_key:
+                        safe_preview = safe_preview.replace(self.api_key, "[REDACTED]")
+                    raise LLMError(f"LLM HTTP {resp.status_code}: {safe_preview}")
                 else:
                     return resp
             if attempt == attempts - 1:
@@ -302,6 +337,57 @@ def _looks_like_schema_unsupported(exc: LLMError) -> bool:
     )
 
 
+def load_dotenv(path: Path | str | None = None) -> bool:
+    """Load SPARKPLAN_* and other keys from a .env file without overwriting existing env.
+
+    Minimal stdlib parser without external dependencies.
+    Existing environment variables are preserved.
+    Never logs or echoes any secret values.
+    Returns True if a file was found and processed, False otherwise.
+    """
+    if path is None and ("pytest" in sys.modules or "PYTEST_CURRENT_TEST" in os.environ):
+        return False
+
+    if path is not None:
+        target = Path(path)
+        candidates = [target] if target.is_file() else []
+    else:
+        candidates = []
+        cwd = Path.cwd().resolve()
+        for directory in [cwd, *cwd.parents]:
+            candidate = directory / ".env"
+            if candidate.is_file():
+                candidates.append(candidate)
+                break
+        try:
+            source_root_env = Path(__file__).resolve().parents[3] / ".env"
+            if source_root_env.is_file() and source_root_env not in candidates:
+                candidates.append(source_root_env)
+        except IndexError:
+            pass
+
+    loaded = False
+    for p in candidates:
+        if not p.is_file():
+            continue
+        try:
+            content = p.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for raw in content.splitlines():
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+        loaded = True
+        break
+    return loaded
+
+
 def _env_float(name: str, default: float) -> float:
     raw = os.environ.get(name, "").strip()
     if not raw:
@@ -309,7 +395,7 @@ def _env_float(name: str, default: float) -> float:
     try:
         return float(raw)
     except ValueError as exc:
-        raise LLMError(f"{name} must be a number, got {raw!r}") from exc
+        raise LLMConfigurationError(f"{name} must be a number, got {raw!r}") from exc
 
 
 def _env_int_optional(name: str) -> int | None:
@@ -319,29 +405,38 @@ def _env_int_optional(name: str) -> int | None:
     try:
         return int(raw)
     except ValueError as exc:
-        raise LLMError(f"{name} must be an integer, got {raw!r}") from exc
+        raise LLMConfigurationError(f"{name} must be an integer, got {raw!r}") from exc
 
 
-def make_llm_from_env() -> LLMClient:
+def make_llm_from_env(*, load_env: bool = False) -> LLMClient:
     """Build a client from ``SPARKPLAN_LLM_*`` env vars.
 
     Defaults to a real OpenAI-compatible client. Unit tests must inject a
     ``FakeLLM`` explicitly; this factory never fabricates one silently.
     """
+    if load_env:
+        load_dotenv()
+
     provider = os.environ.get("SPARKPLAN_LLM_PROVIDER", "").strip().lower()
     if provider == "fake":
         return FakeLLM(script=[])
     if provider not in ("", "openai_compat", "openai", "groq"):
-        raise LLMError(f"unknown SPARKPLAN_LLM_PROVIDER {provider!r}")
+        raise LLMConfigurationError(f"unknown SPARKPLAN_LLM_PROVIDER {provider!r}")
 
     base_url = os.environ.get("SPARKPLAN_LLM_BASE_URL", "").strip()
     api_key = os.environ.get("SPARKPLAN_LLM_API_KEY", "").strip()
     model = os.environ.get("SPARKPLAN_LLM_MODEL", "").strip()
-    if not (base_url and api_key and model):
-        raise LLMError(
-            "LLM not configured: set SPARKPLAN_LLM_BASE_URL, SPARKPLAN_LLM_API_KEY "
-            "and SPARKPLAN_LLM_MODEL"
-        )
+
+    missing: list[str] = []
+    if not base_url:
+        missing.append("SPARKPLAN_LLM_BASE_URL")
+    if not api_key:
+        missing.append("SPARKPLAN_LLM_API_KEY")
+    if not model:
+        missing.append("SPARKPLAN_LLM_MODEL")
+
+    if missing:
+        raise LLMConfigurationError(f"Missing required LLM configuration: {', '.join(missing)}")
     return OpenAICompatibleClient(
         base_url=base_url,
         api_key=api_key,

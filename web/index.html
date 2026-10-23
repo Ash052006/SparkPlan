@@ -3,7 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="SparkPlan turns a hardware idea into a validated parts list, enclosure, firmware, and build guide."
+    />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>SparkPlan</title>
+    <script>
+      try {
+        const theme = localStorage.getItem("sparkplan-theme");
+        if (theme === "light" || theme === "dark") {
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.style.colorScheme = theme;
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

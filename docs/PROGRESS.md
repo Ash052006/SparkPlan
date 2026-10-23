@@ -418,7 +418,7 @@ UNVERIFIED.
 - `tests/firmware/test_behaviors.py` (14), `test_template.py` (12),
   `test_manifest.py` (10), `test_compile.py` (12) — all offline; the compile
   tests use a fake CLI script.
-- `make test`: 342 passed. `make lint`: ruff and black clean.
+- `make test`: 342 passed (historical baseline at phase completion). `make lint`: ruff and black clean.
 
 **Verified in this session**
 
@@ -490,3 +490,877 @@ UNVERIFIED.
   CI on ubuntu-latest uses the real Arduino `ctags` and needs no such flag.
 - Sampling intervals come from the part protocol, not from the user: the
   build schema still has no interval or hysteresis field.
+
+## Trace infrastructure — per-run trace records
+
+**Built**
+
+- `sparkplan/trace.py`: `RunTrace`, `TraceStage`, `create_trace`, `write_trace`.
+  Schema version `1.0`; statuses `passed`, `failed`, `skipped`, `unverified`;
+  UTC timestamps; stage issues serialized from `Issue`; relative artifact
+  paths; deterministic JSON (`sort_keys=True`).
+- `run_pipeline` now accepts optional `trace_path` and writes `trace.json`
+  when `out_dir` is provided. Trace paths are atomically claimed and are not
+  overwritten. Concurrent default runs receive distinct trace filenames.
+- Stages recorded: `plan`, `validation`, `geometry_layout`,
+  `geometry_meshes`, `geometry_stl_export`, `firmware_generation`,
+  `firmware_compile`, `guide`, `slicing`, `simulation`.
+- Every finalized trace contains all ten stages. Early termination records
+  unattempted stages as `skipped` with a stage-specific reason; existing
+  stage records are never overwritten. Unexpected exceptions mark the active
+  stage as `failed` and complete the remaining stages without masking the
+  original exception.
+- `slicing` is `skipped` when `do_slice=False`; when requested it is
+  `passed` only if both base and lid produce nonempty G-code, otherwise
+  `failed` or `unverified` with a reason. `simulation` is `unverified`
+  (Wokwi/hardware not performed).
+- Atomic writes use a temporary file, `flush`, `fsync`, and `os.replace`.
+  Trace write failures do not mask pipeline exceptions or results.
+
+**Tests**
+
+- `tests/pipeline/test_trace.py` (27; 20 at trace-repair time), all offline.
+  Completeness regressions cover successful, refused, failed-planning,
+  geometry layout/mesh, firmware generation/compile, and unexpected-exception
+  traces, including retained prior statuses and later skipped reasons.
+- `make test` at trace repair: 377 passed, 1 skipped. `make lint`: ruff and
+  black clean.
+
+**Trace reliability repair**
+
+- Top-level trace status is now `failed` if any attempted required stage has
+  status `failed`, including a failed firmware compile.
+- `compile_firmware` verifies arduino-cli success, exit code, and the required
+  `sparkplan.ino` output before marking `firmware_compile` as `passed`.
+- Trace paths are claimed with `O_CREAT | O_EXCL`; default and explicit paths
+  no longer rely on check-then-write. Concurrent runs receive distinct trace
+  files.
+- The unreachable legacy block after `run_pipeline()` was removed.
+- Regression tests added for compile failure, missing compile output, successful
+  compile, explicit-path preservation, path claiming, deterministic collision
+  handling, and exception preservation.
+
+**Verified in this session**
+
+- Successful, refused, exhausted, geometry-failure, and unexpected-exception
+  runs all produced the expected trace statuses.
+- Compile failure and missing compile output now force a failed trace.
+- Explicit path collisions and deterministic default-path collisions are tested.
+- Explicit trace-path collisions raised `FileExistsError` without overwriting.
+- Two runs sharing one output directory received distinct trace files.
+
+**UNVERIFIED**
+
+- Slicing is implemented and locally verified on Ubuntu 24.04 amd64; the
+  GitHub Actions slicing job has not been verified on this repair branch.
+- Simulation remains unverified.
+- No physical hardware or Wokwi execution was performed.
+
+## Catalog provenance repair
+
+**Built**
+
+- `sparkplan/models/catalog.py`: added optional `dimensions_source` and
+  validated `dimensions_basis` (`manufacturer_spec`, `measured`, `estimate`,
+  `unknown`). Manufacturer/measured bases require a non-empty source;
+  estimated dimensions cannot be marked verified.
+- `catalog/parts.json`: all 15 parts now declare
+  `dimensions_basis: "estimate"` and `dimensions_source: null`.
+  `dimensions_verified` remains `false` for every part.
+- `tests/models/test_catalog_phase1.py`: added backward-compatibility,
+  valid/invalid basis, manufacturer-source, round-trip, and unverified-estimate
+  tests.
+
+**Verified in this session**
+
+- Catalog tests: `uv run pytest tests/models/test_catalog_phase1.py tests/catalog`
+  → 31 passed.
+- Provenance counts: 15 `estimate`, 0 `manufacturer_spec`, 0 `measured`,
+  0 `unknown`.
+- No manufacturer source references were verified; all unavailable sources are
+  `null`.
+- `make lint`: ruff and black clean.
+
+**UNVERIFIED**
+
+- No dimensions were verified against datasheets or measurements.
+- Full suite after this change: `make test` → 369 passed, 2 warnings; `make lint` clean; coverage 89% (4801 statements, 505 missed).
+- No manufacturer URLs or citations were added because none were verified in
+  this session.
+
+## Property-based validator tests
+
+**Built**
+
+- Added Hypothesis as a development dependency in `pyproject.toml`.
+- `tests/validators/phase2/test_p2_property.py`: 9 property tests using
+  `run_all` and the Phase 2 catalog.
+  - direct HC-SR04 echo connections are rejected with `LOGIC_LEVEL_HIGH`
+  - divider-routed echo connections avoid `LOGIC_LEVEL_HIGH`
+  - flash GPIO assignments are rejected with `GPIO_FLASH_RESERVED`
+  - non-flash GPIO assignments do not trigger `GPIO_FLASH_RESERVED`
+  - duplicate OLED addresses are rejected with `I2C_ADDRESS_CONFLICT`
+  - a single OLED does not report `I2C_ADDRESS_CONFLICT`
+  - a servo on the 5 V rail is rejected with `RAIL_OVER_BUDGET`
+  - renamed valid soil-monitor wirings remain valid
+  - a soil monitor without a servo is not over budget
+- Settings: bounded examples, `database=None`, `deadline=None`.
+
+**Verified in this session**
+
+- `uv run pytest tests/validators/phase2/test_p2_property.py` → 9 passed.
+- `uv run pytest tests/validators/phase2` → 75 passed.
+- `make lint`: ruff and black clean.
+
+**UNVERIFIED**
+
+- Properties are deterministic for the repository's current Hypothesis version,
+  but broader random input spaces are still bounded by the strategies used.
+- No mutation-testing tool was run to prove each property would fail if its
+  validator were removed.
+
+## Slicer verification
+
+**Slicer choice**
+
+- Selected **PrusaSlicer 2.7.2** from the Ubuntu 24.04 `universe` package
+  `prusa-slicer=2.7.2+dfsg-1build2`.
+- CuraEngine was checked first: `cura-engine` has no installation candidate on
+  Ubuntu 24.04 amd64. PrusaSlicer is packaged, runs from the CLI without a
+  display, and reports its version from `--help`.
+- Installation is pinned in CI to the exact Ubuntu package version:
+  `sudo apt-get install -y --no-install-recommends prusa-slicer=2.7.2+dfsg-1build2`
+  on `runs-on: ubuntu-24.04`.
+- Version observed from the installed CLI:
+  `PrusaSlicer-2.7.2+UNKNOWN based on Slic3r (with GUI support)`. The
+  executable reports `2.7.2+UNKNOWN`, not the exact package revision; the
+  `dpkg` package version above is the authoritative pin.
+
+**Built**
+
+- `sparkplan/geometry/prusaslicer.ini` — controlled profile: 220 x 220 x 250 mm
+  bed, 0.4 mm nozzle, PLA at 210 C / 60 C, 0.2 mm layers, 2 perimeters, 20 %
+  grid infill, explicit start/end G-code. It is version-controlled and always
+  passed with `--load`.
+- `sparkplan/geometry/slicing.py` — additive `verify_slice(base_stl, lid_stl,
+  output_dir=..., slicer=..., profile=..., timeout_s=..., enabled=...)`:
+  validates both inputs before launch, resolves an executable, reads the
+  version, runs PrusaSlicer with a temporary `--datadir` so local presets are
+  not used, captures diagnostics with home-path and secret-value redaction,
+  and checks exit code plus nonempty output for each part independently.
+  Statuses are `passed`, `failed`, `skipped`, and `unverified`.
+- `sparkplan/pipeline/pipeline.py` — new `do_slice=False` parameter, placed
+  after the pre-existing `trace_path` parameter so positional `trace_path`
+  callers keep their meaning, plus `PipelineResult.slice_result`. Slicing runs
+  only when requested and an output directory exists. Trace stage `slicing`
+  records requested state, slicer/version/profile, per-part status and paths,
+  exit codes, diagnostics, and a reason. A requested slicing stage that is not
+  `passed` forces the overall trace to `failed`; the pipeline result can still
+  be `ok` because slicing is verification, not artifact generation.
+- `.github/workflows/ci.yml` — new `slicing` job on `ubuntu-24.04` with the
+  pinned PrusaSlicer install, a `dpkg-query` assertion for the exact package
+  version, the executable-reported version recorded separately, and
+  `scripts/ci_verify_slice.py`. The step logs to `build/slicing-ci.log` with
+  `pipefail`, so a slicer failure still fails the job. An
+  `actions/upload-artifact@v4` step runs with `if: always()`, uploads
+  `build/slicing/*.gcode` and `build/slicing-ci.log`, warns rather than fails
+  when files are absent, and retains them for 7 days.
+- `scripts/ci_verify_slice.py` — generates the `soil_monitor` enclosure STLs,
+  invokes `verify_slice`, prints exact commands/output sizes, and exits 2 when
+  the slicer is unavailable.
+
+**Tests**
+
+- `tests/geometry/test_slicing.py` (13) covers missing/empty STLs, missing
+  executable, missing profile, timeout, nonzero exit, zero exit with missing
+  output, zero exit with empty output, separate base/lid outcomes, paths with
+  spaces, disabled/skipped behavior, version parsing, and diagnostic
+  redaction/truncation.
+- `tests/pipeline/test_trace.py` (27) adds passed, failed, unverified, and
+  missing-output-directory slicing cases alongside the existing trace tests.
+  It also covers a positional `trace_path` argument to prevent the
+  `do_slice` parameter from shifting it.
+- `uv run pytest tests/geometry/test_slicing.py tests/pipeline/test_trace.py -q`:
+  **40 passed**.
+- `uv run pytest tests/geometry tests/pipeline/test_trace.py -q`:
+  **77 passed, 1 skipped**.
+- `make test`: **397 passed, 1 skipped, 2 warnings in 93.94s**.
+- `make lint`: ruff `All checks passed!`; black
+  `116 files would be left unchanged.`
+- Coverage: full suite **89 %** (5019 statements, 541 missed);
+  `sparkplan/geometry/slicing.py` **91 %** (164 statements, 14 missed);
+  `sparkplan/pipeline/pipeline.py` **91 %** (278 statements, 24 missed);
+  `sparkplan/trace.py` **88 %** (107 statements, 13 missed).
+
+**Real project-native slicer invocation (Ubuntu 24.04, Python 3.12)**
+
+- Platform: Ubuntu 24.04 amd64, Python 3.12, in a clean virtual environment
+  with the real `sparkplan` package on `PYTHONPATH`. No project modules were
+  stubbed.
+- Installed package: `prusa-slicer=2.7.2+dfsg-1build2`.
+- Executable version reported by `--help`: `2.7.2+UNKNOWN`
+  (`PrusaSlicer-2.7.2+UNKNOWN based on Slic3r (with GUI support)`). The
+  executable does not identify the exact package revision; the `dpkg` package
+  version above is the authoritative pin.
+- Profile: `sparkplan/geometry/prusaslicer.ini`.
+- Generated fresh artifacts from
+  `tests/fixtures/phase3/supported/soil_monitor.json`:
+  `base.stl` 379,684 bytes and `lid.stl` 346,484 bytes.
+- Exact commands (from the module's recorded `command` fields):
+
+  ```text
+  /usr/bin/prusa-slicer --export-gcode --output /work/project-native-out/real-base.gcode --load /repo/sparkplan/geometry/prusaslicer.ini --datadir /tmp/sparkplan-slicer-a62uo15i --loglevel 2 /work/real-base.stl
+  /usr/bin/prusa-slicer --export-gcode --output /work/project-native-out/real-lid.gcode --load /repo/sparkplan/geometry/prusaslicer.ini --datadir /tmp/sparkplan-slicer-a62uo15i --loglevel 2 /work/real-lid.stl
+  ```
+
+- Both commands exited **0** and produced nonempty output:
+  `real-base.gcode` 2,853,302 bytes and `real-lid.gcode` 696,035 bytes.
+  `verify_slice` returned `passed` for both parts with no issues.
+- PrusaSlicer reported all five observed lid warnings:
+  `Floating object part`, `Floating bridge anchors`, `Low bed adhesion`,
+  `Loose extrusions`, and `Long bridging extrusions`. These are preserved as
+  diagnostic output and are not slicing failures.
+- Successful slicing only proves that PrusaSlicer emitted nonempty G-code. It
+  does not prove physical printability, mechanical strength, or dimensional
+  fit.
+- Running `scripts/ci_verify_slice.py` on this macOS host without PrusaSlicer
+  generated the STLs, reported `SLICER_UNAVAILABLE` / `unverified`, and exited
+  **2**. It did not claim a pass.
+
+**UNVERIFIED**
+
+- The GitHub Actions `slicing` job has not been verified on this repair branch.
+  No local workflow runner (`act`) is installed. The
+  pinned install, package-version assertion, and real-slicer command were
+  verified locally in Ubuntu 24.04 amd64, but the hosted runner and artifact
+  upload action remain unverified.
+- Slicing proves only that PrusaSlicer emitted nonempty G-code. No print was
+  made, and physical printability, fit, strength, and material suitability
+  remain unverified.
+- The profile is a generic enclosure profile, not tuned to a specific printer;
+  the five lid warnings may require supports, brim, or reorientation on a real
+  machine.
+
+## Phase 6 — API and pipeline orchestration
+
+### Step 2 — typed run results and safe persistence
+
+**Built**
+
+- `sparkplan/pipeline/run_models.py` — Pydantic run models with separate
+  overall `RunStatus` (`running`, `ok`, `refused`, `unsupported`, `failed`)
+  and per-stage `StageStatus` (`passed`, `failed`, `skipped`, `unverified`).
+  `RunStageResult` requires a reason for skipped/unverified stages and rejects
+  error-severity issues on passed stages. `RunResult` rejects duplicate stage
+  names and rejects any non-failed overall status when a stage failed.
+  Serialization is deterministic, reuses the existing `Issue` schema, and
+  accepts only relative POSIX artifact/evidence references.
+- `sparkplan/pipeline/run_paths.py` — `RunPaths` allocates the required
+  artifact names (`spec.json`, `report.json`, `base.stl`, `lid.stl`,
+  `assembled.stl`, `sketch/sketch.ino`, `GUIDE.md`, `trace.json`) under one
+  run directory. Run IDs are limited to 64 characters matching
+  `[A-Za-z0-9_-]+`. Claims use exclusive `os.mkdir`, so an existing run is
+  never reused. Artifact paths are rejected if they escape the run directory
+  or traverse a symlink. JSON is written through a temporary file and
+  hard-linked into place, refusing overwrite. Text and binary artifacts also
+  refuse overwrite. `SPARKPLAN_RUNS_DIR` can override the default `runs/`
+  root.
+
+**Tests**
+
+- `tests/pipeline/test_run_models.py` (35) covers status values, deterministic
+  JSON, issue serialization, duplicate stages, overall/stage status
+  consistency, skipped/unverified reasons, passed-stage errors, safe and
+  unsafe references, and run-ID bounds.
+- `tests/pipeline/test_run_paths.py` (34) covers valid/invalid IDs, environment
+  root selection, exclusive/idempotent/concurrent claims, existing-run
+  collisions, artifact containment, unknown artifacts, claim-required writes,
+  deterministic atomic JSON, no-overwrite behavior, serialization cleanup,
+  text/binary writes, and file/directory/run-directory symlink rejection.
+- `uv run pytest tests/pipeline/test_run_models.py tests/pipeline/test_run_paths.py -q`:
+  **69 passed**.
+- `make test`: **466 passed, 1 skipped, 2 warnings in 91.53s**.
+- `make lint`: ruff `All checks passed!`; black
+  `120 files would be left unchanged.`
+
+**Known gaps at the end of Step 2**
+
+- The canonical `run(prompt, run_id)` orchestrator was not implemented in
+  Step 2; Step 3 below adds it. New API endpoints and UI integration remain
+  unimplemented.
+- Step 2 exercised no enclosure, firmware, slicer, compiler, or print behavior.
+
+### Step 3 — canonical run orchestrator
+
+**Built**
+
+- `sparkplan/pipeline/run.py` — canonical `run(idea, llm, *, run_id=None,
+  runs_root=None, catalog=None, do_slice=True, do_compile=True, ...)`
+  orchestrator, separate from the legacy `run_pipeline()`/`/v1` API. It emits
+  all seven stages in the fixed order `plan`, `validation`, `geometry`,
+  `slicing`, `firmware_generation`, `firmware_compile`, `guide`.
+- The run directory is not created until the planner returns a validated
+  `SupportedBuild`. Refusal, unsupported ideas, planning failures, and planner
+  exceptions return a terminal `RunResult` with no runs-root or run-directory
+  artifacts. Existing run directories are rejected before the LLM is called.
+- The supported spec is persisted exactly once as `spec.json`. Validation is
+  not rerun; the planner's `ValidationReport` is recorded as the validation
+  stage. Geometry is then generated with `out_dir` set to the run directory and
+  its STL files are verified to exist and be nonempty.
+- Slicing is skipped when geometry did not export valid STLs. `do_slice=False`
+  skips the stage without invoking the slicer. A missing PrusaSlicer is
+  `unverified`; a nonzero exit, missing/empty G-code, or an internally
+  inconsistent slicer result is `failed`.
+- Firmware generation and compilation run even after geometry or slicing
+  failures. Firmware is persisted as `sketch/sketch.ino`; compilation uses the
+  same filename with `write_sketch_file=False` so the canonical pipeline does
+  not overwrite the exclusive artifact.
+- A missing `arduino-cli`/ESP32 platform/library is `unverified`; an unpinned
+  library, real compile failure, or missing sketch is `failed`. `do_compile=False`
+  skips the compile stage without invoking the compiler.
+- `render_supported_guide` now renders a deterministic Phase 3 guide from the
+  supported spec, optional enclosure layout, optional firmware result, and
+  accumulated issues. The guide runs even when geometry, slicing, or compile
+  fails, and explicitly says when no enclosure layout or firmware was produced.
+- `report.json` is the `RunResult` summary. `trace.json` carries the full
+  stage order, per-stage status/timing/issues, plan and validation evidence,
+  per-part slicing details, compile log (paths/home/secrets redacted and
+  truncated), and safe relative artifact references. Issue messages, stage
+  reasons, slicer diagnostics, and the compile log are redacted before either
+  file is written; absolute run paths are not emitted.
+- Overall status is `failed` if any canonical stage failed. Unavailable tools
+  remain `unverified`, skipped work remains `skipped`, and neither is ever
+  reported as `passed`. `RunResult` now permits `refused`/`unsupported` outcomes
+  to carry a failed `plan` stage, and only the plan stage.
+- `sparkplan/firmware/generate.py` — `write_sketch` accepts an explicit safe
+  `filename`/`sketch_name`; `compile_firmware` accepts `sketch_name` and
+  `write_sketch_file`, with the legacy `sparkplan.ino` and write-now defaults
+  unchanged.
+
+**Tests**
+
+- `tests/pipeline/test_run.py` (17) covers the full successful artifact
+  inventory and trace, refusal/unsupported/planning-failure/no-artifact paths,
+  planner exceptions, geometry-repair exhaustion with honest validation,
+  existing-run rejection, invalid run IDs, geometry
+  failure/engine-unavailable/missing-STL behavior, missing and inconsistent
+  slicer handling, missing/real-failing compiler handling, disabled slicing
+  and compile, firmware/guide continuation after failure, and relative-only
+  report/trace references.
+- `tests/pipeline/test_run_models.py` (38) adds the refused/unsupported
+  failed-plan exception and rejects failed validation stages for those
+  terminal outcomes.
+- `tests/firmware/test_generate.py` (13) adds explicit sketch naming and
+  rejection of unsafe or non-`.ino` names.
+- `uv run pytest tests/pipeline/test_run.py tests/pipeline/test_run_models.py tests/pipeline/test_run_paths.py tests/firmware/test_generate.py -q`:
+  **102 passed**.
+- `uv run pytest tests/pipeline -q`: **120 passed**.
+- `make test`: **491 passed, 1 skipped, 2 warnings in 128.17s (0:02:08)**.
+- `make lint`: ruff `All checks passed!`; black
+  `122 files would be left unchanged.`
+
+**UNVERIFIED**
+
+- This macOS host has no `arduino-cli` and no PrusaSlicer, so canonical runs
+  cannot be exercised end-to-end with real external tools here. Tool-less tests
+  verify the `unverified` paths; real compile/slice success remains unverified.
+- No physical print or hardware run was performed.
+- GitHub Actions for this branch has not been checked in this session.
+
+**Known gaps**
+
+- The Step 4 API endpoints and the React/three.js UI integration are not
+  implemented. `sparkplan/pipeline/__init__.py` intentionally still exports only
+  the legacy pipeline; the canonical entry point is
+  `sparkplan.pipeline.run.run`.
+- The canonical run is sequential and synchronous; it does not add background
+  jobs, progress streaming, cancellation, or retry/queue behavior.
+- The guide renderer reuses conservative legacy assembly wording and does not
+  claim printability or physical fit.
+
+### Step 4 — canonical API and web integration
+
+**Built**
+
+- `api/v2.py` — canonical `/v2` router with exactly:
+  `POST /v2/runs`, `GET /v2/runs/{run_id}`, and
+  `GET /v2/runs/{run_id}/artifacts/{artifact_name}`. New runs are
+  synchronous, server-generate their run ID, and go through
+  `sparkplan.pipeline.run.run` with the Phase 3 LLM and canonical catalog.
+  `RunResult` is returned directly.
+- Terminal domain outcomes (`ok`, `refused`, `unsupported`, `failed`) return
+  HTTP `200`. Unknown/unavailable runs and artifacts return `404`, request
+  validation returns `422`, missing or invalid canonical LLM configuration
+  returns `503`, and unexpected failures return a safe
+  `{"detail": {"code", "message"}}` envelope. No exception text, environment
+  values, or absolute paths are returned.
+- Artifact downloads are limited to `spec`, `base_stl`, `lid_stl`,
+  `assembled_stl`, `sketch`, and `guide`; `report.json` and `trace.json` are
+  not downloadable through the artifact route. Paths are resolved with
+  `RunPaths`, and the persisted report must name the expected inventory
+  reference. Traversal, symlinks, missing files, and corrupt reports are
+  rejected. Downloads use fixed media types, filenames, and `nosniff`.
+- `api/app.py` — preserves the legacy `create_app(llm, catalog)` signature and
+  all `/v1` routes. New keyword-only canonical dependencies are injectable for
+  tests: `canonical_llm`, `canonical_catalog`, `runs_root`, and
+  `canonical_run`. `/healthz` is unchanged.
+- `web/src/api.ts` — typed `/v2` client for starting runs and loading artifacts.
+- `web/src/App.tsx` — now uses `/v2`; renders overall status, all seven stages,
+  per-stage durations/reasons/issues, terminal refusal/unsupported/failure
+  reasons, the spec, guide, available artifact downloads, and the base/lid STL
+  viewer. Skipped and unverified stages are labelled explicitly.
+- `web/src/styles.css` — status badges and stage/issue/download layout for the
+  canonical states.
+- `web/vite.config.ts` — proxies `/v2` while keeping `/v1` and `/healthz`.
+- `README.md` — documents the canonical routes, artifact allowlist, terminal
+  status behavior, error codes, synchronous execution, and legacy `/v1`.
+
+**Tests**
+
+- `tests/api/test_api_v2.py` (17) covers the persisted `RunResult`, server-side
+  run IDs, `Location`, terminal `200` outcomes, 404/422/503/500 behavior,
+  safe error bodies, artifact media types/filenames, report/trace exclusion,
+  symlinks, malformed reports, and an end-to-end API run through the default
+  canonical runner with mocked geometry/slicer/compiler dependencies.
+- `uv run pytest tests/api -q`: **23 passed**.
+- `make test`: **508 passed, 1 skipped, 2 warnings in 136.12s (0:02:16)**.
+- `make lint`: ruff `All checks passed!`; black
+  `124 files would be left unchanged.`
+- `npx --prefix web tsc --noEmit -p web/tsconfig.json`: clean.
+- `npm --prefix web run build`: succeeded; Vite emitted its existing
+  >500 kB chunk-size warning for three.js.
+
+**UNVERIFIED**
+
+- The canonical API was not exercised against a real LLM endpoint; tests use
+  `FakeLLM`.
+- This macOS host still has no `arduino-cli` or PrusaSlicer, so real
+  compile/slice success through the API remains unverified.
+- The React UI was verified by TypeScript and a production Vite build, not by
+  manual browser interaction or a real end-to-end run.
+- GitHub Actions for this branch has not been checked in this session.
+- No physical print or hardware run was performed.
+
+**Known gaps**
+
+- `/v1` remains the legacy in-memory build API; `/v2` is the canonical API.
+  `sparkplan/pipeline/__init__.py` intentionally still exports only the legacy
+  pipeline, so the canonical entry point is `sparkplan.pipeline.run.run`.
+- The canonical run is synchronous and sequential. Step 4 adds no background
+  jobs, progress streaming, cancellation, queue, retry, run history, or deep
+  links.
+- Step 4 work was uncommitted on `phase-6-api-pipeline` when this section was written.
+
+### Phase 6 — guide, pipeline, background API and initial gate attempt (superseded)
+
+**Status**
+
+The implementation and offline gate passed, but the first real configured-LLM
+curl smoke test did not produce a completed run. This attempt is superseded by
+the final gate rerun below. Nothing was merged into `main`, `main` was not
+pushed, and no `phase-6` tag was created or moved. The feature branch remained
+uncommitted at the time of this report.
+
+**Built**
+
+- `sparkplan/guide/models.py` — typed `RunVerification`, with only `true`,
+  `false`, or `skipped`; the default is `skipped`, never passed.
+- `sparkplan/guide/render.py` — the supported guide now contains a BOM with
+  quantity and role, a wiring table with wire colours, a Mermaid wiring
+  diagram, board rail/power notes, print settings (0.2 mm PLA/PETG), numbered
+  assembly steps, behaviours, warnings, a pre-flight checklist, and a final
+  Verification table followed by the exact line `Not physically built.`
+- `sparkplan/pipeline/run.py` — computes verification from actual stage
+  outcomes, passes it to the guide, and writes it to `trace.json` alongside
+  stage timings and planner attempt history. Refusals and unsupported ideas
+  still stop before creating a run directory.
+- `sparkplan/pipeline/__init__.py` — exports the canonical `run` while keeping
+  `PipelineResult` and `run_pipeline` compatible. The package layout is kept;
+  no shadowing `sparkplan/pipeline.py` was created.
+- `api/jobs.py` — bounded, thread-safe background worker manager with a
+  max-worker and max-pending bound, safe failed results, and no raw exception
+  leakage.
+- `api/limits.py` — thread-safe in-memory per-IP fixed-window limiter for
+  `POST /plan`, defaulting to 10 requests per 60 seconds.
+- `api/canonical.py` — additive root API: `POST /plan`, `GET /runs/{id}`,
+  `GET /runs/{id}/files/{name}`, `GET /runs/{id}/bundle.zip`, `GET /catalog`,
+  and `GET /health`. Prompts are limited to 500 characters. File names and ZIP
+  entries are allowlisted, symlinks/traversal are rejected, and errors use a
+  safe code/message envelope.
+- `api/app.py` — preserves `/v1`, `/v2`, and `/healthz`; adds CORS for the Vite
+  origins, injectable background/limiter dependencies, and the canonical root
+  router.
+- `web/src/api.ts`, `web/src/App.tsx`, `web/vite.config.ts` — the UI submits to
+  `/plan`, polls `GET /runs/{id}`, renders the running state, loads files from
+  the filename route, and offers `bundle.zip`.
+- `.env.example` — documents `SPARKPLAN_RUNS_DIR`, `SPARKPLAN_SLICER`,
+  `SPARKPLAN_CORS_ORIGINS`, `SPARKPLAN_RATE_LIMIT`, and
+  `SPARKPLAN_RATE_WINDOW_S`.
+- `README.md` — documents the asynchronous root API, limits, CORS, safe file
+  access, bundle, and the retained `/v2` compatibility API.
+
+**Offline verification**
+
+- `make test`: **528 passed, 1 skipped, 2 warnings in 142.10s (0:02:22)**.
+- `make lint`: ruff `All checks passed!`; black
+  `131 files would be left unchanged.`
+- `npx --prefix web tsc --noEmit -p web/tsconfig.json`: clean.
+- `npm --prefix web run build`: succeeded; Vite emitted the existing
+  >500 kB chunk-size warning for three.js.
+- `git diff --check`: clean.
+- Tests include guide content/determinism, all verification states, pipeline
+  trace verification, the existing single Phase 3 geometry repair round,
+  missing-tool truthfulness, root API background polling, worker failure,
+  500/501 prompt boundaries, rate limiting, CORS, file traversal/symlinks,
+  bundle contents, and a default canonical runner end-to-end through the root
+  API with FakeLLM and mocked geometry/slicer/compiler.
+
+**Real configured-LLM curl smoke test — FAILED**
+
+The server was started with the configured `.env` on
+`127.0.0.1:8765` using `set -a; . ./.env; set +a` because `uvicorn
+--env-file` requires the unavailable optional `python-dotenv` package.
+`GET /health` returned `{"status":"ok"}`. Three real `POST /plan` requests each
+returned `202` immediately with a `Location` header and a run ID; polling
+returned `running` and then `failed`. No run artifacts were produced.
+
+- `b1618a339fc748aab232179d5e876340` — failed after 3 repairs with
+  `NO_GROUND`, `NO_POWER`, and `NO_MOUNT_ZONE` for the OLED, soil sensor, and
+  BME280.
+- `2356f7fa0a294e13ac0da41fd70343da` — failed after 3 repairs with
+  `NO_MOUNT_ZONE` for the OLED.
+- `636facdec3b242ba8fa8cd6e692cfcc7` — failed after 3 repairs with
+  `NO_GROUND` and `NO_POWER` for the capacitive soil sensor.
+
+The configured LLM did not produce a valid `SupportedBuild` within the bounded
+repair rounds. Consequently the real run did not reach geometry, firmware,
+guide, or verification output. This is a real gate failure, not a fabricated
+pass.
+
+**UNVERIFIED**
+
+- Real compile and slicing success: this macOS host has no `arduino-cli` and
+  no PrusaSlicer, so tool-less tests verify only `skipped`/`unverified` paths.
+- Real guide output from a completed LLM run was not produced; guide content
+  and the exact `Not physically built.` line are verified with FakeLLM/mocks.
+- The React UI was typechecked and production-built, not manually exercised in
+  a browser.
+- GitHub Actions for this branch was not run in this session.
+- No physical print or hardware build was performed.
+
+**Known gaps**
+
+- Background job state is in-memory. Completed runs reload from `report.json`
+  after restart; refused/unsupported jobs with no artifacts are lost on
+  restart.
+- Rate limiting is process-local, not distributed.
+- There is no cancellation, progress streaming, or run-history browser.
+
+### Phase 6 — final gate rerun (GATE PASSED)
+
+**Status**
+
+The offline gate and the real configured-LLM gate now pass. A real API run
+completed with status `ok`, generated a guide, and marked unavailable tools as
+`unverified` rather than passed. The implementation and evidence are on
+`phase-6-api-pipeline`; nothing was merged into `main`, `main` was not pushed,
+and no `phase-6` tag was created or moved.
+
+**Fixes made after the initial failed gate**
+
+- `sparkplan/planner/phase3/normalize.py` — canonicalizes unambiguous
+  `LayoutHint.part_id` instance-id aliases to catalog ids, and rewrites
+  board-first connections (`board -> peripheral`) as
+  `peripheral -> board`, preserving signal role, rail name, and pins.
+- `sparkplan/planner/phase3/planner.py` — applies both normalizations before
+  `parse_build_spec`; truncation hints now tell the operator to raise
+  `SPARKPLAN_LLM_MAX_TOKENS`.
+- `sparkplan/planner/phase3/prompt.py` — layout ids must be catalog ids, never
+  instance ids; connections must be written peripheral-first; behavior
+  readings must use the exact catalog reading name and unit.
+- `sparkplan/validators/phase2/behaviors.py` — behavior readings must exist in
+  the catalog, be provided by the bound instance, and use the matching unit.
+  New codes: `BEHAVIOR_UNBOUND_READING`, `BEHAVIOR_UNKNOWN_READING`,
+  `BEHAVIOR_UNIT_MISMATCH`.
+- `sparkplan/pipeline/run.py` — the geometry artifact check now allows the
+  `geometry_report` entry alongside the three required STLs.
+- `.env.example` and `README.md` — recommend
+  `SPARKPLAN_LLM_MAX_TOKENS=1800` for multi-sensor BuildSpecs.
+- Regression coverage was added in
+  `tests/planner/phase3/test_p3_layout_aliases.py`,
+  `tests/planner/phase3/test_p3_prompt_compact.py`,
+  `tests/validators/phase2/test_p2_behaviors.py`, and
+  `tests/pipeline/test_run.py`.
+
+**Offline verification**
+
+- `make test`: **542 passed, 1 skipped, 2 warnings in 245.86s (0:04:05)**.
+- `make lint`: ruff `All checks passed!`; black
+  `133 files would be left unchanged.`
+- `npx --prefix web tsc --noEmit -p web/tsconfig.json`: clean.
+- `npm --prefix web run build`: succeeded; Vite emitted the existing
+  >500 kB chunk-size warning (621.37 kB JS, 167.72 kB gzip).
+- `git diff --check`: clean.
+
+**Real configured-LLM smoke — PASSED**
+
+The server was started on `127.0.0.1:8765` with the configured `.env`,
+`SPARKPLAN_LLM_MAX_TOKENS=1800`, and
+`SPARKPLAN_RUNS_DIR=/tmp/sparkplan-real-runs`. `GET /health` returned
+`{"status":"ok"}`. `POST /plan` returned `202` with run id
+`ee5427698c7546dbb3d39eb0a5dd61f3`, and polling reached status `ok` with:
+
+- `plan` passed in 16.26 s with 1 LLM call and 0 repair rounds.
+- `validation` passed.
+- `geometry` passed in 6.15 s using cadquery.
+- `slicing` unverified: `PrusaSlicer is not installed or is not executable.`
+- `firmware_generation` passed: sketch and library manifest produced.
+- `firmware_compile` unverified: `arduino-cli not found`.
+- `guide` passed.
+
+Artifacts: `spec.json`, `trace.json`, `report.json`, `base.stl`, `lid.stl`,
+`assembled.stl`, `geometry_report.json`, `sketch/sketch.ino`,
+`sketch/libraries.txt`, `sketch/library_manifest.json`, and `GUIDE.md`.
+The guide states `Validated: true`, `Compiled: skipped`, `Sliced: skipped`,
+`Simulated: skipped`, and ends with `Not physically built.`
+
+**UNVERIFIED**
+
+- Real compilation: `arduino-cli` is not installed on this host; the run
+  correctly reports `Compiled: skipped` / stage `unverified`.
+- Real slicing: PrusaSlicer is not installed; the run correctly reports
+  `Sliced: skipped` / stage `unverified`.
+- The React UI was typechecked and production-built, not manually exercised in
+  a browser.
+- GitHub Actions for this branch was not run in this session.
+- No physical print or hardware build was performed.
+
+**Known gaps**
+
+- Background job state is in-memory. Completed runs reload from `report.json`
+  after restart; refused/unsupported jobs with no artifacts are lost on
+  restart.
+- Rate limiting is process-local, not distributed.
+- There is no cancellation, progress streaming, or run-history browser.
+- For this run the LLM supplied numeric controller pins (`21`, `22`, `34`);
+  validators and firmware resolve them as GPIOs, and the guide displays them
+  verbatim. Catalog-style `D21`/`D22` would be clearer.
+- The generated behavior description rendered as `No description.` because
+  the LLM omitted it; the guide stays truthful rather than inventing text.
+
+## Phase 8 — web UI (GATE PASSED)
+
+**Status**
+
+The web UI is implemented on `phase-8-web-ui`, based on the Phase 6 API commit
+`be1ab97`. The offline web gate passes: typecheck, production build, two mobile
+Playwright smoke tests, full Python tests, and lint. The branch has not been
+merged, `main` has not been changed, and no `phase-8` tag has been created or
+moved. Phase 7 remains separately parked as a WIP commit and is not part of this
+branch.
+
+**Built**
+
+- Canonical typed web client in `web/src/api.ts` for `POST /plan`,
+  `GET /runs/{id}`, artifact text/JSON, `trace.json`, `GET /catalog`, and the
+  ZIP bundle. Polling handles queued/running/success/refused/failed and aborts
+  stale requests on reset/unmount.
+- Prompt view with a live 500-character counter, disabled submit while loading,
+  four example prompts, request errors, and retry.
+- Seven-stage progress stepper. Running runs show queued stages because the API
+  does not stream partial progress; completed stages are rendered from the run
+  result only.
+- Results: verification badges for validated/compiled/sliced/simulated with
+  `passed`/`failed`/`skipped`/unknown, plus a visible `Not physically built.`
+  statement; BOM; wiring with catalog pin facts; validation issues with severity;
+  read-only firmware with copy; rendered `GUIDE.md`; report/trace/spec artifact
+  links; and bundle download. Validation stays scoped to the validation stage;
+  tooling and later-stage findings render in a separate Stage findings panel,
+  so a passed validation badge cannot sit next to unrelated tool errors.
+- Dedicated refusal view using planner-provided reasons, missing capabilities,
+  and closest supported alternative. No artifacts or capabilities are invented.
+- Failure view with stage issues and retry.
+- `three.js` STL viewer with OrbitControls, base/lid/assembled modes, an
+  assembled lid offset derived from loaded bounds, an exploded slider, auto-fit,
+  resize handling, cleanup, theme updates, mouse/touch controls, and keyboard
+  orbit/zoom. It remains explicitly illustrative, not a fit check.
+- Responsive light/dark UI with persisted theme choice and a manual toggle.
+- Backend `RunRefusal` metadata on `RunResult`, populated only for planner
+  `refused`/`unsupported` outcomes and serialized only when present. Existing
+  success/failure serialization is unchanged.
+- Playwright smoke tests use mocked canonical API responses and cover the
+  success and refusal flows at 390×844 in light/dark mode, no horizontal
+  overflow, no browser console/page errors, no duplicate plan submission, and
+  an artifact-free refusal.
+
+**Verification**
+
+- `make test`: **544 passed, 1 skipped, 2 warnings in 284.46s (0:04:44)**.
+- `make lint`: ruff `All checks passed!`; black
+  `133 files would be left unchanged.`
+- `npm --prefix web run typecheck`: clean.
+- `npm --prefix web run build`: succeeded; Vite emitted the existing
+  >500 kB chunk-size warning (825.37 kB JS, 227.74 kB gzip).
+- `npm --prefix web run test:e2e`: **2 passed (3.4s)** with Chromium.
+- Mobile screenshots: `docs/phase8/success-390.png` (390×5752) and
+  `docs/phase8/refusal-390.png` (390×2324).
+- CI now installs Chromium and runs the Playwright smoke tests in the web job.
+
+**UNVERIFIED**
+
+- The Playwright tests use mocked API responses. The UI has not been driven
+  against a live FastAPI server plus a real LLM in a browser in this session.
+- The STL viewer was exercised in headless Chromium for mode/slider/keyboard
+  behavior and console cleanliness, not visually compared against a physical
+  enclosure or slicer.
+- GitHub Actions for this branch was not run in this session.
+- `arduino-cli` and a real slicer remain unavailable on this host; compile and
+  slice truthfulness still relies on the existing `skipped`/`unverified` paths.
+- No physical print, wiring, or hardware build was performed.
+
+**Known gaps**
+
+- Progress is polled; there is no server-sent stage streaming or cancellation.
+- Completed runs reload from `report.json` after restart. Refused/unsupported
+  runs with no artifacts remain in memory only, so old persisted reports have no
+  `refusal` object and fall back to the plan-stage reason.
+- Playwright covers smoke behavior, not pixel-level visual regression.
+- The production bundle is a single large chunk because `three.js` is imported
+  eagerly; the build passes with a warning.
+- Run background jobs and rate limits remain process-local.
+
+### Phase 8 — macOS toolchain and live UI verification (GATE PASSED)
+
+**Status**
+
+The Phase 8 UI fix was exercised with a real macOS toolchain and then committed
+to `phase-8-web-ui`. Nothing was reset, stashed, or discarded. All results below
+are from this session. The earlier Phase 8 notes saying the toolchain was
+unavailable describe the pre-install state and are superseded by this section.
+
+**Toolchain installed and detected**
+
+- Homebrew: `7.0.10`.
+- `arduino-cli`: `1.5.1`, `/opt/homebrew/bin/arduino-cli` (Homebrew).
+- ESP32 platform: `esp32:esp32` **3.3.12**; `arduino-cli core list` reports
+  `3.3.12` installed and latest.
+- PrusaSlicer: **2.9.6**, installed to
+  `~/Applications/PrusaSlicer.app` to avoid an elevated `/Applications` write.
+  Executable:
+  `/Users/aishwarysaxena/Applications/PrusaSlicer.app/Contents/MacOS/PrusaSlicer`.
+- `arduino-cli` board index includes the official Espressif URL
+  (`https://espressif.github.io/arduino-esp32/package_esp32_index.json`).
+  Default data/user directories: `~/Library/Arduino15` and `~/Documents/Arduino`.
+- Untracked `.env` now sets `SPARKPLAN_ARDUINO_CLI`, `SPARKPLAN_SLICER`, and the
+  documented macOS ctags workaround
+  `SPARKPLAN_ARDUINO_BUILD_PROPERTIES=tools.ctags.pattern=/usr/bin/true`.
+  These local paths are not hardcoded into tracked source files.
+- SparkPlan's own detection functions returned:
+  `arduino_cli=/opt/homebrew/bin/arduino-cli`, `missing=[]`,
+  `prusa_slicer=.../PrusaSlicer`, `version=2.9.6`.
+
+**Existing toolchain checks**
+
+- `uv run python scripts/ci_verify_slice.py` passed. PrusaSlicer 2.9.6 sliced
+  both parts with exit 0: `build/slicing/base.gcode` (2,835,946 bytes) and
+  `build/slicing/lid.gcode` (687,615 bytes). The lid emitted print-stability
+  warnings (floating bridge anchors, low bed adhesion, loose extrusions, long
+  bridging extrusions) but produced nonempty G-code.
+- `uv run python scripts/ci_compile_firmware.py` passed:
+  `servo_test`, `ultrasonic_distance`, `weather_station`,
+  `desk_weather_bme280`, `soil_monitor`, and `valid` all compiled successfully.
+
+**Real API build — PASSED**
+
+- Prompt: “A desk weather station with a DHT22 sensor and an OLED display
+  showing temperature and humidity.”
+- Run: **`b3799f55045c4e1c89c349f0dac20f53`**, status `ok`, all seven stages
+  `passed` (plan 10.19 s, validation 10.19 s, geometry 4.67 s, slicing 1.21 s,
+  firmware_generation 0.002 s, firmware_compile 31.17 s, guide 0.001 s).
+- Artifacts: `spec.json`, `report.json`, `trace.json`, `base.stl`, `lid.stl`,
+  `assembled.stl`, `base.gcode` (2,803,425 bytes), `lid.gcode` (688,681 bytes),
+  `sketch/sketch.ino`, `sketch/libraries.txt`, `sketch/library_manifest.json`,
+  and `GUIDE.md`.
+- Slicing evidence in `trace.json`: PrusaSlicer 2.9.6, base/lid exit code 0,
+  nonempty outputs.
+- Compile evidence in `trace.json`: `compile_status=ok`, `arduino_cli=available`;
+  `Sketch uses 307976 bytes (23%)... Global variables use 23716 bytes (7%)...`.
+- `trace.json.verification`:
+  `validated=true`, `compiled=true`, `sliced=true`, `simulated="skipped"`.
+- `GUIDE.md` reports `Validated: true`, `Compiled: true`, `Sliced: true`,
+  `Simulated: skipped`, and ends with `Not physically built.`
+
+**Live UI build — PASSED**
+
+- A headless Playwright session on `http://127.0.0.1:5180/` submitted the same
+  prompt through the actual form. Run:
+  **`ab39d28d416d490ba0c58c2e84827846`**, all seven stages `passed`.
+- The UI reported Compiled and Sliced as Passed, Simulated as Skipped, showed
+  `Not physically built`, rendered the STL viewer and firmware copy control, and
+  produced no Stage findings. No validation issues were reported.
+- Browser console/page errors: none. Width check at 390 px:
+  `clientWidth=390`, `scrollWidth=390`.
+- Screenshot: `docs/phase8/live-success-390.png` (390×9253).
+
+**Live refusal — PASSED**
+
+- Prompt: “An autonomous drone with GPS and camera.”
+- Run: **`8b6a4a07f0ad4772917b4e50e7e99f23`**, status `unsupported`, no
+  artifacts. Planner reasons, missing capabilities
+  (`senses_gps`, `captures_video`, `propels_aircraft`, `controls_flight`), and
+  the closest alternative were returned.
+- The live UI showed the refusal reasons, chips, and alternative, with no
+  downloads and no viewer. No browser errors or horizontal overflow.
+- Screenshot: `docs/phase8/live-refusal-390.png` (390×2452).
+
+**Live toolchain-failure UI — PASSED**
+
+A separate API/Vite pair on ports 8011/5181 loaded the real configuration but
+overrode `SPARKPLAN_SLICER` and `SPARKPLAN_ARDUINO_CLI` with nonexistent paths.
+This exercised the real pipeline failure path, not a mocked successful tool.
+Run **`f07d3f60f81b4626b77778ece3115890`** finished `ok` with:
+
+- `validation`: **passed**, no issues.
+- `slicing`: **unverified** / `SLICER_UNAVAILABLE`.
+- `firmware_compile`: **unverified** / `ARDUINO_CLI_MISSING`.
+- UI: Validation passed with **zero** slicer/Arduino errors; Stage findings
+  contained both errors; Compiled, Sliced, and Simulated badges all showed
+  Skipped; `Not physically built` remained visible.
+- No browser console/page errors; `clientWidth=390`, `scrollWidth=390`.
+- Screenshot: `docs/phase8/live-toolchain-failure-390.png` (390×9979).
+- The temporary servers were stopped afterward; the normal 8010/5180 servers
+  remain running with the installed toolchain.
+
+**UI fix verified**
+
+`ValidationPanel` now receives only `validationStage.issues`. A new
+`StageFindingsPanel` groups non-validation stage issues, including toolchain
+errors, with the stage label and fix hints. The Playwright success fixture was
+changed to include real-looking `SLICER_UNAVAILABLE` and
+`ARDUINO_CLI_MISSING` stage failures; the test asserts those codes are absent
+from the Validation region and present in Stage findings.
+
+**Tests run this session**
+
+- `make test`: **544 passed, 1 skipped, 2 warnings in 205.64s (0:03:25)**.
+- `make lint`: ruff `All checks passed!`; black
+  `133 files would be left unchanged.`
+- `npm --prefix web run typecheck`: clean.
+- `npm --prefix web run build`: passed; Vite warning for the single 825.37 kB
+  JS chunk (227.74 kB gzip).
+- `npm --prefix web run test:e2e`: **2 passed (3.2s)** in Chromium.
+- `git diff --check`: clean.
+
+**UNVERIFIED / remaining limitations**
+
+- No physical print, wiring, flashing, or hardware test was performed.
+- Simulation remains genuinely unimplemented; `simulated` is `skipped`.
+- The lid slicing warnings mean a real print may need supports/brim; print
+  quality and fit are unverified.
+- GitHub Actions was not run for this worktree at verification time.
+- `make eval` was not run; Phase 7 remains a separate WIP branch and was not
+  touched.
+- Real LLM output can vary; these results are from the two supported runs above.
+- The UI fix, README/Vite local-port override, Playwright fixture changes, and
+  screenshots are committed with Phase 8. `.env` toolchain values and the
+  generated `build/` and `runs/` data are local/untracked.

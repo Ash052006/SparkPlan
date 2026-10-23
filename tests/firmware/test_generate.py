@@ -221,3 +221,17 @@ def test_compile_failure_reported(catalog, tmp_path):
     compiled = compile_firmware(result, tmp_path / "ino", cli_path=str(fake_cli))
     assert compiled.compile_status == "failed"
     assert "boom" in compiled.compile_log
+
+
+def test_write_sketch_accepts_an_explicit_safe_filename(catalog, tmp_path):
+    result = generate_firmware(make_spec(), catalog)
+    path = write_sketch(result, tmp_path / "custom", filename="sketch.ino")
+    assert path == tmp_path / "custom" / "sketch.ino"
+    assert path.read_text() == result.sketch
+
+
+@pytest.mark.parametrize("name", ["../escape.ino", "nested/sketch.ino", "sketch.txt", ".ino"])
+def test_write_sketch_rejects_unsafe_or_wrong_filenames(catalog, tmp_path, name):
+    result = generate_firmware(make_spec(), catalog)
+    with pytest.raises(FirmwareError):
+        write_sketch(result, tmp_path / "custom", filename=name)

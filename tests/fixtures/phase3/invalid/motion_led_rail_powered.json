@@ -1,0 +1,109 @@
+{
+  "status": "ok",
+  "title": "Motion LED",
+  "summary": "A PIR sensor turns on an LED when motion is detected.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "pir",
+      "part_id": "pir_hc_sr501"
+    },
+    {
+      "instance_id": "led",
+      "part_id": "led_5mm"
+    },
+    {
+      "instance_id": "res",
+      "part_id": "resistor_220r"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "pir",
+      "from_pin": "VCC",
+      "to_instance": "board",
+      "to_pin": "5V",
+      "signal_role": "rail",
+      "rail_name": "5V"
+    },
+    {
+      "from_instance": "pir",
+      "from_pin": "GND",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    },
+    {
+      "from_instance": "pir",
+      "from_pin": "OUT",
+      "to_instance": "board",
+      "to_pin": "D4",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "res",
+      "from_pin": "A",
+      "to_instance": "board",
+      "to_pin": "3V3",
+      "signal_role": "rail",
+      "rail_name": "3V3"
+    },
+    {
+      "from_instance": "res",
+      "from_pin": "B",
+      "to_instance": "led",
+      "to_pin": "ANODE",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "led",
+      "from_pin": "CATHODE",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "pir_hc_sr501",
+      "mount": "wall"
+    },
+    {
+      "part_id": "led_5mm",
+      "mount": "lid"
+    },
+    {
+      "part_id": "resistor_220r",
+      "mount": "base"
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "motion_light",
+      "part_ids": [
+        "pir_hc_sr501",
+        "led_5mm"
+      ],
+      "readings": [
+        {
+          "name": "motion",
+          "unit": "bool",
+          "instance_id": "pir"
+        }
+      ],
+      "rules": [
+        {
+          "name": "light_on",
+          "condition_reading": "motion",
+          "condition_unit": "bool",
+          "comparator": "==",
+          "threshold": 1.0,
+          "action_actuator": "led"
+        }
+      ]
+    }
+  ]
+}

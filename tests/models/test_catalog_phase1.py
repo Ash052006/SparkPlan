@@ -147,3 +147,78 @@ def test_loader_is_cached_and_resettable():
     assert first is second
     reset_catalog_cache()
     assert get_catalog() is not first
+
+
+def _write_catalog(tmp_path, parts):
+    import json
+
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(parts), encoding="utf-8")
+    return path
+
+
+def _base_parts():
+    import json
+    from pathlib import Path
+
+    catalog = json.loads(Path("catalog/parts.json").read_text())
+    by_id = {part["id"]: part for part in catalog}
+    return [by_id["esp32_devkit_30pin"], by_id["dht22"]]
+
+
+def test_catalog_entries_declare_provenance_basis():
+    for part in CATALOG.parts:
+        assert part.dimensions_basis in {"manufacturer_spec", "measured", "estimate", "unknown"}
+        assert part.dimensions_verified is False
+    assert all(part.dimensions_basis == "estimate" for part in CATALOG.parts)
+    assert all(part.dimensions_source is None for part in CATALOG.parts)
+
+
+def test_catalog_loads_without_provenance_fields(tmp_path):
+    parts = _base_parts()
+    for part in parts:
+        part.pop("dimensions_source", None)
+        part.pop("dimensions_basis", None)
+    loaded = load_catalog(_write_catalog(tmp_path, parts))
+    assert len(loaded.parts) == 2
+    assert all(part.dimensions_basis == "unknown" for part in loaded.parts)
+    assert all(part.dimensions_source is None for part in loaded.parts)
+
+
+def test_catalog_accepts_valid_provenance_values(tmp_path):
+    parts = _base_parts()
+    parts[1]["dimensions_source"] = "https://example.com/dht22-drawing"
+    parts[1]["dimensions_basis"] = "manufacturer_spec"
+    loaded = load_catalog(_write_catalog(tmp_path, parts))
+    sensor = loaded.get("dht22")
+    assert sensor.dimensions_source == "https://example.com/dht22-drawing"
+    assert sensor.dimensions_basis == "manufacturer_spec"
+
+
+def test_catalog_rejects_invalid_provenance_basis(tmp_path):
+    parts = _base_parts()
+    parts[1]["dimensions_basis"] = "datasheet_guess"
+    with pytest.raises(CatalogError):
+        load_catalog(_write_catalog(tmp_path, parts))
+
+
+def test_catalog_rejects_manufacturer_basis_without_source(tmp_path):
+    parts = _base_parts()
+    parts[1]["dimensions_basis"] = "manufacturer_spec"
+    parts[1]["dimensions_source"] = None
+    with pytest.raises(CatalogError):
+        load_catalog(_write_catalog(tmp_path, parts))
+
+
+def test_catalog_provenance_round_trips():
+    dumped = CATALOG.model_dump_json()
+    from sparkplan.models.catalog import Catalog
+
+    reloaded = Catalog.model_validate_json(dumped)
+    assert reloaded == CATALOG
+    assert all(part.dimensions_basis == "estimate" for part in reloaded.parts)
+
+
+def test_estimated_dimensions_remain_unverified():
+    assert all(part.dimensions_basis == "estimate" for part in CATALOG.parts)
+    assert all(part.dimensions_verified is False for part in CATALOG.parts)

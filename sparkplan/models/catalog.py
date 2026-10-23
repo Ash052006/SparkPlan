@@ -15,6 +15,7 @@ import re
 from enum import Enum
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -317,6 +318,31 @@ class Part(_Strict):
     pins: list[Pin] = Field(min_length=1)
     dimensions_mm: DimensionsMm
     dimensions_verified: bool = False
+    dimensions_source: str | None = None
+    dimensions_basis: Literal["manufacturer_spec", "measured", "estimate", "unknown"] = "unknown"
+
+    @field_validator("dimensions_source")
+    @classmethod
+    def _source_is_text(cls, v: str | None) -> str | None:
+        if v is None:
+            return None
+        if not isinstance(v, str):
+            raise ValueError("dimensions_source must be a string or null")
+        return v
+
+    @model_validator(mode="after")
+    def _provenance_consistency(self) -> Part:
+        needs_source = self.dimensions_basis in {"manufacturer_spec", "measured"}
+        has_source = bool((self.dimensions_source or "").strip())
+        if needs_source and not has_source:
+            raise ValueError(
+                f"part {self.id!r} requires a non-empty dimensions_source "
+                f"for basis {self.dimensions_basis!r}"
+            )
+        if self.dimensions_basis == "estimate" and self.dimensions_verified:
+            raise ValueError(f"part {self.id!r} cannot be verified while its basis is an estimate")
+        return self
+
     mounting_holes: list[MountingHole] = Field(default_factory=list)
     mount: Mount
     exposure: Exposure = Field(default_factory=Exposure)
