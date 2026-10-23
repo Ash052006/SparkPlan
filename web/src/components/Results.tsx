@@ -9,6 +9,7 @@ import {
   RunRefusal,
   RunResult,
   RunStageResult,
+  STAGE_LABELS,
   SupportedSpec,
   artifactUrl,
   bundleUrl,
@@ -181,6 +182,31 @@ export function ValidationPanel({ issues, validationStage }: ValidationProps) {
       {validationStage?.reason && validationStage.status !== "passed" && (
         <p className="reason">{validationStage.reason}</p>
       )}
+    </section>
+  );
+}
+
+export function StageFindingsPanel({ stages }: { stages: RunStageResult[] }) {
+  const groups = stages.filter((stage) => stage.name !== "validation" && stage.issues.length > 0);
+  if (groups.length === 0) return null;
+  return (
+    <section className="panel" aria-labelledby="stage-findings-heading">
+      <div className="panel-heading">
+        <div>
+          <p className="eyebrow">Tool and stage checks</p>
+          <h2 id="stage-findings-heading">Stage findings</h2>
+        </div>
+        <span className="muted">
+          {groups.reduce((total, stage) => total + stage.issues.length, 0)} findings
+        </span>
+      </div>
+      {groups.map((stage) => (
+        <div key={stage.name} className="stage-finding-group">
+          <h3>{STAGE_LABELS[stage.name as keyof typeof STAGE_LABELS] ?? titleCase(stage.name)}</h3>
+          {stage.reason && stage.issues.length === 0 && <p className="muted">{stage.reason}</p>}
+          <IssueList issues={stage.issues} />
+        </div>
+      ))}
     </section>
   );
 }

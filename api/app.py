@@ -21,7 +21,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sparkplan.catalog import Catalog, load_catalog
 from sparkplan.llm.client import LLMClient, make_llm_from_env
-from sparkplan.llm.phase3.client import LLMClient as CanonicalLLMClient
+from sparkplan.llm.phase3.client import (
+    LLMClient as CanonicalLLMClient,
+)
+from sparkplan.llm.phase3.client import (
+    load_dotenv,
+)
 from sparkplan.models.catalog import Catalog as CanonicalCatalog
 from sparkplan.models.catalog import get_catalog as get_canonical_catalog
 from sparkplan.models.spec import PlanResult
@@ -83,6 +88,7 @@ def create_app(
     rate_limiter: RateLimiter | None = None,
     cors_origins: list[str] | None = None,
 ) -> FastAPI:
+    load_dotenv()
     app = FastAPI(title="SparkPlan", version="0.1.0")
     store = BuildStore()
     cat = catalog or load_catalog()

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Catalog,
-  Issue,
   MAX_IDEA_LENGTH,
   RunResult,
   RunStageResult,
@@ -26,6 +25,7 @@ import {
   GuidePanel,
   PartsPanel,
   RefusalPanel,
+  StageFindingsPanel,
   ValidationPanel,
   WiringPanel,
 } from "./components/Results";
@@ -38,18 +38,6 @@ function errorMessage(error: unknown): string {
 
 function isAbort(error: unknown): boolean {
   return error instanceof DOMException && error.name === "AbortError";
-}
-
-function collectIssues(run: RunResult): Issue[] {
-  const seen = new Set<string>();
-  const issues: Issue[] = [];
-  for (const issue of [...run.issues, ...run.stages.flatMap((stage) => stage.issues)]) {
-    const key = `${issue.code}|${issue.severity}|${issue.message}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    issues.push(issue);
-  }
-  return issues;
 }
 
 function themeLabel(theme: Theme): string {
@@ -195,7 +183,6 @@ export default function App() {
 
   const validationStage: RunStageResult | null =
     run?.stages.find((stage) => stage.name === "validation") ?? null;
-  const issues = run ? collectIssues(run) : [];
   const planStage = run?.stages.find((stage) => stage.name === "plan");
   const outcomeReason = planStage?.reason ?? run?.issues[0]?.message ?? "";
   const canViewStl = Boolean(run?.artifacts.base_stl && run.artifacts.lid_stl);
@@ -294,7 +281,11 @@ export default function App() {
                 <WiringPanel spec={spec} />
               </div>
               <div className="results-column">
-                <ValidationPanel issues={issues} validationStage={validationStage} />
+                <ValidationPanel
+                  issues={validationStage?.issues ?? []}
+                  validationStage={validationStage}
+                />
+                {run && <StageFindingsPanel stages={run.stages} />}
               </div>
             </div>
 

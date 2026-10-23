@@ -18,7 +18,12 @@ from api.limits import RateLimiter
 from api.v2 import CanonicalRunner
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
-from sparkplan.llm.phase3.client import LLMClient, make_llm_from_env
+from sparkplan.llm.phase3.client import (
+    LLMClient,
+    LLMConfigurationError,
+    load_dotenv,
+    make_llm_from_env,
+)
 from sparkplan.models.catalog import Catalog, get_catalog
 from sparkplan.pipeline.run import run as run_canonical
 from sparkplan.pipeline.run_models import RunResult, RunStatus
@@ -276,7 +281,14 @@ def create_root_router(
     def _require_llm() -> LLMClient:
         if "llm" not in llm_holder:
             try:
+                load_dotenv()
                 llm_holder["llm"] = make_llm_from_env()
+            except LLMConfigurationError as exc:
+                raise _error(
+                    503,
+                    "llm_configuration_error",
+                    f"The canonical LLM is not configured correctly: {exc}",
+                ) from None
             except Exception:
                 raise _error(
                     503,

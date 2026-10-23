@@ -14,6 +14,7 @@ from __future__ import annotations
 from sparkplan.models.buildspec import Behavior, SupportedBuild
 from sparkplan.models.catalog import BoardModel, Catalog
 from sparkplan.models.spec import Issue
+from sparkplan.validators.phase2.pins_check import _controller_gpio
 from sparkplan.validators.phase2.report import issue
 
 
@@ -98,11 +99,68 @@ def _known_actuators(spec: SupportedBuild, catalog: Catalog) -> set[str]:
     return actuators
 
 
+def _actuator_has_board_control(
+    spec: SupportedBuild, catalog: Catalog, board: BoardModel, instance_id: str
+) -> bool:
+    """True when an actuator pin reaches an output-capable GPIO directly or via a series passive."""
+    for conn in spec.connections:
+        if conn.signal_role in {"rail", "gnd", "passive"}:
+            continue
+        if conn.from_instance == instance_id:
+            other_instance, other_pin = conn.to_instance, conn.to_pin
+        elif conn.to_instance == instance_id:
+            other_instance, other_pin = conn.from_instance, conn.from_pin
+        else:
+            continue
+        if spec.instance(other_instance) is None:
+            continue
+        other_part = catalog.get_or_none(spec.part_on(other_instance))
+        if other_part is None:
+            continue
+        if other_part.category.value == "board":
+            gpio = _controller_gpio(other_pin)
+            if gpio is None:
+                continue
+            board_pin = board.pin(gpio)
+            if (
+                board_pin is not None
+                and board_pin.caps.output
+                and not board_pin.input_only
+                and not board_pin.forbidden
+            ):
+                return True
+        elif other_part.category.value == "passive" and len(other_part.pins) == 2:
+            for pconn in spec.connections:
+                if pconn.signal_role in {"rail", "gnd", "passive"}:
+                    continue
+                if pconn.from_instance == other_instance and pconn.from_pin != other_pin:
+                    b_instance, b_pin = pconn.to_instance, pconn.to_pin
+                elif pconn.to_instance == other_instance and pconn.to_pin != other_pin:
+                    b_instance, b_pin = pconn.from_instance, pconn.from_pin
+                else:
+                    continue
+                b_part = catalog.get_or_none(spec.part_on(b_instance))
+                if b_part is not None and b_part.category.value == "board":
+                    gpio = _controller_gpio(b_pin)
+                    if gpio is None:
+                        continue
+                    board_pin = board.pin(gpio)
+                    if (
+                        board_pin is not None
+                        and board_pin.caps.output
+                        and not board_pin.input_only
+                        and not board_pin.forbidden
+                    ):
+                        return True
+    return False
+
+
 def validate_behaviors(spec: SupportedBuild, catalog: Catalog, board: BoardModel) -> list[Issue]:
     issues: list[Issue] = []
     readings = _known_readings(spec, catalog)
     actuators = _known_actuators(spec, catalog)
     instances = [part_ref.instance_id for part_ref in spec.parts]
+    checked_actuators: set[str] = set()
 
     for behavior in spec.behaviors:
         issues.extend(_reading_issues(spec, catalog, behavior, instances))
@@ -135,15 +193,29 @@ def validate_behaviors(spec: SupportedBuild, catalog: Catalog, board: BoardModel
                         fix_hint=f"Use one of the readings: {sorted(readings)}.",
                     )
                 )
-            if rule.action_actuator and rule.action_actuator not in actuators:
-                issues.append(
-                    issue(
-                        "BEHAVIOR_UNKNOWN_ACTUATOR",
-                        f"rule {rule.name!r} acts on unknown actuator "
-                        f"{rule.action_actuator!r}.",
-                        fix_hint=f"Use one of the actuators: {sorted(actuators)}.",
+            if rule.action_actuator:
+                if rule.action_actuator not in actuators:
+                    issues.append(
+                        issue(
+                            "BEHAVIOR_UNKNOWN_ACTUATOR",
+                            f"rule {rule.name!r} acts on unknown actuator "
+                            f"{rule.action_actuator!r}.",
+                            fix_hint=f"Use one of the actuators: {sorted(actuators)}.",
+                        )
                     )
-                )
+                else:
+                    issues.append(
+                        issue(
+                            "BEHAVIOR_RULE_ACTUATOR_UNSUPPORTED",
+                            f"rule {rule.name!r} drives actuator {rule.action_actuator!r}, but "
+                            "behavior rules do not support direct actuator actions.",
+                            part_ids=[rule.action_actuator],
+                            fix_hint=(
+                                "Set action_reading to a valid reading name to log rule triggers, "
+                                "or display values with display_lines; leave action_actuator empty."
+                            ),
+                        )
+                    )
             if not rule.action_reading and not rule.action_actuator:
                 issues.append(
                     issue(
@@ -172,6 +244,28 @@ def validate_behaviors(spec: SupportedBuild, catalog: Catalog, board: BoardModel
                         f"{line.reading!r} is in {readings[line.reading]!r}.",
                         part_ids=[line.target_instance],
                         fix_hint="Make the display line's unit match the reading's unit.",
+                    )
+                )
+
+    for part_ref in spec.parts:
+        part = catalog.get_or_none(part_ref.part_id)
+        if part is None or part.category.value != "actuator":
+            continue
+        if part_ref.instance_id not in checked_actuators:
+            checked_actuators.add(part_ref.instance_id)
+            if not _actuator_has_board_control(spec, catalog, board, part_ref.instance_id):
+                issues.append(
+                    issue(
+                        "ACTUATOR_NO_CONTROL_GPIO",
+                        f"actuator {part_ref.instance_id!r} ({part.id}) has no control pin "
+                        "connected directly to an output-capable board GPIO.",
+                        part_ids=[part_ref.instance_id],
+                        fix_hint=(
+                            "Connect the actuator control pin to a board GPIO. "
+                            "For led_5mm: ANODE -> a board GPIO, CATHODE -> "
+                            "resistor_220r -> board GND; do not power the LED "
+                            "from a rail."
+                        ),
                     )
                 )
 

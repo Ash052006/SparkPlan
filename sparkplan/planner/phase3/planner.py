@@ -28,7 +28,13 @@ from typing import Any
 from pydantic import ValidationError
 
 from sparkplan.geometry.generate import generate_enclosure
-from sparkplan.llm.phase3.client import LLMClient, LLMError, LLMResponse
+from sparkplan.llm.phase3.client import (
+    LLMAuthenticationError,
+    LLMClient,
+    LLMError,
+    LLMQuotaOrRateLimitError,
+    LLMResponse,
+)
 from sparkplan.models.buildspec import (
     SupportedBuild,
     UnsupportedBuild,
@@ -143,7 +149,7 @@ class Planner:
                 )
                 if round_no >= MAX_REPAIR_ROUNDS:
                     break
-                user = _repair_prompt(raw, response.data, trunc_issues)
+                user = _repair_prompt(raw, response.data, trunc_issues, self.catalog)
                 continue
 
             parsed, parse_issues = _parse(response, self.catalog)
@@ -162,7 +168,7 @@ class Planner:
                 )
                 if round_no >= MAX_REPAIR_ROUNDS:
                     break
-                user = _repair_prompt(raw, response.data, parse_issues)
+                user = _repair_prompt(raw, response.data, parse_issues, self.catalog)
                 continue
 
             if isinstance(parsed, UnsupportedBuild):
@@ -214,7 +220,7 @@ class Planner:
                     )
                     if not geometry_repaired and round_no < MAX_REPAIR_ROUNDS:
                         geometry_repaired = True
-                        user = _repair_prompt(raw, response.data, geom_errors)
+                        user = _repair_prompt(raw, response.data, geom_errors, self.catalog)
                         continue
                     break
                 attempts.append(
@@ -256,7 +262,7 @@ class Planner:
             )
             if round_no >= MAX_REPAIR_ROUNDS:
                 break
-            user = _repair_prompt(raw, response.data, report.errors)
+            user = _repair_prompt(raw, response.data, report.errors, self.catalog)
 
         return _failed(
             idea,
@@ -332,6 +338,27 @@ def _parse_issue(exc: ValidationError) -> Issue:
 
 
 def _transport_issues(exc: LLMError) -> list[Issue]:
+    if isinstance(exc, LLMQuotaOrRateLimitError):
+        return [
+            Issue(
+                code="LLM_RATE_LIMITED",
+                severity="error",
+                message=str(exc),
+                fix_hint=(
+                    "Provider quota or rate limit reached. "
+                    "Wait before retrying or check provider quota."
+                ),
+            )
+        ]
+    if isinstance(exc, LLMAuthenticationError):
+        return [
+            Issue(
+                code="LLM_AUTH_FAILED",
+                severity="error",
+                message=str(exc),
+                fix_hint="Check SPARKPLAN_LLM_API_KEY and provider access permissions.",
+            )
+        ]
     return [
         Issue(
             code="LLM_TRANSPORT",
@@ -353,7 +380,63 @@ def _unsupported_issues(parsed: UnsupportedBuild) -> list[Issue]:
     ]
 
 
-def _repair_prompt(idea: str, previous: dict[str, Any] | None, issues: list[Issue]) -> str:
+def _instance_part_ids(previous: dict[str, Any] | None) -> dict[str, str]:
+    payload = unwrap_provider_response(previous)
+    if not isinstance(payload, dict):
+        return {}
+    parts = payload.get("parts")
+    if not isinstance(parts, list):
+        return {}
+    mapping: dict[str, str] = {}
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        instance_id = part.get("instance_id")
+        part_id = part.get("part_id")
+        if isinstance(instance_id, str) and isinstance(part_id, str):
+            mapping[instance_id] = part_id
+    return mapping
+
+
+def _passive_pin_guidance(
+    previous: dict[str, Any] | None,
+    issues: list[Issue],
+    catalog: Catalog | None,
+) -> list[str]:
+    """Component-specific advice for an invented pin on a two-terminal passive."""
+    if catalog is None:
+        return []
+    instance_parts = _instance_part_ids(previous)
+    guidance: list[str] = []
+    seen: set[str] = set()
+    for issue in issues:
+        if issue.code != "PIN_UNKNOWN":
+            continue
+        for instance_id in issue.part_ids:
+            part_id = instance_parts.get(instance_id, instance_id)
+            if instance_id in seen:
+                continue
+            part = catalog.get_or_none(part_id)
+            if part is None or part.category.value != "passive" or len(part.pins) != 2:
+                continue
+            seen.add(instance_id)
+            pin_names = " and ".join(pin.name for pin in part.pins)
+            guidance.append(
+                f"{instance_id} ({part.id}) is a two-terminal passive and exposes "
+                f"only pins {pin_names}. Use those pins to connect it between the "
+                "relevant circuit nodes; do not invent GND, VCC, or another pin, "
+                "and do not move the circuit to a different GPIO unless the "
+                "specification requires it."
+            )
+    return guidance
+
+
+def _repair_prompt(
+    idea: str,
+    previous: dict[str, Any] | None,
+    issues: list[Issue],
+    catalog: Catalog | None = None,
+) -> str:
     machine = json.dumps(
         [
             {
@@ -367,11 +450,42 @@ def _repair_prompt(idea: str, previous: dict[str, Any] | None, issues: list[Issu
         ],
         indent=1,
     )
+    passive_guidance = _passive_pin_guidance(previous, issues, catalog)
+    guidance_lines = [
+        "WIRING RULES: Use only pins declared by each part; never invent GND, "
+        "VCC, or any other pin. Add power/ground connections only for parts that "
+        "expose those pins and whose wiring requires them. Two-terminal passives "
+        "such as resistor_220r have only "
+        "A/B and may connect between circuit nodes, including part-to-part."
+    ]
+    if any(issue.code == "ACTUATOR_NO_CONTROL_GPIO" for issue in issues):
+        guidance_lines.append(
+            "An actuator such as led_5mm must have its control pin connected "
+            "directly to an output-capable board GPIO. For led_5mm: ANODE -> a "
+            "board GPIO, CATHODE -> resistor_220r -> board GND; never power the "
+            "LED from a rail."
+        )
+    if any(issue.code == "BEHAVIOR_RULE_ACTUATOR_UNSUPPORTED" for issue in issues):
+        guidance_lines.append(
+            "Behavior rules do not support direct actuator actions: action_actuator "
+            'must be empty (""). Rules can only log events using action_reading '
+            'referencing a declared reading (e.g. "motion"). Use display_lines to '
+            "show readings on a display."
+        )
+    if any(issue.code in {"BEHAVIOR_UNKNOWN_READING", "BEHAVIOR_NO_ACTION"} for issue in issues):
+        guidance_lines.append(
+            "Every rule must set action_reading to an existing reading declared in "
+            'behaviors.readings (e.g. "motion"). Never invent reading names such as '
+            "'led_on' or 'light'; action_actuator must be empty (\"\")."
+        )
+    guidance_lines.extend(passive_guidance)
+    guidance = "\n".join(guidance_lines)
     return (
         f"{build_user_message(idea)}\n\n"
         "YOUR PREVIOUS REPLY WAS INVALID:\n"
         f"{json.dumps(unwrap_provider_response(previous), separators=(',', ':'))}\n\n"
         f"DETERMINISTIC VALIDATOR ERRORS (fix every error):\n{machine}\n\n"
+        f"{guidance}\n\n"
         'Reply with the corrected BuildSpec inside {"build": <BuildSpec>} JSON only.'
     )
 

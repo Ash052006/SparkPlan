@@ -775,6 +775,23 @@ code {
   font-weight: 650;
 }
 
+.stage-finding-group + .stage-finding-group {
+  margin-top: 16px;
+}
+
+.stage-finding-group h3 {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+}
+
+.stage-finding-group .muted {
+  margin: 0 0 8px;
+}
+
+.stage-finding-group .issue-list {
+  margin-top: 8px;
+}
+
 .issue-list {
   display: grid;
   gap: 9px;

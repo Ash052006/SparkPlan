@@ -1,0 +1,61 @@
+{
+  "status": "ok",
+  "title": "Series resistor buzzer",
+  "summary": "A piezo buzzer driven through a series resistor.",
+  "parts": [
+    {
+      "instance_id": "board",
+      "part_id": "esp32_devkit_30pin"
+    },
+    {
+      "instance_id": "buzzer",
+      "part_id": "piezo_buzzer_passive"
+    },
+    {
+      "instance_id": "res",
+      "part_id": "resistor_220r"
+    }
+  ],
+  "connections": [
+    {
+      "from_instance": "buzzer",
+      "from_pin": "POS",
+      "to_instance": "res",
+      "to_pin": "B",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "res",
+      "from_pin": "A",
+      "to_instance": "board",
+      "to_pin": "D25",
+      "signal_role": "signal"
+    },
+    {
+      "from_instance": "buzzer",
+      "from_pin": "NEG",
+      "to_instance": "board",
+      "to_pin": "GND",
+      "signal_role": "gnd"
+    }
+  ],
+  "layout": [
+    {
+      "part_id": "piezo_buzzer_passive",
+      "mount": "lid"
+    },
+    {
+      "part_id": "resistor_220r",
+      "mount": "base"
+    }
+  ],
+  "behaviors": [
+    {
+      "name": "Beep",
+      "part_ids": [
+        "piezo_buzzer_passive"
+      ],
+      "description": "Pulse the buzzer."
+    }
+  ]
+}

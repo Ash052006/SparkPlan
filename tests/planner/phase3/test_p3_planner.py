@@ -5,7 +5,14 @@ from __future__ import annotations
 import json
 
 import pytest
-from sparkplan.llm.phase3 import FakeLLM, LLMError, LLMRetryableError, LLMUsage
+from sparkplan.llm.phase3 import (
+    FakeLLM,
+    LLMAuthenticationError,
+    LLMError,
+    LLMQuotaOrRateLimitError,
+    LLMRetryableError,
+    LLMUsage,
+)
 from sparkplan.planner.phase3 import MAX_LLM_CALLS, MAX_REPAIR_ROUNDS, Planner, PlanStatus
 from tests.planner.phase3.conftest import unsupported_spec, valid_spec
 
@@ -161,3 +168,19 @@ def test_transport_error_is_failed_not_refused(catalog):
     assert result.status is PlanStatus.FAILED
     assert result.status is not PlanStatus.REFUSED
     assert any(i.code == "LLM_TRANSPORT" for i in result.issues)
+
+
+def test_rate_limit_error_emits_distinct_issue(catalog):
+    llm = FakeLLM(script=[LLMQuotaOrRateLimitError("quota exhausted")])
+    result = Planner(llm, catalog).plan("a desk plant monitor")
+    assert result.status is PlanStatus.FAILED
+    assert any(i.code == "LLM_RATE_LIMITED" for i in result.issues)
+    assert not any(i.code == "LLM_TRANSPORT" for i in result.issues)
+
+
+def test_auth_error_emits_distinct_issue(catalog):
+    llm = FakeLLM(script=[LLMAuthenticationError("unauthorized")])
+    result = Planner(llm, catalog).plan("a desk plant monitor")
+    assert result.status is PlanStatus.FAILED
+    assert any(i.code == "LLM_AUTH_FAILED" for i in result.issues)
+    assert not any(i.code == "LLM_TRANSPORT" for i in result.issues)

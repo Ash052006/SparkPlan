@@ -116,15 +116,17 @@ def test_compaction_preserved_electrical_requirements(catalog):
 def test_layout_part_id_is_distinct_from_instance_id(catalog):
     system = build_system_prompt(catalog)
     assert "catalog id from `parts`" in system
-    assert "never the\n   instance_id" in system
+    assert "never the instance_id such" in system
     assert "ssd1306_oled_096" in system
     assert '"oled"' in system
 
 
-def test_connections_are_documented_peripheral_first(catalog):
+def test_connections_allow_board_or_part_targets(catalog):
     system = build_system_prompt(catalog)
-    assert "written peripheral -> board" in system
-    assert "from_* is the non-board part" in system
+    assert "Connections may target the board OR another part" in system
+    assert "from_* is the\n   source instance" in system
+    assert "part-to-part" in system
+    assert "resistor_220r has only A and B" in system
 
 
 def test_prompt_injection_defense_intact(catalog):

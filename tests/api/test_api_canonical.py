@@ -279,6 +279,27 @@ def test_missing_llm_is_a_safe_503(
     assert "SPARKPLAN_LLM_API_KEY" not in response.text
 
 
+def test_misconfigured_llm_reports_configuration_error_without_secrets(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from sparkplan.llm.phase3 import LLMConfigurationError
+
+    def misconfigured() -> object:
+        raise LLMConfigurationError("Missing required LLM configuration: SPARKPLAN_LLM_API_KEY")
+
+    monkeypatch.setattr("api.canonical.make_llm_from_env", misconfigured)
+    client = client_for(tmp_path, llm=None)
+
+    response = client.post("/plan", json={"idea": "a desk plant monitor"})
+
+    assert response.status_code == 503
+    detail = response.json()["detail"]
+    assert detail["code"] == "llm_configuration_error"
+    assert "The canonical LLM is not configured correctly" in detail["message"]
+    assert "SPARKPLAN_LLM_API_KEY" in detail["message"]
+
+
 def test_files_are_allowlisted_and_report_and_trace_are_served(tmp_path: Path) -> None:
     persist_all(tmp_path / "runs")
     client = client_for(tmp_path)

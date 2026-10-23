@@ -2,7 +2,7 @@
 
 * each part VCC connection must name a rail whose voltage is inside the part's
   supply range (error)
-* every part must have at least one GND connection (error)
+* every part with a GND pin must have at least one GND connection (error)
 * the sum of current per rail is checked against the rail budget:
   - errors when the budget is exceeded
   - warnings above 80 % of the budget
@@ -30,6 +30,32 @@ def _uses_peak_current(part: Part) -> bool:
     return any(part.has_capability(c) for c in PEAK_CURRENT_CAPABILITIES)
 
 
+def _has_board_ground_path(
+    spec: SupportedBuild,
+    catalog: Catalog,
+    grounded_pins: set[tuple[str, str]],
+    instance_id: str,
+    pin_name: str,
+) -> bool:
+    """True when a GND pin reaches board GND directly or through a series passive."""
+    if (instance_id, pin_name) in grounded_pins:
+        return True
+    for conn in spec.connections:
+        if conn.from_instance == instance_id and conn.from_pin == pin_name:
+            other_instance, other_pin = conn.to_instance, conn.to_pin
+        elif conn.to_instance == instance_id and conn.to_pin == pin_name:
+            other_instance, other_pin = conn.from_instance, conn.from_pin
+        else:
+            continue
+        passive = _part_for(spec, catalog, other_instance)
+        if passive is None or passive.category.value != "passive" or len(passive.pins) != 2:
+            continue
+        for pin in passive.pins:
+            if pin.name != other_pin and (other_instance, pin.name) in grounded_pins:
+                return True
+    return False
+
+
 def validate_power(spec: SupportedBuild, catalog: Catalog, board: BoardModel) -> list[Issue]:
     issues: list[Issue] = []
 
@@ -37,12 +63,20 @@ def validate_power(spec: SupportedBuild, catalog: Catalog, board: BoardModel) ->
 
     # instance id -> rail name
     vcc_rail: dict[str, str] = {}
-    has_gnd: set[str] = set()
+    board_instances = {
+        ref.instance_id
+        for ref in spec.parts
+        if (part := catalog.get_or_none(ref.part_id)) is not None and part.category.value == "board"
+    }
+    grounded_pins: set[tuple[str, str]] = set()
     for conn in spec.connections:
         if conn.signal_role == "rail":
             vcc_rail.setdefault(conn.from_instance, conn.rail_name or conn.to_pin)
         elif conn.signal_role == "gnd":
-            has_gnd.add(conn.from_instance)
+            if conn.from_instance in board_instances and conn.from_pin.upper() == "GND":
+                grounded_pins.add((conn.to_instance, conn.to_pin))
+            elif conn.to_instance in board_instances and conn.to_pin.upper() == "GND":
+                grounded_pins.add((conn.from_instance, conn.from_pin))
 
     rail_current_ma: dict[str, float] = {r.name: 0.0 for r in board.rails}
     rail_users: dict[str, list[str]] = {r.name: [] for r in board.rails}
@@ -56,6 +90,7 @@ def validate_power(spec: SupportedBuild, catalog: Catalog, board: BoardModel) ->
             continue
 
         has_vcc_pin = any(p.role.value == "vcc" for p in part.pins)
+        has_gnd_pin = any(p.role.value == "gnd" for p in part.pins)
 
         # VCC to a rail inside its supply range
         rail_name = vcc_rail.get(part_ref.instance_id)
@@ -99,16 +134,21 @@ def validate_power(spec: SupportedBuild, catalog: Catalog, board: BoardModel) ->
                 if _uses_peak_current(part):
                     rail_peak[rail.name] = True
 
-        # GND connected
-        if part_ref.instance_id not in has_gnd:
-            issues.append(
-                issue(
-                    "NO_GROUND",
-                    f"{part_ref.instance_id} ({part.id}) has no GND connection.",
-                    part_ids=[part_ref.instance_id],
-                    fix_hint="Connect the part's GND pin to a board GND.",
+        # GND connected (only parts that expose a GND pin need one)
+        if has_gnd_pin:
+            gnd_pins = [p.name for p in part.pins if p.role.value == "gnd"]
+            if not any(
+                _has_board_ground_path(spec, catalog, grounded_pins, part_ref.instance_id, gnd_pin)
+                for gnd_pin in gnd_pins
+            ):
+                issues.append(
+                    issue(
+                        "NO_GROUND",
+                        f"{part_ref.instance_id} ({part.id}) has no GND connection.",
+                        part_ids=[part_ref.instance_id],
+                        fix_hint="Connect the part's GND pin to a board GND.",
+                    )
                 )
-            )
 
     # budget check
     for rail_name, used_ma in rail_current_ma.items():

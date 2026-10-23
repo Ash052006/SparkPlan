@@ -12,6 +12,22 @@ const warningRunIssue: Issue = {
   ...warning,
 };
 
+const slicerIssue: Issue = {
+  code: "SLICER_UNAVAILABLE",
+  severity: "error",
+  message: "PrusaSlicer is not installed or is not executable.",
+  part_ids: [],
+  fix_hint: "Install prusa-slicer or set SPARKPLAN_SLICER to its executable.",
+};
+
+const arduinoIssue: Issue = {
+  code: "ARDUINO_CLI_MISSING",
+  severity: "error",
+  message: "arduino-cli not found; install it or set SPARKPLAN_ARDUINO_CLI.",
+  part_ids: [],
+  fix_hint: "Install arduino-cli and add it to PATH.",
+};
+
 function stage(name: string, status: "passed" | "failed" | "skipped" | "unverified") {
   return {
     name,
@@ -37,9 +53,17 @@ export const RUN: RunResult = {
       issues: [warning],
     },
     stage("geometry", "passed"),
-    stage("slicing", "passed"),
+    {
+      ...stage("slicing", "unverified"),
+      issues: [slicerIssue],
+      reason: "PrusaSlicer is not installed or is not executable.",
+    },
     stage("firmware_generation", "passed"),
-    stage("firmware_compile", "passed"),
+    {
+      ...stage("firmware_compile", "unverified"),
+      issues: [arduinoIssue],
+      reason: "arduino-cli not found; install it or set SPARKPLAN_ARDUINO_CLI.",
+    },
     stage("guide", "passed"),
   ],
   issues: [warningRunIssue],
@@ -206,8 +230,8 @@ export const TRACE: Trace = {
   idea: "A desk weather station",
   verification: {
     validated: true,
-    compiled: true,
-    sliced: true,
+    compiled: "skipped",
+    sliced: "skipped",
     simulated: "skipped",
   },
   validation_report: {

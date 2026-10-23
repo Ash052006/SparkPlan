@@ -106,7 +106,12 @@ test.describe("successful build", () => {
     await expect(page.getByText("DHT22 temperature and humidity sensor")).toBeVisible();
     await expect(page.getByRole("heading", { name: "Wiring" })).toBeVisible();
     await expect(page.getByText("DHT22 sensor · DATA")).toBeVisible();
-    await expect(page.getByText("MOUNT_CLEARANCE")).toBeVisible();
+    const validationRegion = page.getByRole("region", { name: "Validation" });
+    await expect(validationRegion.getByText("MOUNT_CLEARANCE")).toBeVisible();
+    await expect(validationRegion.getByText("SLICER_UNAVAILABLE")).toHaveCount(0);
+    const stageFindings = page.getByRole("region", { name: "Stage findings" });
+    await expect(stageFindings.getByText("SLICER_UNAVAILABLE")).toBeVisible();
+    await expect(stageFindings.getByText("ARDUINO_CLI_MISSING")).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Firmware" })).toBeVisible();
     await expect(page.getByText("void setup()")).toBeVisible();

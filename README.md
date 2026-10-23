@@ -124,6 +124,13 @@ npm install
 npm run dev        # proxies /plan, /runs, /catalog and health routes to localhost:8000
 ```
 
+If port 8000 is occupied, point Vite at another API port:
+
+```sh
+uv run uvicorn api.app:app --host 127.0.0.1 --port 8010
+SPARKPLAN_API_URL=http://127.0.0.1:8010 npm run dev -- --port 5180
+```
+
 Checks, including the mobile Playwright smoke tests, use mocked API responses and
 need no running backend:
 

@@ -1,18 +1,20 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const apiTarget = process.env.SPARKPLAN_API_URL ?? "http://127.0.0.1:8000";
+
 export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
     proxy: {
-      "/v1": "http://localhost:8000",
-      "/v2": "http://localhost:8000",
-      "/plan": "http://localhost:8000",
-      "/runs": "http://localhost:8000",
-      "/catalog": "http://localhost:8000",
-      "/health": "http://localhost:8000",
-      "/healthz": "http://localhost:8000",
+      "/v1": apiTarget,
+      "/v2": apiTarget,
+      "/plan": apiTarget,
+      "/runs": apiTarget,
+      "/catalog": apiTarget,
+      "/health": apiTarget,
+      "/healthz": apiTarget,
     },
   },
   build: { outDir: "dist" },

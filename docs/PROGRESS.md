@@ -1174,7 +1174,9 @@ branch.
   `passed`/`failed`/`skipped`/unknown, plus a visible `Not physically built.`
   statement; BOM; wiring with catalog pin facts; validation issues with severity;
   read-only firmware with copy; rendered `GUIDE.md`; report/trace/spec artifact
-  links; and bundle download.
+  links; and bundle download. Validation stays scoped to the validation stage;
+  tooling and later-stage findings render in a separate Stage findings panel,
+  so a passed validation badge cannot sit next to unrelated tool errors.
 - Dedicated refusal view using planner-provided reasons, missing capabilities,
   and closest supported alternative. No artifacts or capabilities are invented.
 - Failure view with stage issues and retry.
@@ -1198,9 +1200,9 @@ branch.
   `133 files would be left unchanged.`
 - `npm --prefix web run typecheck`: clean.
 - `npm --prefix web run build`: succeeded; Vite emitted the existing
-  >500 kB chunk-size warning (824.77 kB JS, 227.71 kB gzip).
-- `npm --prefix web run test:e2e`: **2 passed (3.7s)** with Chromium.
-- Mobile screenshots: `docs/phase8/success-390.png` (390×5275) and
+  >500 kB chunk-size warning (825.37 kB JS, 227.74 kB gzip).
+- `npm --prefix web run test:e2e`: **2 passed (3.4s)** with Chromium.
+- Mobile screenshots: `docs/phase8/success-390.png` (390×5752) and
   `docs/phase8/refusal-390.png` (390×2324).
 - CI now installs Chromium and runs the Playwright smoke tests in the web job.
 
@@ -1226,3 +1228,139 @@ branch.
 - The production bundle is a single large chunk because `three.js` is imported
   eagerly; the build passes with a warning.
 - Run background jobs and rate limits remain process-local.
+
+### Phase 8 — macOS toolchain and live UI verification (GATE PASSED)
+
+**Status**
+
+The Phase 8 UI fix was exercised with a real macOS toolchain and then committed
+to `phase-8-web-ui`. Nothing was reset, stashed, or discarded. All results below
+are from this session. The earlier Phase 8 notes saying the toolchain was
+unavailable describe the pre-install state and are superseded by this section.
+
+**Toolchain installed and detected**
+
+- Homebrew: `7.0.10`.
+- `arduino-cli`: `1.5.1`, `/opt/homebrew/bin/arduino-cli` (Homebrew).
+- ESP32 platform: `esp32:esp32` **3.3.12**; `arduino-cli core list` reports
+  `3.3.12` installed and latest.
+- PrusaSlicer: **2.9.6**, installed to
+  `~/Applications/PrusaSlicer.app` to avoid an elevated `/Applications` write.
+  Executable:
+  `/Users/aishwarysaxena/Applications/PrusaSlicer.app/Contents/MacOS/PrusaSlicer`.
+- `arduino-cli` board index includes the official Espressif URL
+  (`https://espressif.github.io/arduino-esp32/package_esp32_index.json`).
+  Default data/user directories: `~/Library/Arduino15` and `~/Documents/Arduino`.
+- Untracked `.env` now sets `SPARKPLAN_ARDUINO_CLI`, `SPARKPLAN_SLICER`, and the
+  documented macOS ctags workaround
+  `SPARKPLAN_ARDUINO_BUILD_PROPERTIES=tools.ctags.pattern=/usr/bin/true`.
+  These local paths are not hardcoded into tracked source files.
+- SparkPlan's own detection functions returned:
+  `arduino_cli=/opt/homebrew/bin/arduino-cli`, `missing=[]`,
+  `prusa_slicer=.../PrusaSlicer`, `version=2.9.6`.
+
+**Existing toolchain checks**
+
+- `uv run python scripts/ci_verify_slice.py` passed. PrusaSlicer 2.9.6 sliced
+  both parts with exit 0: `build/slicing/base.gcode` (2,835,946 bytes) and
+  `build/slicing/lid.gcode` (687,615 bytes). The lid emitted print-stability
+  warnings (floating bridge anchors, low bed adhesion, loose extrusions, long
+  bridging extrusions) but produced nonempty G-code.
+- `uv run python scripts/ci_compile_firmware.py` passed:
+  `servo_test`, `ultrasonic_distance`, `weather_station`,
+  `desk_weather_bme280`, `soil_monitor`, and `valid` all compiled successfully.
+
+**Real API build — PASSED**
+
+- Prompt: “A desk weather station with a DHT22 sensor and an OLED display
+  showing temperature and humidity.”
+- Run: **`b3799f55045c4e1c89c349f0dac20f53`**, status `ok`, all seven stages
+  `passed` (plan 10.19 s, validation 10.19 s, geometry 4.67 s, slicing 1.21 s,
+  firmware_generation 0.002 s, firmware_compile 31.17 s, guide 0.001 s).
+- Artifacts: `spec.json`, `report.json`, `trace.json`, `base.stl`, `lid.stl`,
+  `assembled.stl`, `base.gcode` (2,803,425 bytes), `lid.gcode` (688,681 bytes),
+  `sketch/sketch.ino`, `sketch/libraries.txt`, `sketch/library_manifest.json`,
+  and `GUIDE.md`.
+- Slicing evidence in `trace.json`: PrusaSlicer 2.9.6, base/lid exit code 0,
+  nonempty outputs.
+- Compile evidence in `trace.json`: `compile_status=ok`, `arduino_cli=available`;
+  `Sketch uses 307976 bytes (23%)... Global variables use 23716 bytes (7%)...`.
+- `trace.json.verification`:
+  `validated=true`, `compiled=true`, `sliced=true`, `simulated="skipped"`.
+- `GUIDE.md` reports `Validated: true`, `Compiled: true`, `Sliced: true`,
+  `Simulated: skipped`, and ends with `Not physically built.`
+
+**Live UI build — PASSED**
+
+- A headless Playwright session on `http://127.0.0.1:5180/` submitted the same
+  prompt through the actual form. Run:
+  **`ab39d28d416d490ba0c58c2e84827846`**, all seven stages `passed`.
+- The UI reported Compiled and Sliced as Passed, Simulated as Skipped, showed
+  `Not physically built`, rendered the STL viewer and firmware copy control, and
+  produced no Stage findings. No validation issues were reported.
+- Browser console/page errors: none. Width check at 390 px:
+  `clientWidth=390`, `scrollWidth=390`.
+- Screenshot: `docs/phase8/live-success-390.png` (390×9253).
+
+**Live refusal — PASSED**
+
+- Prompt: “An autonomous drone with GPS and camera.”
+- Run: **`8b6a4a07f0ad4772917b4e50e7e99f23`**, status `unsupported`, no
+  artifacts. Planner reasons, missing capabilities
+  (`senses_gps`, `captures_video`, `propels_aircraft`, `controls_flight`), and
+  the closest alternative were returned.
+- The live UI showed the refusal reasons, chips, and alternative, with no
+  downloads and no viewer. No browser errors or horizontal overflow.
+- Screenshot: `docs/phase8/live-refusal-390.png` (390×2452).
+
+**Live toolchain-failure UI — PASSED**
+
+A separate API/Vite pair on ports 8011/5181 loaded the real configuration but
+overrode `SPARKPLAN_SLICER` and `SPARKPLAN_ARDUINO_CLI` with nonexistent paths.
+This exercised the real pipeline failure path, not a mocked successful tool.
+Run **`f07d3f60f81b4626b77778ece3115890`** finished `ok` with:
+
+- `validation`: **passed**, no issues.
+- `slicing`: **unverified** / `SLICER_UNAVAILABLE`.
+- `firmware_compile`: **unverified** / `ARDUINO_CLI_MISSING`.
+- UI: Validation passed with **zero** slicer/Arduino errors; Stage findings
+  contained both errors; Compiled, Sliced, and Simulated badges all showed
+  Skipped; `Not physically built` remained visible.
+- No browser console/page errors; `clientWidth=390`, `scrollWidth=390`.
+- Screenshot: `docs/phase8/live-toolchain-failure-390.png` (390×9979).
+- The temporary servers were stopped afterward; the normal 8010/5180 servers
+  remain running with the installed toolchain.
+
+**UI fix verified**
+
+`ValidationPanel` now receives only `validationStage.issues`. A new
+`StageFindingsPanel` groups non-validation stage issues, including toolchain
+errors, with the stage label and fix hints. The Playwright success fixture was
+changed to include real-looking `SLICER_UNAVAILABLE` and
+`ARDUINO_CLI_MISSING` stage failures; the test asserts those codes are absent
+from the Validation region and present in Stage findings.
+
+**Tests run this session**
+
+- `make test`: **544 passed, 1 skipped, 2 warnings in 205.64s (0:03:25)**.
+- `make lint`: ruff `All checks passed!`; black
+  `133 files would be left unchanged.`
+- `npm --prefix web run typecheck`: clean.
+- `npm --prefix web run build`: passed; Vite warning for the single 825.37 kB
+  JS chunk (227.74 kB gzip).
+- `npm --prefix web run test:e2e`: **2 passed (3.2s)** in Chromium.
+- `git diff --check`: clean.
+
+**UNVERIFIED / remaining limitations**
+
+- No physical print, wiring, flashing, or hardware test was performed.
+- Simulation remains genuinely unimplemented; `simulated` is `skipped`.
+- The lid slicing warnings mean a real print may need supports/brim; print
+  quality and fit are unverified.
+- GitHub Actions was not run for this worktree at verification time.
+- `make eval` was not run; Phase 7 remains a separate WIP branch and was not
+  touched.
+- Real LLM output can vary; these results are from the two supported runs above.
+- The UI fix, README/Vite local-port override, Playwright fixture changes, and
+  screenshots are committed with Phase 8. `.env` toolchain values and the
+  generated `build/` and `runs/` data are local/untracked.
