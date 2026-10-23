@@ -1364,3 +1364,68 @@ from the Validation region and present in Stage findings.
 - The UI fix, README/Vite local-port override, Playwright fixture changes, and
   screenshots are committed with Phase 8. `.env` toolchain values and the
   generated `build/` and `runs/` data are local/untracked.
+
+## Phase 9 — documentation and demo (GATE PASSED)
+
+**Scope**
+
+Phase 9 is documentation only. The MCP server is explicitly deferred to
+Phase 10; no `sparkplan_mcp/` package was added. No existing stage, validator,
+catalog entry or test was rewritten. Phase 8 was committed as `e00f1c9`,
+merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
+
+**Built**
+
+- `README.md` — one-paragraph pitch, 30-second quickstart, Mermaid architecture
+  diagram, “the LLM proposes, code verifies” section, eval table, Verification
+  table, Limitations and roadmap.
+- `eval/REPORT.md` — the selected 4-case scripted `FakeLLM` result. It is
+  explicitly labelled as a harness/scoring run, not a live pass rate. Slicing
+  and compilation were skipped and are reported separately from passes.
+- `docs/phase9/eval-scripted.json` — committed raw result used by the report.
+- `docs/phase9/repair-trace.json` — copied from the real run
+  `150a12c5521649cc98405f445f926959`. It shows round 0 with
+  `ACTUATOR_NO_CONTROL_GPIO`, `BEHAVIOR_UNKNOWN_READING` and
+  `RAIL_OUT_OF_RANGE`, then round 1 `ok`; all pipeline stages passed,
+  `compiled: true`, `sliced: true`, `simulated: "skipped"`.
+- `docs/phase9/refusal-trace.json` — deterministic `FakeLLM` refusal trace for
+  “a self-balancing personal transporter”. It is labelled deterministic in the
+  demo because no live refusal trace was persisted.
+- `DEMO.md` — 60-second script with exact prompts, on-screen points, the real
+  repair trace and the deterministic refusal trace.
+- `docs/DESIGN_NOTES.md` — three documented failures: repair-loop
+  non-convergence, enclosure wall-run double counting, and firmware that failed
+  a real compile.
+
+**Verification performed**
+
+- `make test`: **569 passed, 1 skipped, 2 warnings in 157.68s (0:02:37)**.
+- `make lint`: ruff `All checks passed!`; black
+  `135 files would be left unchanged.`
+- All three committed JSON evidence files parse with `python3 -m json.tool`.
+- All local Markdown links resolve; the three external GitHub Actions links
+  returned HTTP 200.
+- Clean-clone quickstart: cloned `phase-9-docs-demo` to a fresh temporary
+  directory, ran `uv sync --extra dev`, started `uvicorn`, and got
+  `{"status":"ok"}` from `/health` plus the catalog JSON from `/catalog`.
+  Port 18000 was used for the test because port 8000 was already occupied on
+  this host; the documented command differs only by the port.
+
+**UNVERIFIED / remaining limitations**
+
+- Simulation is still not implemented. There is no Wokwi mapping and no
+  `sparkplan/simulation/` package; `trace.json` reports
+  `simulated: "skipped"`. No part is simulated and no behavior check exists.
+- The eval report is scripted (`FakeLLM`, 4 selected cases). It is not a live
+  model evaluation and must not be quoted as one.
+- No physical build, print, wiring, flashing or measurement was performed.
+- No GitHub Actions run was awaited for this docs-only branch. The links in the
+  README point to existing, verified CI runs from earlier phases.
+- The refusal trace is deterministic, not live; the live Phase 8 refusal did
+  not persist a `trace.json`.
+
+**Files changed**
+
+`README.md`, `DEMO.md`, `docs/DESIGN_NOTES.md`, `eval/REPORT.md`,
+`docs/phase9/eval-scripted.json`, `docs/phase9/repair-trace.json`,
+`docs/phase9/refusal-trace.json`, `docs/PROGRESS.md`.

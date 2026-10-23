@@ -1,0 +1,148 @@
+{
+  "artifacts": {},
+  "finished_at": "2026-10-23T06:59:05.558402Z",
+  "idea": "a self-balancing personal transporter",
+  "issues": [],
+  "run_id": "7c829ed3fe184c0e9b2bcd217f49129c",
+  "schema_version": "1.0",
+  "stages": {
+    "firmware_compile": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "firmware_compile",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "firmware_generation": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "firmware_generation",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "geometry_layout": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "geometry_layout",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "geometry_meshes": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "geometry_meshes",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "geometry_stl_export": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "geometry_stl_export",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "guide": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "guide",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "plan": {
+      "artifacts": {},
+      "details": {
+        "plan_status": "refused",
+        "repair_rounds": 0
+      },
+      "duration_ms": 1.312500040512532,
+      "finished_at": "2026-10-23T06:59:05.557789Z",
+      "issues": [
+        {
+          "code": "UNSUPPORTED_IDEA",
+          "fix_hint": "SparkPlan only designs around parts in its catalog. Ideas that require parts outside the catalog must be refused with explicit reasons; never approximate with a similar catalog part.",
+          "message": "A self-balancing transporter needs brushless hub motors, a motor controller and an IMU stabilization loop.; SparkPlan has no motor-driver, brushless-motor or IMU parts and must not approximate them.",
+          "part_ids": [],
+          "severity": "error"
+        }
+      ],
+      "name": "plan",
+      "reason": null,
+      "started_at": "2026-10-23T06:59:05.556480Z",
+      "status": "failed"
+    },
+    "simulation": {
+      "artifacts": {},
+      "details": {},
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "simulation",
+      "reason": "Wokwi or hardware simulation was not performed",
+      "started_at": null,
+      "status": "unverified"
+    },
+    "slicing": {
+      "artifacts": {},
+      "details": {
+        "requested": false
+      },
+      "duration_ms": null,
+      "finished_at": null,
+      "issues": [],
+      "name": "slicing",
+      "reason": "not reached because planning was refused",
+      "started_at": null,
+      "status": "skipped"
+    },
+    "validation": {
+      "artifacts": {},
+      "details": {
+        "path": "Planner.run_validators",
+        "plan_status": "refused"
+      },
+      "duration_ms": 1.3160830130800605,
+      "finished_at": "2026-10-23T06:59:05.557789Z",
+      "issues": [
+        {
+          "code": "UNSUPPORTED_IDEA",
+          "fix_hint": "SparkPlan only designs around parts in its catalog. Ideas that require parts outside the catalog must be refused with explicit reasons; never approximate with a similar catalog part.",
+          "message": "A self-balancing transporter needs brushless hub motors, a motor controller and an IMU stabilization loop.; SparkPlan has no motor-driver, brushless-motor or IMU parts and must not approximate them.",
+          "part_ids": [],
+          "severity": "error"
+        }
+      ],
+      "name": "validation",
+      "reason": "plan did not pass validation",
+      "started_at": "2026-10-23T06:59:05.556480Z",
+      "status": "failed"
+    }
+  },
+  "started_at": "2026-10-23T06:59:05.555657Z",
+  "status": "failed",
+  "tool_versions": {},
+  "trace_write_error": null
+}

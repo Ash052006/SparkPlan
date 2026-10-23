@@ -1,0 +1,272 @@
+{
+  "artifacts": {
+    "assembled_stl": "assembled.stl",
+    "base_stl": "base.stl",
+    "guide": "GUIDE.md",
+    "lid_stl": "lid.stl",
+    "report": "report.json",
+    "sketch": "sketch/sketch.ino",
+    "spec": "spec.json",
+    "trace": "trace.json"
+  },
+  "created_at": "2026-10-22T18:05:13.382349Z",
+  "finished_at": "2026-10-22T18:05:59.892110Z",
+  "idea": "A motion display that lights up when a PIR sensor detects movement.",
+  "issues": [],
+  "run_id": "150a12c5521649cc98405f445f926959",
+  "schema_version": "1.0",
+  "stage_order": [
+    "plan",
+    "validation",
+    "geometry",
+    "slicing",
+    "firmware_generation",
+    "firmware_compile",
+    "guide"
+  ],
+  "stages": [
+    {
+      "artifacts": {},
+      "details": {
+        "attempts": [
+          {
+            "detail": "3 error(s)",
+            "issues": [
+              {
+                "code": "ACTUATOR_NO_CONTROL_GPIO",
+                "fix_hint": "Connect the actuator control pin to a board GPIO. For led_5mm: ANODE -> a board GPIO, CATHODE -> resistor_220r -> board GND; do not power the LED from a rail.",
+                "message": "actuator 'led' (led_5mm) has no control pin connected directly to an output-capable board GPIO.",
+                "part_ids": [
+                  "led"
+                ],
+                "severity": "error"
+              },
+              {
+                "code": "BEHAVIOR_UNKNOWN_READING",
+                "fix_hint": "Use one of the readings: ['motion'].",
+                "message": "rule 'light_on_motion' acts on unknown reading 'led_on'.",
+                "part_ids": [],
+                "severity": "error"
+              },
+              {
+                "code": "RAIL_OUT_OF_RANGE",
+                "fix_hint": "Move the part to a rail inside its supply range.",
+                "message": "pir (pir_hc_sr501) accepts 4.5-5.5 V but rail 3V3 is 3.3 V.",
+                "part_ids": [
+                  "pir"
+                ],
+                "severity": "error"
+              }
+            ],
+            "kind": "validation_error",
+            "round": 0
+          },
+          {
+            "detail": "",
+            "issues": [],
+            "kind": "ok",
+            "round": 1
+          }
+        ],
+        "llm_calls": 2,
+        "plan_status": "ok",
+        "repair_rounds": 1,
+        "total_completion_tokens": 1150,
+        "total_prompt_tokens": 7600
+      },
+      "duration_ms": 24156.62975003943,
+      "evidence": {
+        "llm_calls": "2",
+        "plan_status": "ok",
+        "repair_rounds": "1"
+      },
+      "finished_at": "2026-10-22T18:05:37.539087Z",
+      "issues": [],
+      "name": "plan",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:13.382360Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "spec": "spec.json"
+      },
+      "details": {
+        "by_code": {},
+        "path": "planner.plan",
+        "timings_ms": {
+          "V1_membership": 0.01958396751433611,
+          "V2_pins": 0.09283301187679172,
+          "V3_conflicts": 0.01895800232887268,
+          "V4_power": 0.10445801308378577,
+          "V5_logic_levels": 0.03429199568927288,
+          "V6_i2c": 0.03945903154090047,
+          "V7_completeness": 0.06591703277081251,
+          "V8_behaviors": 0.11570798233151436,
+          "V9_layout": 0.02962502185255289
+        }
+      },
+      "duration_ms": 24157.978291041218,
+      "evidence": {
+        "report_passed": "true"
+      },
+      "finished_at": "2026-10-22T18:05:37.540435Z",
+      "issues": [],
+      "name": "validation",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:13.382360Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "assembled_stl": "assembled.stl",
+        "base_stl": "base.stl",
+        "geometry_report": "geometry_report.json",
+        "lid_stl": "lid.stl"
+      },
+      "details": {
+        "engine": "cadquery",
+        "error_codes": [],
+        "exported": [
+          "base.stl",
+          "lid.stl",
+          "assembled.stl"
+        ]
+      },
+      "duration_ms": 4373.780499969143,
+      "evidence": {
+        "engine": "cadquery"
+      },
+      "finished_at": "2026-10-22T18:05:41.914264Z",
+      "issues": [],
+      "name": "geometry",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:37.540464Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "base_gcode": "base.gcode",
+        "lid_gcode": "lid.gcode"
+      },
+      "details": {
+        "parts": {
+          "base": {
+            "diagnostics": "10 => Processing triangulated mesh\n20 => Generating perimeters\n30 => Preparing infill\n45 => Making infill\n65 => Searching support spots\n69 => Alert if supports needed\nprint warning: Detected print stability issues:\n\nbase.stl\nCollapsing overhang\n\nConsider enabling supports.\n89 => Calculating overhanging perimeters\n88 => Generating skirt and brim\n90 => Exporting G-code to ~/Desktop/Projects/SparkPlan/runs/150a12c5521649cc98405f445f926959/base.gcode\nSlicing result exported to ~/Desktop/Projects/SparkPlan/runs/150a12c5521649cc98405f445f926959/base.gcode",
+            "duration_ms": 896.4985000202432,
+            "exit_code": 0,
+            "input": "base.stl",
+            "output": "base.gcode",
+            "status": "passed"
+          },
+          "lid": {
+            "diagnostics": "10 => Processing triangulated mesh\n20 => Generating perimeters\n30 => Preparing infill\n45 => Making infill\n65 => Searching support spots\n69 => Alert if supports needed\nprint warning: Detected print stability issues:\n\nlid.stl\nFloating bridge anchors, Loose extrusions, Long bridging extrusions\n\nConsider enabling supports.\n89 => Calculating overhanging perimeters\n88 => Generating skirt and brim\n90 => Exporting G-code to ~/Desktop/Projects/SparkPlan/runs/150a12c5521649cc98405f445f926959/lid.gcode\nSlicing result exported to ~/Desktop/Projects/SparkPlan/runs/150a12c5521649cc98405f445f926959/lid.gcode",
+            "duration_ms": 158.34987495327368,
+            "exit_code": 0,
+            "input": "lid.stl",
+            "output": "lid.gcode",
+            "status": "passed"
+          }
+        },
+        "profile": "prusaslicer.ini",
+        "reason": null,
+        "requested": true,
+        "slicer": "PrusaSlicer",
+        "version": "2.9.6"
+      },
+      "duration_ms": 1213.835124974139,
+      "evidence": {
+        "requested": "true",
+        "slicer": "PrusaSlicer",
+        "version": "2.9.6"
+      },
+      "finished_at": "2026-10-22T18:05:43.128146Z",
+      "issues": [],
+      "name": "slicing",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:41.914299Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "sketch": "sketch/sketch.ino"
+      },
+      "details": {
+        "characters": 1539,
+        "libraries": [],
+        "readings": 1
+      },
+      "duration_ms": 1.1060420074500144,
+      "evidence": {
+        "libraries": "0"
+      },
+      "finished_at": "2026-10-22T18:05:43.129351Z",
+      "issues": [],
+      "name": "firmware_generation",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:43.128245Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "library_manifest": "sketch/library_manifest.json"
+      },
+      "details": {
+        "compile_log": "Sketch uses 271792 bytes (20%) of program storage space. Maximum is 1310720 bytes.\nGlobal variables use 22124 bytes (6%) of dynamic memory, leaving 305556 bytes for local variables. Maximum is 327680 bytes.\n",
+        "compile_status": "ok"
+      },
+      "duration_ms": 16761.513124976773,
+      "evidence": {
+        "arduino_cli": "available",
+        "compile_status": "ok"
+      },
+      "finished_at": "2026-10-22T18:05:59.890970Z",
+      "issues": [],
+      "name": "firmware_compile",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:43.129385Z",
+      "status": "passed"
+    },
+    {
+      "artifacts": {
+        "guide": "GUIDE.md"
+      },
+      "details": {
+        "characters": 4046
+      },
+      "duration_ms": 0.69966702722013,
+      "evidence": {
+        "characters": "4046"
+      },
+      "finished_at": "2026-10-22T18:05:59.891793Z",
+      "issues": [],
+      "name": "guide",
+      "reason": null,
+      "started_at": "2026-10-22T18:05:59.891092Z",
+      "status": "passed"
+    }
+  ],
+  "status": "ok",
+  "updated_at": "2026-10-22T18:05:59.892110Z",
+  "validation_report": {
+    "issues": [],
+    "passed": true,
+    "timings_ms": {
+      "V1_membership": 0.01958396751433611,
+      "V2_pins": 0.09283301187679172,
+      "V3_conflicts": 0.01895800232887268,
+      "V4_power": 0.10445801308378577,
+      "V5_logic_levels": 0.03429199568927288,
+      "V6_i2c": 0.03945903154090047,
+      "V7_completeness": 0.06591703277081251,
+      "V8_behaviors": 0.11570798233151436,
+      "V9_layout": 0.02962502185255289
+    }
+  },
+  "verification": {
+    "compiled": true,
+    "simulated": "skipped",
+    "sliced": true,
+    "validated": true
+  }
+}
