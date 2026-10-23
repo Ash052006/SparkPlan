@@ -79,7 +79,9 @@ Point at:
 - `stages[0].issues[0].message`: the two reasons. It says the build needs
   brushless hub motors, a motor controller and an IMU stabilization loop, and
   that the catalog has no matching parts.
-- every later stage is `skipped` because planning was refused.
+- `validation` is `failed` because the plan was refused; `geometry`, `slicing`,
+  `firmware_generation`, `firmware_compile` and `guide` are `skipped`; the
+  `simulation` stage is `unverified`.
 - there is no `spec.json`, `base.stl`, firmware or guide.
 
 Say: **“It refuses rather than substituting a similar part. The reason is
