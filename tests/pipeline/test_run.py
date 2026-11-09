@@ -113,19 +113,33 @@ def fake_compile(*, status: str = "ok", errors: list[Issue] | None = None) -> An
         sketch_name: str | None = None,
         write_sketch_file: bool = True,
     ) -> FirmwareResult:
+        directory = Path(directory)
         calls.append(
             {
-                "directory": Path(directory),
+                "directory": directory,
                 "sketch_name": sketch_name,
                 "write_sketch_file": write_sketch_file,
             }
         )
+        firmware_bin: Path | None = None
+        firmware_elf: Path | None = None
+        build_path: Path | None = None
+        if status == "ok":
+            build_path = directory / "build"
+            build_path.mkdir(parents=True, exist_ok=True)
+            firmware_bin = build_path / "sketch.ino.bin"
+            firmware_elf = build_path / "sketch.ino.elf"
+            firmware_bin.write_bytes(b"\x00fake firmware")
+            firmware_elf.write_bytes(b"\x7ffake elf")
         return FirmwareResult(
             sketch=result.sketch,
             libraries=result.libraries,
             compile_status=status,  # type: ignore[arg-type]
-            compile_log=f"compiled {Path(directory) / (sketch_name or 'sparkplan.ino')}",
+            compile_log=f"compiled {directory / (sketch_name or 'sparkplan.ino')}",
             issues=list(errors or []),
+            build_path=build_path,
+            firmware_bin=firmware_bin,
+            firmware_elf=firmware_elf,
         )
 
     compile_result.calls = calls  # type: ignore[attr-defined]
@@ -175,13 +189,29 @@ def test_success_persists_required_artifacts_and_ordered_stages(
 
     assert result.status is RunStatus.OK
     assert [stage.name for stage in result.stages] == list(run_module.STAGE_ORDER)
-    assert [stage.status for stage in result.stages] == [StageStatus.PASSED] * 7
+    assert [stage.status for stage in result.stages] == [
+        StageStatus.PASSED,
+        StageStatus.PASSED,
+        StageStatus.PASSED,
+        StageStatus.PASSED,
+        StageStatus.PASSED,
+        StageStatus.PASSED,
+        StageStatus.UNVERIFIED,
+        StageStatus.PASSED,
+    ]
+    assert result.stage("simulation").evidence["simulation_status"] == "skipped"  # type: ignore[union-attr]
     assert {
         "spec",
         "base_stl",
         "lid_stl",
         "assembled_stl",
         "sketch",
+        "firmware_bin",
+        "firmware_elf",
+        "simulation_diagram",
+        "simulation_config",
+        "simulation_scenario",
+        "simulation_project",
         "guide",
         "report",
         "trace",
@@ -644,3 +674,25 @@ def test_geometry_error_gets_one_repair_and_is_recorded_in_the_trace(
     assert plan_details["repair_rounds"] == 1
     assert [attempt["kind"] for attempt in attempts] == ["geometry_error", "ok"]
     assert trace["verification"]["validated"] is True
+
+
+def test_unexpected_simulation_exception_is_recorded_as_a_failed_stage(
+    tmp_path: Path, catalog: Catalog, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def explode(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("wokwi runner exploded")
+
+    monkeypatch.setattr(run_module, "generate_enclosure", fake_geometry(catalog))
+    monkeypatch.setattr(run_module, "verify_slice", fake_slice())
+    monkeypatch.setattr(run_module, "compile_firmware", fake_compile())
+    monkeypatch.setattr(run_module, "run_simulation", explode)
+
+    result = run_once(tmp_path, catalog)
+
+    assert result.status is RunStatus.FAILED
+    simulation = result.stage("simulation")
+    assert simulation is not None
+    assert simulation.status is StageStatus.FAILED
+    assert [issue.code for issue in simulation.issues] == ["SIMULATION_RUN_FAILED"]
+    assert "wokwi runner exploded" in (simulation.reason or "")
+    assert (tmp_path / "runs" / "test_run" / "report.json").is_file()

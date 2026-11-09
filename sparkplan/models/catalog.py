@@ -225,6 +225,39 @@ class Firmware(_Strict):
         return v
 
 
+class WokwiPart(_Strict):
+    """How a catalog part is represented in a Wokwi diagram.
+
+    ``pin_map`` maps catalog pin names to the Wokwi part's pin ids. A missing
+    map entry means the catalog pin has no simulator equivalent. ``None`` on
+    the part means the part cannot be simulated at all.
+    """
+
+    type: str = Field(min_length=1, pattern=r"^[a-z0-9][a-z0-9.-]*$")
+    pin_map: dict[str, str] = Field(default_factory=dict)
+    attrs: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("pin_map")
+    @classmethod
+    def _pin_map_is_mapping(cls, v: dict[str, str]) -> dict[str, str]:
+        for catalog_pin, wokwi_pin in v.items():
+            if not catalog_pin or not wokwi_pin:
+                raise ValueError("wokwi pin_map entries must be non-empty")
+        if len(set(v.values())) != len(v):
+            raise ValueError("wokwi pin_map maps multiple catalog pins to the same simulator pin")
+        return v
+
+    @field_validator("attrs")
+    @classmethod
+    def _attrs_are_scalars(cls, v: dict[str, str]) -> dict[str, str]:
+        for key, value in v.items():
+            if not re.fullmatch(r"[a-z][a-z0-9_-]*", key):
+                raise ValueError(f"wokwi attr name {key!r} is not a lowercase identifier")
+            if not isinstance(value, str) or not value:
+                raise ValueError(f"wokwi attr {key!r} must be a non-empty string")
+        return v
+
+
 # ---------------------------------------------------------------------------
 # Board-specific models
 # ---------------------------------------------------------------------------
@@ -349,6 +382,7 @@ class Part(_Strict):
     heat_source: bool = False
     capabilities: list[str] = Field(default_factory=list)
     firmware: Firmware = Field(default_factory=Firmware)
+    wokwi: WokwiPart | None = None
     notes: str = ""
     board: BoardModel | None = None
 
@@ -388,6 +422,12 @@ class Part(_Strict):
                 raise ValueError(
                     f"part {self.id!r} pin_map[{placeholder!r}] names unknown pin {pin_name!r}"
                 )
+        if self.wokwi is not None:
+            for pin_name in self.wokwi.pin_map:
+                if self.pin(pin_name) is None:
+                    raise ValueError(
+                        f"part {self.id!r} wokwi.pin_map names unknown pin {pin_name!r}"
+                    )
         return self
 
     def pin(self, name: str) -> Pin | None:

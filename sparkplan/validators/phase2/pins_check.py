@@ -98,14 +98,23 @@ def validate_pins(spec: SupportedBuild, catalog: Catalog, board: BoardModel) -> 
         assert gpio_pin is not None
         involved = [conn.from_instance, conn.to_instance]
 
-        # flash-reserved: hard error
-        if gpio_pin.forbidden:
+        # flash-reserved or UART0-reserved: hard error
+        if gpio_pin.forbidden or gpio in {1, 3}:
+            is_flash = gpio in {6, 7, 8, 9, 10, 11}
+            msg = (
+                f"GPIO{gpio} is wired to the SPI flash and must never be used."
+                if is_flash
+                else (
+                    f"GPIO{gpio} is reserved for USB serial communication (UART0) "
+                    "and must not be used for peripherals."
+                )
+            )
             issues.append(
                 issue(
-                    "GPIO_FLASH_RESERVED",
-                    f"GPIO{gpio} is wired to the SPI flash and must never be used.",
+                    "GPIO_FLASH_RESERVED" if is_flash else "GPIO_RESERVED",
+                    msg,
                     part_ids=involved,
-                    fix_hint="Move this signal to a general-purpose GPIO.",
+                    fix_hint="Move this signal to a general-purpose GPIO such as D4 or D25.",
                 )
             )
 

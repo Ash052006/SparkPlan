@@ -57,6 +57,7 @@ STAGE_NAMES = (
     "slicing",
     "firmware_generation",
     "firmware_compile",
+    "simulation",
     "guide",
 )
 
@@ -198,6 +199,37 @@ def test_default_runner_persists_and_serves_canonical_artifacts(
         artifact = client.get(f"/v2/runs/{body['run_id']}/artifacts/{name}")
         assert artifact.status_code == 200, name
         assert artifact.content
+
+
+def test_unexpected_simulation_failure_is_a_failed_run_not_500(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    catalog = get_catalog()
+    monkeypatch.setattr(run_module, "generate_enclosure", fake_geometry(catalog))
+    monkeypatch.setattr(run_module, "verify_slice", fake_slice())
+    monkeypatch.setattr(run_module, "compile_firmware", fake_compile())
+
+    def explode(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("wokwi runner exploded")
+
+    monkeypatch.setattr(run_module, "run_simulation", explode)
+    app = create_app(
+        canonical_llm=FakeLLM(script=[valid_spec()]),
+        canonical_catalog=catalog,
+        runs_root=tmp_path / "runs",
+    )
+    client = TestClient(app)
+
+    response = client.post("/v2/runs", json={"idea": "a desk plant monitor"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "failed"
+    simulation = next(stage for stage in body["stages"] if stage["name"] == "simulation")
+    assert simulation["status"] == "failed"
+    assert [issue["code"] for issue in simulation["issues"]] == ["SIMULATION_RUN_FAILED"]
+    assert (tmp_path / "runs" / body["run_id"] / "report.json").is_file()
 
 
 @pytest.mark.parametrize(

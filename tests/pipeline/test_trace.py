@@ -83,7 +83,7 @@ def test_trace_written_for_successful_run(tmp_path):
     assert trace["schema_version"] == "1.0"
     assert trace["run_id"] == result.run_id
     assert trace["status"] == "passed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "passed"
@@ -93,6 +93,7 @@ def test_trace_written_for_successful_run(tmp_path):
     assert trace["stages"]["firmware_compile"]["status"] == "skipped"
     assert trace["stages"]["guide"]["status"] == "passed"
     assert trace["stages"]["slicing"]["status"] == "skipped"
+    assert trace["stages"]["simulation"]["status"] == "unverified"
     assert trace["stages"]["slicing"]["details"]["requested"] is False
     assert trace["stages"]["simulation"]["status"] == "unverified"
     assert trace["stages"]["slicing"]["reason"] == "slicing was not requested"
@@ -253,7 +254,7 @@ def test_trace_records_refused_plan(tmp_path):
     assert result.status == "refused"
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "failed"
     assert trace["stages"]["validation"]["status"] == "failed"
     for stage in (
@@ -282,7 +283,7 @@ def test_trace_records_exhausted_plan(tmp_path):
     assert result.status == "failed"
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "failed"
     assert trace["stages"]["validation"]["status"] == "failed"
     assert trace["stages"]["geometry_layout"]["status"] == "skipped"
@@ -353,7 +354,7 @@ def test_trace_geometry_layout_failure_completes_all_stages(tmp_path, monkeypatc
     assert any(issue.code == "GEOMETRY_FAILED" for issue in result.issues)
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "failed"
@@ -384,7 +385,7 @@ def test_trace_geometry_failure_preserves_result(tmp_path, monkeypatch):
     assert any(issue.code == "GEOMETRY_FAILED" for issue in result.issues)
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "passed"
@@ -415,7 +416,7 @@ def test_trace_firmware_generation_failure_completes_all_stages(tmp_path, monkey
     assert any(issue.code == "FIRMWARE_FAILED" for issue in result.issues)
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "passed"
@@ -441,7 +442,7 @@ def test_trace_unexpected_exception_propagates(tmp_path, monkeypatch):
     assert (tmp_path / "trace.json").is_file()
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "failed"
@@ -512,7 +513,7 @@ def test_trace_compile_failure_forces_failed_status(tmp_path, monkeypatch):
     assert result.status == "ok"
     trace = json.loads((tmp_path / "trace.json").read_text())
     assert trace["status"] == "failed"
-    assert set(trace["stages"]) == EXPECTED_STAGES
+    assert set(trace["stages"]) == EXPECTED_STAGES | {"simulation"}
     assert trace["stages"]["plan"]["status"] == "passed"
     assert trace["stages"]["validation"]["status"] == "passed"
     assert trace["stages"]["geometry_layout"]["status"] == "passed"
@@ -522,6 +523,7 @@ def test_trace_compile_failure_forces_failed_status(tmp_path, monkeypatch):
     assert trace["stages"]["firmware_compile"]["status"] == "failed"
     assert trace["stages"]["guide"]["status"] == "passed"
     assert trace["stages"]["slicing"]["status"] == "skipped"
+    assert trace["stages"]["simulation"]["status"] == "unverified"
     assert trace["stages"]["simulation"]["status"] == "unverified"
 
 

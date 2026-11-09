@@ -1,7 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const apiTarget = process.env.SPARKPLAN_API_URL ?? "http://127.0.0.1:8000";
+const apiTarget = process.env.SPARKPLAN_API_URL ?? "http://127.0.0.1:8001";
 
 export default defineConfig({
   plugins: [react()],

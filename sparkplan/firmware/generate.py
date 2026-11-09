@@ -53,6 +53,9 @@ class FirmwareResult:
     compile_log: str = ""
     readings: dict[str, str] = field(default_factory=dict)
     issues: list[Issue] = field(default_factory=list)
+    build_path: Path | None = None
+    firmware_bin: Path | None = None
+    firmware_elf: Path | None = None
 
     @property
     def sketch_path_hint(self) -> str:
@@ -469,6 +472,7 @@ def compile_firmware(
         cli_path=cli_path,
         libraries=list(resolution.specs) if extra_lib_install else None,
         extra_lib_install=extra_lib_install,
+        build_path=sketch_dir / "build",
     )
 
     # A zero exit status is necessary but not sufficient: verify the compile
@@ -524,4 +528,7 @@ def compile_firmware(
         compile_log=artifacts.logs[-8000:],
         readings=result.readings,
         issues=issues,
+        build_path=artifacts.build_path,
+        firmware_bin=artifacts.firmware_bin,
+        firmware_elf=artifacts.firmware_elf,
     )

@@ -61,6 +61,45 @@ class CompileArtifacts:
     logs: str = ""
     missing: list[str] = field(default_factory=list)
     sketch_path: Path | None = None
+    build_path: Path | None = None
+    firmware_bin: Path | None = None
+    firmware_elf: Path | None = None
+
+
+def _firmware_outputs(build_dir: Path) -> tuple[Path | None, Path | None]:
+    """Locate the application binary and ELF in an arduino-cli build dir."""
+    bins_all = list(build_dir.glob("*.bin"))
+    # Prefer the sketch-specific app binary if present (e.g. sketch.ino.bin)
+    for name in ("sketch.ino.bin", "app.bin", "firmware.bin"):
+        for path in bins_all:
+            if path.name == name:
+                elfs = sorted(build_dir.glob("*.elf"))
+                return (path, elfs[0] if elfs else None)
+    # Otherwise pick the largest non-bootloader/partition/spiffs/boot_app0 binary
+    candidates = []
+    for path in bins_all:
+        lname = path.name.lower()
+        if lname.startswith(("bootloader", "partitions", "spiffs")):
+            continue
+        if lname == "boot_app0.bin":
+            continue
+        try:
+            size = path.stat().st_size
+        except OSError:
+            size = 0
+        candidates.append((size, path))
+    if candidates:
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        elfs = sorted(build_dir.glob("*.elf"))
+        return (candidates[0][1], elfs[0] if elfs else None)
+    # Fallback to previous behavior if nothing else found
+    bins = sorted(
+        path
+        for path in bins_all
+        if not path.name.startswith(("bootloader", "partitions", "spiffs"))
+    )
+    elfs = sorted(build_dir.glob("*.elf"))
+    return (bins[0] if bins else None, elfs[0] if elfs else None)
 
 
 def _detect_cli(cli_path: str | None = None) -> tuple[str | None, list[str]]:
@@ -142,12 +181,15 @@ def compile_sketch(
     timeout_s: int = _COMPILE_TIMEOUT_S,
     extra_lib_install: bool = True,
     build_properties: list[str] | None = None,
+    build_path: Path | None = None,
 ) -> CompileArtifacts:
     """Compile one sketch folder with arduino-cli.
 
     ``libraries`` are installed first when ``extra_lib_install`` is set; the
     entries may carry a pinned version (``"DHT sensor library@1.4.7"``).
     ``build_properties`` are passed to arduino-cli as ``--build-property``.
+    When ``build_path`` is given the build directory is kept and returned so a
+    simulator can use the firmware outputs.
     """
     cli, missing = _detect_cli(cli_path)
     if not cli:
@@ -221,48 +263,58 @@ def compile_sketch(
                 logs=install_output,
             )
 
+    persisted_build = Path(build_path) if build_path is not None else None
+    if persisted_build is not None:
+        persisted_build.mkdir(parents=True, exist_ok=True)
+    build_dir = persisted_build or Path(tempfile.mkdtemp(prefix="sparkplan-build-"))
     try:
-        with tempfile.TemporaryDirectory() as build_dir:
-            command = [cli, "compile", "--fqbn", fqbn, "--build-path", build_dir]
-            for prop in _build_properties(build_properties):
-                command += ["--build-property", prop]
-            command.append(str(sketch_dir))
-            proc = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                timeout=timeout_s,
-            )
-            output = proc.stdout + proc.stderr
-            log_parts.append(output)
-            combined = "\n".join(log_parts)
-            if proc.returncode == 0:
-                return CompileArtifacts(
-                    status="passed",
-                    issues=[],
-                    stdout=proc.stdout,
-                    stderr=proc.stderr,
-                    exit_code=proc.returncode,
-                    logs=combined[-20000:],
-                    sketch_path=Path(sketch_dir),
-                )
-            if _mentions(output, _MISSING_PLATFORM_MARKERS):
-                return _skipped(
-                    "ESP32_PLATFORM_MISSING",
-                    "the ESP32 core is not installed for arduino-cli",
-                    "arduino-cli core install esp32:esp32",
-                    ["platform:esp32:esp32"],
-                    combined,
-                )
+        command = [cli, "compile", "--fqbn", fqbn, "--build-path", str(build_dir)]
+        for prop in _build_properties(build_properties):
+            command += ["--build-property", prop]
+        command.append(str(sketch_dir))
+        proc = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+        )
+        output = proc.stdout + proc.stderr
+        log_parts.append(output)
+        combined = "\n".join(log_parts)
+        firmware_bin, firmware_elf = _firmware_outputs(build_dir)
+        if proc.returncode == 0:
             return CompileArtifacts(
-                status="failed",
-                issues=_parse_compile_issues(output),
+                status="passed",
+                issues=[],
                 stdout=proc.stdout,
                 stderr=proc.stderr,
                 exit_code=proc.returncode,
                 logs=combined[-20000:],
                 sketch_path=Path(sketch_dir),
+                build_path=persisted_build,
+                firmware_bin=firmware_bin,
+                firmware_elf=firmware_elf,
             )
+        if _mentions(output, _MISSING_PLATFORM_MARKERS):
+            return _skipped(
+                "ESP32_PLATFORM_MISSING",
+                "the ESP32 core is not installed for arduino-cli",
+                "arduino-cli core install esp32:esp32",
+                ["platform:esp32:esp32"],
+                combined,
+            )
+        return CompileArtifacts(
+            status="failed",
+            issues=_parse_compile_issues(output),
+            stdout=proc.stdout,
+            stderr=proc.stderr,
+            exit_code=proc.returncode,
+            logs=combined[-20000:],
+            sketch_path=Path(sketch_dir),
+            build_path=persisted_build,
+            firmware_bin=firmware_bin,
+            firmware_elf=firmware_elf,
+        )
     except subprocess.TimeoutExpired:
         return CompileArtifacts(
             status="failed",
@@ -299,3 +351,6 @@ def compile_sketch(
             ],
             logs="\n".join(log_parts) + f"\n{exc}",
         )
+    finally:
+        if persisted_build is None:
+            shutil.rmtree(build_dir, ignore_errors=True)

@@ -672,7 +672,8 @@ textarea:disabled {
 }
 
 .badge.unverified,
-.badge.running {
+.badge.running,
+.badge.partial {
   background: var(--info-bg);
   color: var(--info);
 }
@@ -1256,6 +1257,301 @@ code {
     flex-direction: column;
     gap: 1px;
   }
+}
+
+/* ── Simulation Panel ─────────────────────────────────────────────── */
+
+.sim-panel {
+  overflow: hidden;
+}
+
+.sim-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sim-download-btn {
+  font-size: 0.78rem;
+  padding: 7px 14px;
+}
+
+/* Evidence strip */
+.sim-evidence-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 10px 0 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+
+.sim-evidence-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+}
+
+.sim-evidence-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.sim-evidence-value {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.sim-evidence-ok { color: var(--success); font-weight: 700; }
+.sim-evidence-fail { color: var(--danger); font-weight: 700; }
+
+/* Disclaimer */
+.sim-disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 9px 13px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.sim-disclaimer-icon {
+  flex-shrink: 0;
+  color: var(--primary);
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* Tabs */
+.sim-tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.sim-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 650;
+  padding: 9px 16px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.sim-tab:hover:not(:disabled) {
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 60%, var(--bg));
+}
+
+.sim-tab.active {
+  color: var(--primary);
+  border-bottom-color: var(--primary);
+}
+
+.sim-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sim-tab-icon { font-style: normal; }
+
+.sim-tab-badge {
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.sim-tab-unavail {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Circuit tab */
+.sim-circuit-wrap { display: flex; flex-direction: column; gap: 12px; }
+
+.sim-diagram-canvas {
+  width: 100%;
+  height: clamp(340px, 50vw, 520px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.wokwi-diagram-container {
+  width: 100%;
+  height: 100%;
+}
+
+.wokwi-diagram-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.wokwi-part { transition: opacity 0.1s; }
+.wokwi-wire { transition: stroke-width 0.1s, opacity 0.1s; }
+
+.sim-canvas-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.sim-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.sim-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sim-legend-swatch {
+  width: 22px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.sim-part-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sim-part-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px 3px 7px;
+  font-size: 0.74rem;
+}
+
+.sim-part-type {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+/* Console tab */
+.sim-console-wrap { display: flex; flex-direction: column; gap: 8px; }
+
+.sim-console-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.sim-console-label { font-weight: 600; }
+.sim-console-lines { color: var(--text-muted); }
+
+.sim-console {
+  font-family: "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 420px;
+  color: var(--text);
+  white-space: pre;
+  margin: 0;
+  scroll-behavior: smooth;
+}
+
+.log-line { display: block; }
+.log-lineno { color: var(--text-muted); user-select: none; margin-right: 8px; }
+.log-line-boot { color: var(--text-muted); }
+.log-line-ready { color: var(--success); font-weight: 700; }
+.log-line-pass { color: var(--primary); }
+
+/* Screenshot tab */
+.sim-screenshot-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.sim-screenshot-frame {
+  background: #000;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.sim-screenshot-img {
+  display: block;
+  max-width: 100%;
+  image-rendering: pixelated;
+  border-radius: 2px;
+}
+
+.sim-dl-img {
+  font-size: 0.78rem;
+}
+
+/* Shared */
+.sim-loading {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  padding: 24px 0;
+  text-align: center;
+}
+
+.sim-empty {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  padding: 24px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .sim-tabs { gap: 0; }
+  .sim-tab { padding: 8px 11px; font-size: 0.78rem; }
+  .sim-diagram-canvas { height: 280px; }
+  .sim-console { max-height: 300px; font-size: 0.68rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {

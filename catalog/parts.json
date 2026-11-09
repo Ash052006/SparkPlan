@@ -264,9 +264,10 @@
         {
           "gpio": 1,
           "caps": {
-            "output": true
+            "output": false
           },
-          "source_note": "UART0 TX by default; used for USB serial logging.",
+          "forbidden": true,
+          "source_note": "UART0 TX by default; reserved for USB serial logging. Do not use for peripherals.",
           "verify_against_datasheet": true
         },
         {
@@ -283,9 +284,10 @@
         {
           "gpio": 3,
           "caps": {
-            "output": true
+            "output": false
           },
-          "source_note": "UART0 RX by default; used for USB serial logging.",
+          "forbidden": true,
+          "source_note": "UART0 RX by default; reserved for USB serial logging. Do not use for peripherals.",
           "verify_against_datasheet": true
         },
         {
@@ -555,7 +557,42 @@
       ]
     },
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-esp32-devkit-v1",
+      "pin_map": {
+        "3V3": "3V3",
+        "5V": "VIN",
+        "GND": "GND.1",
+        "EN": "EN",
+        "VP": "VP",
+        "VN": "VN",
+        "D34": "D34",
+        "D35": "D35",
+        "D32": "D32",
+        "D33": "D33",
+        "D25": "D25",
+        "D26": "D26",
+        "D27": "D27",
+        "D14": "D14",
+        "D12": "D12",
+        "D13": "D13",
+        "D23": "D23",
+        "D22": "D22",
+        "D1": "TX0",
+        "D3": "RX0",
+        "D21": "D21",
+        "D19": "D19",
+        "D18": "D18",
+        "D5": "D5",
+        "D17": "TX2",
+        "D16": "RX2",
+        "D4": "D4",
+        "D2": "D2",
+        "D15": "D15"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "dht22",
@@ -641,7 +678,16 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false); the bare sensor and the module differ. Needs a data wire only; VCC on 3V3.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-dht22",
+      "pin_map": {
+        "VCC": "VCC",
+        "DATA": "SDA",
+        "GND": "GND"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "soil_moisture_capacitive",
@@ -709,7 +755,8 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false); probe is a long pronged stick, only the head needs enclosure access. Power from 3V3 so AOUT stays in the ESP32 ADC range.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": null
   },
   {
     "id": "ssd1306_oled_096",
@@ -822,7 +869,17 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Mount on the lid so the screen faces the user through the top opening. I2C address 0x3C fixed on this module.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "board-ssd1306",
+      "pin_map": {
+        "VCC": "VCC",
+        "GND": "GND",
+        "SCL": "SCL",
+        "SDA": "SDA"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "bme280",
@@ -920,7 +977,8 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Must run on 3V3 (max 3.6 V). Address 0x76 assumed; verify the SDO jumper.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": null
   },
   {
     "id": "bh1750",
@@ -1010,7 +1068,8 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). ADDR pin sets 0x23 (low) or 0x5C (high); this catalog assumes 0x23. Must run on 3V3.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": null
   },
   {
     "id": "hc_sr04",
@@ -1108,7 +1167,17 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Runs on 5 V; ECHO is 5 V logic, so use the voltage divider part to protect the ESP32 input pin.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-hc-sr04",
+      "pin_map": {
+        "VCC": "VCC",
+        "TRIG": "TRIG",
+        "ECHO": "ECHO",
+        "GND": "GND"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "voltage_divider_5v_3v3",
@@ -1165,7 +1234,8 @@
     },
     "notes": "Dimensions are a placeholder footprint (dimensions_verified=false); this represents two discrete resistors wired as a divider, not a physical module. Pass-through part with no enclosure opening.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": null
   },
   {
     "id": "sg90_servo",
@@ -1244,7 +1314,16 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Stall current ~650 mA exceeds the USB 5 V budget; power servos from the 5 V rail with care or a separate supply. Control signal is 3.3 V tolerant on this servo.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-servo",
+      "pin_map": {
+        "VCC": "V+",
+        "GND": "GND",
+        "SIG": "PWM"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "piezo_buzzer_passive",
@@ -1318,7 +1397,15 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Passive buzzer needs a PWM frequency (not a plain HIGH); an active buzzer would beep on HIGH but this part is the passive type.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-buzzer",
+      "pin_map": {
+        "POS": "2",
+        "NEG": "1"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "led_5mm",
@@ -1387,7 +1474,15 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Required series resistor is resistor_220r; the LED must be wired ANODE -> 220 ohm -> GPIO and CATHODE -> GND (or GPIO-driven with current limiting). Mount on the lid so light exits the top opening.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-led",
+      "pin_map": {
+        "ANODE": "A",
+        "CATHODE": "C"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "resistor_220r",
@@ -1439,7 +1534,15 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false); standard axial 1/4 W body. Passive pass-through part with no enclosure opening. Pairs with led_5mm.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-resistor",
+      "pin_map": {
+        "A": "1",
+        "B": "2"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "tactile_button",
@@ -1507,7 +1610,15 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false). Active-low; needs the internal pull-up (INPUT_PULLUP). Mount on the lid so the cap is reachable through the top opening.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-pushbutton-6mm",
+      "pin_map": {
+        "A": "1.l",
+        "B": "2.l"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "pir_hc_sr501",
@@ -1601,7 +1712,16 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false); the dome and PCB vary. 5 V supply; OUT is 3.3 V TTL on most units, verify with a meter. Has a warm-up settle time after power-on.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-pir-motion-sensor",
+      "pin_map": {
+        "VCC": "VCC",
+        "OUT": "OUT",
+        "GND": "GND"
+      },
+      "attrs": {}
+    }
   },
   {
     "id": "ws2812b_strip_8",
@@ -1686,6 +1806,17 @@
     },
     "notes": "Dimensions approximate (dimensions_verified=false); 8-LED strip assumed at about 10 mm pitch. Data line expects 5 V logic; at 3.3 V it often works but level-shift for reliability. Full-white current exceeds the USB budget.",
     "dimensions_source": null,
-    "dimensions_basis": "estimate"
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-led-strip",
+      "pin_map": {
+        "5V": "VDD",
+        "DIN": "DIN",
+        "GND": "VSS"
+      },
+      "attrs": {
+        "pixels": "8"
+      }
+    }
   }
 ]

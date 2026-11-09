@@ -1,7 +1,8 @@
 """Typed verification results shown in the deterministic build guide.
 
 A check is ``True`` only when the evidence for it actually ran and passed.
-``False`` means it was attempted and failed. ``"skipped"`` means it was not
+``False`` means it was attempted and failed. ``"partial"`` means a simulation
+ran but could not represent every component. ``"skipped"`` means it was not
 attempted or could not be verified, including when an external tool is
 missing. It is never used as a synonym for success.
 """
@@ -12,7 +13,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-VerificationValue = bool | Literal["skipped"]
+VerificationValue = bool | Literal["skipped", "partial"]
 
 
 class RunVerification(BaseModel):

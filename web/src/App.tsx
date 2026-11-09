@@ -29,6 +29,8 @@ import {
   ValidationPanel,
   WiringPanel,
 } from "./components/Results";
+import SimulationPanel from "./components/SimulationPanel";
+import { WokwiDiagram } from "./components/WokwiDiagramViewer";
 import StlViewer from "./StlViewer";
 import { Theme, useTheme } from "./theme";
 
@@ -52,6 +54,10 @@ export default function App() {
   const [trace, setTrace] = useState<Trace | null>(null);
   const [sketch, setSketch] = useState("");
   const [guide, setGuide] = useState("");
+  const [wokwiDiagram, setWokwiDiagram] = useState<WokwiDiagram | null>(null);
+  const [serialLog, setSerialLog] = useState("");
+  const [loadingDiagram, setLoadingDiagram] = useState(false);
+  const [loadingLog, setLoadingLog] = useState(false);
   const [traceError, setTraceError] = useState("");
   const [firmwareError, setFirmwareError] = useState("");
   const [guideError, setGuideError] = useState("");
@@ -72,6 +78,10 @@ export default function App() {
     setTrace(null);
     setSketch("");
     setGuide("");
+    setWokwiDiagram(null);
+    setSerialLog("");
+    setLoadingDiagram(false);
+    setLoadingLog(false);
     setTraceError("");
     setFirmwareError("");
     setGuideError("");
@@ -127,6 +137,33 @@ export default function App() {
         label: "Catalog",
         promise: fetchCatalog(signal).then((payload) => {
           if (!signal.aborted) setCatalog(payload);
+        }),
+      });
+    }
+
+    if (result.artifacts.simulation_diagram) {
+      setLoadingDiagram(true);
+      tasks.push({
+        label: "Wokwi diagram",
+        promise: fetchArtifactJson<WokwiDiagram>(result.run_id, "diagram.json", signal).then(
+          (payload) => {
+            if (!signal.aborted) {
+              setWokwiDiagram(payload);
+              setLoadingDiagram(false);
+            }
+          },
+        ),
+      });
+    }
+    if (result.artifacts.simulation_log) {
+      setLoadingLog(true);
+      tasks.push({
+        label: "Serial log",
+        promise: fetchArtifactText(result.run_id, "simulation.log", signal).then((text) => {
+          if (!signal.aborted) {
+            setSerialLog(text);
+            setLoadingLog(false);
+          }
         }),
       });
     }
@@ -305,6 +342,18 @@ export default function App() {
                   theme={theme}
                 />
               </section>
+            )}
+
+            {(run?.artifacts.simulation_diagram ||
+              run?.artifacts.simulation_log ||
+              run?.artifacts.simulation_screenshot) && (
+              <SimulationPanel
+                run={run}
+                diagram={wokwiDiagram}
+                serialLog={serialLog}
+                loadingDiagram={loadingDiagram}
+                loadingLog={loadingLog}
+              />
             )}
 
             <div className="results-grid">

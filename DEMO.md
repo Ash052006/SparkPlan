@@ -7,7 +7,7 @@ is a deterministic `FakeLLM` trace and is labelled as such.
 ## Before the clock starts
 
 ```sh
-uv run uvicorn api.app:app --host 127.0.0.1 --port 8000
+uv run uvicorn api.app:app --host 127.0.0.1 --port 8001
 ```
 
 In another shell, start the UI if you want to show it:
@@ -19,7 +19,7 @@ npm run dev
 
 Keep these tabs open:
 
-- the SparkPlan form or the API docs at `http://127.0.0.1:8000/docs`
+- the SparkPlan form or the API docs at `http://127.0.0.1:8001/docs`
 - [`docs/phase9/repair-trace.json`](docs/phase9/repair-trace.json)
 - [`docs/phase9/refusal-trace.json`](docs/phase9/refusal-trace.json)
 

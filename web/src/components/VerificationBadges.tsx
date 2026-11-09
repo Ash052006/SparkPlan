@@ -18,6 +18,7 @@ function valueState(value: VerificationValue | undefined): {
 } {
   if (value === true) return { className: "passed", label: "Passed" };
   if (value === false) return { className: "failed", label: "Failed" };
+  if (value === "partial") return { className: "partial", label: "Partial" };
   if (value === "skipped") return { className: "skipped", label: "Skipped" };
   return { className: "unknown", label: "Unknown" };
 }

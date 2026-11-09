@@ -634,6 +634,11 @@ class _Builder:
                         seen_buses.add(bus)
                     setup_lines.append(instance.i2c_begin)
             setup_lines.extend(instance.setup)
+        if not any("Serial.begin(" in line for line in setup_lines):
+            setup_lines.insert(0, "Serial.begin(115200);")
+        # Stable marker for deterministic simulation checks. It is printed only
+        # after every device has been initialised.
+        setup_lines.append('Serial.println("SPARKPLAN_READY");')
 
         sketch_lines = [
             *self._header(),

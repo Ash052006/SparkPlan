@@ -13,14 +13,14 @@ approximated.
 git clone https://github.com/Ash052006/SparkPlan.git
 cd SparkPlan
 uv sync --extra dev
-uv run uvicorn api.app:app --host 127.0.0.1 --port 8000
+uv run uvicorn api.app:app --host 127.0.0.1 --port 8001
 ```
 
 In a second shell:
 
 ```sh
-curl -s http://127.0.0.1:8000/health
-curl -s http://127.0.0.1:8000/catalog | python3 -m json.tool | head
+curl -s http://127.0.0.1:8001/health
+curl -s http://127.0.0.1:8001/catalog | python3 -m json.tool | head
 ```
 
 These checks need no LLM key. To plan an idea end to end, set the
@@ -179,8 +179,8 @@ npm ci
 npm run dev
 ```
 
-The Vite dev server proxies `/plan`, `/runs`, `/catalog` and health routes to
-`http://localhost:8000`. To use another API port:
+With the API running on port `8001`, the Vite dev server proxies `/plan`,
+`/runs`, `/catalog` and health routes to it by default. To use another API port:
 
 ```sh
 uv run uvicorn api.app:app --host 127.0.0.1 --port 8010

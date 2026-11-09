@@ -3,9 +3,10 @@
 The canonical run is deliberately separate from the legacy ``run_pipeline``
 API. It plans a Phase 3 ``SupportedBuild``, persists that exact supported spec
 and then drives the deterministic geometry, slicing, firmware, compile and
-guide stages. Every exit path returns a complete ``RunResult`` with the same
-seven canonical stages; stages that could not be attempted are ``skipped``,
-and unavailable external tools are ``unverified``, never ``passed``.
+guide, and simulation stages. Every exit path returns a complete ``RunResult``
+with the same eight canonical stages; stages that could not be attempted are
+``skipped``, and unavailable external tools are ``unverified``, never
+``passed``.
 """
 
 from __future__ import annotations
@@ -34,6 +35,14 @@ from sparkplan.pipeline.run_models import (
 from sparkplan.pipeline.run_paths import RunExistsError, RunPaths, validate_run_id
 from sparkplan.planner.phase3.models import PlanResult, PlanStatus
 from sparkplan.planner.phase3.planner import Planner
+from sparkplan.simulation import (
+    SimulationResult,
+    SimulationStatus,
+    WokwiProject,
+    archive_project,
+    generate_wokwi_project,
+    run_simulation,
+)
 from sparkplan.trace import new_run_id, utc_now
 
 STAGE_ORDER: tuple[str, ...] = (
@@ -43,6 +52,7 @@ STAGE_ORDER: tuple[str, ...] = (
     "slicing",
     "firmware_generation",
     "firmware_compile",
+    "simulation",
     "guide",
 )
 
@@ -263,7 +273,138 @@ def _compile_artifacts(sketch_dir: Path, run_dir: Path) -> dict[str, str]:
         path = sketch_dir / name
         if path.is_file() and path.stat().st_size > 0:
             artifacts[key] = path.relative_to(run_dir).as_posix()
+    for key, name in (("firmware_bin", "firmware.bin"), ("firmware_elf", "firmware.elf")):
+        path = run_dir / name
+        if path.is_file() and path.stat().st_size > 0:
+            artifacts[key] = name
     return artifacts
+
+
+def _persist_firmware_outputs(
+    paths: RunPaths, compiled: FirmwareResult
+) -> tuple[dict[str, str], list[Issue]]:
+    """Copy the compiler's firmware outputs into stable run artifact paths."""
+    artifacts: dict[str, str] = {}
+    issues: list[Issue] = []
+    inventory = paths.artifact_inventory()
+    for key, source, label in (
+        ("firmware_bin", compiled.firmware_bin, "binary"),
+        ("firmware_elf", compiled.firmware_elf, "ELF"),
+    ):
+        if source is None or not Path(source).is_file() or Path(source).stat().st_size <= 0:
+            issues.append(
+                _issue(
+                    "COMPILE_FIRMWARE_MISSING",
+                    f"compilation reported success but the firmware {label} is missing or empty",
+                    fix_hint="Inspect the arduino-cli build output and its build path.",
+                )
+            )
+            continue
+        try:
+            paths.write_bytes(key, Path(source).read_bytes())
+        except Exception as exc:
+            issues.append(
+                _issue(
+                    "COMPILE_FIRMWARE_COPY_FAILED",
+                    f"could not persist the firmware {label}: {exc}",
+                    fix_hint="Inspect the runs directory permissions and available space.",
+                )
+            )
+            continue
+        artifacts[key] = inventory[key]
+    return artifacts, issues
+
+
+def _simulation_artifact_names() -> tuple[str, ...]:
+    return (
+        "simulation_diagram",
+        "simulation_config",
+        "simulation_scenario",
+        "simulation_log",
+        "simulation_screenshot",
+        "simulation_project",
+    )
+
+
+def _run_simulation_safely(
+    project: WokwiProject,
+    *,
+    cli_path: str | None,
+    timeout_ms: int,
+    process_timeout_s: float | None,
+    queue_timeout_s: float,
+) -> SimulationResult:
+    """Run wokwi-cli without letting an unexpected failure escape the stage."""
+    try:
+        return run_simulation(
+            project,
+            cli_path=cli_path,
+            timeout_ms=timeout_ms,
+            process_timeout_s=process_timeout_s,
+            queue_timeout_s=queue_timeout_s,
+        )
+    except Exception as exc:
+        message = f"wokwi-cli execution raised {type(exc).__name__}: {exc}"
+        return SimulationResult(
+            status=SimulationStatus.FAILED,
+            reason=message,
+            issues=[
+                _issue(
+                    "SIMULATION_RUN_FAILED",
+                    message,
+                    fix_hint=(
+                        "Inspect the wokwi-cli installation, the token and the generated project."
+                    ),
+                )
+            ],
+            project=project,
+        )
+
+
+def _simulation_output_issues(project: WokwiProject, result: SimulationResult) -> list[Issue]:
+    """Re-check successful simulation artifacts instead of trusting a status."""
+    issues: list[Issue] = []
+    for path, label in (
+        (project.diagram_path, "diagram.json"),
+        (project.config_path, "wokwi.toml"),
+        (project.scenario_path, "scenario.yaml"),
+    ):
+        if not path.is_file() or path.stat().st_size <= 0:
+            issues.append(
+                _issue(
+                    "SIMULATION_OUTPUT_MISSING",
+                    f"the simulation project is missing a non-empty {label}",
+                    fix_hint="Inspect the generated Wokwi project.",
+                )
+            )
+    if result.status in {SimulationStatus.PASSED, SimulationStatus.PARTIAL}:
+        if not project.serial_log_path.is_file() or project.serial_log_path.stat().st_size <= 0:
+            issues.append(
+                _issue(
+                    "SIMULATION_OUTPUT_MISSING",
+                    "the simulation reported success without a non-empty serial log",
+                    fix_hint="Inspect the Wokwi CLI invocation.",
+                )
+            )
+        elif "SPARKPLAN_READY" not in project.serial_log_path.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            issues.append(
+                _issue(
+                    "SIMULATION_OUTPUT_MISSING",
+                    "the serial log does not contain the firmware boot marker",
+                    fix_hint="Inspect the firmware and simulation log.",
+                )
+            )
+        if not project.screenshot_path.is_file() or project.screenshot_path.stat().st_size <= 0:
+            issues.append(
+                _issue(
+                    "SIMULATION_OUTPUT_MISSING",
+                    "the simulation reported success without a non-empty screenshot",
+                    fix_hint="Inspect the Wokwi scenario.",
+                )
+            )
+    return issues
 
 
 def _redact_issue(issue: Issue, root: Path) -> Issue:
@@ -307,7 +448,11 @@ def _redacted_result(result: RunResult, root: Path) -> RunResult:
 
 
 def _verification_value(stage: RunStageResult | None) -> bool | str:
-    if stage is None or stage.status in {StageStatus.SKIPPED, StageStatus.UNVERIFIED}:
+    if stage is None or stage.status is StageStatus.SKIPPED:
+        return "skipped"
+    if stage.status is StageStatus.UNVERIFIED:
+        if stage.evidence.get("simulation_status") == SimulationStatus.PARTIAL.value:
+            return "partial"
         return "skipped"
     return stage.status is StageStatus.PASSED
 
@@ -318,7 +463,7 @@ def _verification_for(stages: dict[str, RunStageResult]) -> RunVerification:
         validated=_verification_value(stages.get("validation")),
         compiled=_verification_value(stages.get("firmware_compile")),
         sliced=_verification_value(stages.get("slicing")),
-        simulated="skipped",
+        simulated=_verification_value(stages.get("simulation")),
     )
 
 
@@ -423,6 +568,11 @@ def run(
     slicer_timeout_s: float = DEFAULT_TIMEOUT_S,
     cli_path: str | None = None,
     extra_lib_install: bool = True,
+    do_simulate: bool = True,
+    wokwi_cli: str | Path | None = None,
+    wokwi_timeout_ms: int = 30000,
+    wokwi_process_timeout_s: float | None = None,
+    wokwi_queue_timeout_s: float = 120.0,
 ) -> RunResult:
     """Plan and execute one canonical run.
 
@@ -945,6 +1095,7 @@ def run(
                     },
                 )
 
+    compiled: FirmwareResult | None = None
     if firmware_stage_status is not StageStatus.PASSED or generated is None:
         recorder.add(
             "firmware_compile",
@@ -962,6 +1113,7 @@ def run(
     else:
         compile_started = time.perf_counter()
         compile_started_at = utc_now()
+        compile_artifacts: dict[str, str] = {}
         try:
             compiled = compile_firmware(
                 generated,
@@ -993,6 +1145,7 @@ def run(
             issues.extend(compile_issues)
             sketch_path = paths.artifact("sketch")
             sketch_ok = sketch_path.is_file() and sketch_path.stat().st_size > 0
+            compile_artifacts = _compile_artifacts(sketch_path.parent, paths.run_dir)
             if compiled.compile_status == "ok" and _has_errors(compile_issues):
                 compile_status = StageStatus.FAILED
                 compile_reason = _reason(
@@ -1011,8 +1164,19 @@ def run(
                 compile_status = StageStatus.FAILED
                 compile_reason = issue.message
             elif compiled.compile_status == "ok":
-                compile_status = StageStatus.PASSED
-                compile_reason = None
+                firmware_artifacts, firmware_issues = _persist_firmware_outputs(paths, compiled)
+                if firmware_issues:
+                    issues.extend(firmware_issues)
+                    compile_issues.extend(firmware_issues)
+                    compile_status = StageStatus.FAILED
+                    compile_reason = _reason(
+                        firmware_issues[0].message,
+                        "compilation did not persist usable firmware outputs",
+                    )
+                else:
+                    compile_artifacts.update(firmware_artifacts)
+                    compile_status = StageStatus.PASSED
+                    compile_reason = None
             elif compiled.compile_status == "skipped":
                 compile_errors = [issue for issue in compile_issues if issue.severity == "error"]
                 if compile_errors and any(
@@ -1049,10 +1213,153 @@ def run(
                         "available" if compiled.compile_status != "skipped" else "unavailable"
                     ),
                 },
-                artifacts=_compile_artifacts(sketch_path.parent, paths.run_dir),
+                artifacts=compile_artifacts,
                 details={
                     "compile_status": compiled.compile_status,
                     "compile_log": _redact_text(compiled.compile_log, paths.run_dir),
+                },
+            )
+
+    compile_stage = recorder.stages.get("firmware_compile")
+    if compile_stage is None or compile_stage.status is not StageStatus.PASSED or compiled is None:
+        recorder.add(
+            "simulation",
+            StageStatus.SKIPPED,
+            reason="not reached because firmware compilation did not pass",
+            details={"requested": do_simulate},
+        )
+    elif not do_simulate:
+        recorder.add(
+            "simulation",
+            StageStatus.SKIPPED,
+            reason="simulation was not requested",
+            details={"requested": False},
+        )
+    else:
+        simulation_started = time.perf_counter()
+        simulation_started_at = utc_now()
+        project: WokwiProject | None = None
+        try:
+            project = generate_wokwi_project(
+                spec,
+                cat,
+                paths.artifact("simulation_diagram").parent,
+                paths.artifact("firmware_bin"),
+                paths.artifact("firmware_elf"),
+            )
+        except Exception as exc:
+            issue = _issue(
+                "SIMULATION_PROJECT_FAILED",
+                f"Wokwi project generation raised {type(exc).__name__}: {exc}",
+                fix_hint="Inspect the catalog Wokwi metadata and the validated wiring.",
+            )
+            issues.append(issue)
+            recorder.add(
+                "simulation",
+                StageStatus.FAILED,
+                started_at=simulation_started_at,
+                start=simulation_started,
+                issues=[issue],
+                reason=_reason(str(exc), "Wokwi project generation raised an exception"),
+                details={"error": _redact_text(f"{type(exc).__name__}: {exc}", paths.run_dir)},
+            )
+        else:
+            simulation = _run_simulation_safely(
+                project,
+                cli_path=wokwi_cli,
+                timeout_ms=wokwi_timeout_ms,
+                process_timeout_s=wokwi_process_timeout_s,
+                queue_timeout_s=wokwi_queue_timeout_s,
+            )
+            simulation_issues = list(simulation.issues)
+            issues.extend(simulation_issues)
+            output_issues = _simulation_output_issues(project, simulation)
+            if output_issues:
+                issues.extend(output_issues)
+                simulation_issues.extend(output_issues)
+
+            archive_issues: list[Issue] = []
+            try:
+                archive_project(project, paths.artifact("simulation_project"))
+            except Exception as exc:
+                archive_issues.append(
+                    _issue(
+                        "SIMULATION_ARCHIVE_FAILED",
+                        f"could not archive the Wokwi project: {exc}",
+                        fix_hint="Inspect the runs directory permissions and available space.",
+                    )
+                )
+                issues.extend(archive_issues)
+                simulation_issues.extend(archive_issues)
+
+            if simulation.status is SimulationStatus.PASSED and project.unsupported_instances:
+                mismatch = _issue(
+                    "SIMULATION_STATUS_MISMATCH",
+                    "simulation reported a complete pass while components were omitted",
+                    fix_hint="This is a SparkPlan bug; report it.",
+                )
+                issues.append(mismatch)
+                simulation_issues.append(mismatch)
+                output_issues.append(mismatch)
+
+            if (
+                simulation.status is SimulationStatus.PASSED
+                and not output_issues
+                and not archive_issues
+            ):
+                simulation_status = StageStatus.PASSED
+                simulation_reason = None
+            elif (
+                simulation.status is SimulationStatus.PARTIAL
+                and not output_issues
+                and not archive_issues
+            ):
+                simulation_status = StageStatus.UNVERIFIED
+                simulation_reason = _reason(
+                    simulation.reason, "simulation omitted unsupported components"
+                )
+            elif simulation.status is SimulationStatus.SKIPPED:
+                simulation_status = StageStatus.UNVERIFIED
+                simulation_reason = _reason(simulation.reason, "simulation could not run")
+            else:
+                simulation_status = StageStatus.FAILED
+                simulation_reason = _reason(
+                    output_issues[0].message if output_issues else simulation.reason,
+                    "simulation failed",
+                )
+
+            recorder.add(
+                "simulation",
+                simulation_status,
+                started_at=simulation_started_at,
+                start=simulation_started,
+                issues=simulation_issues,
+                reason=simulation_reason,
+                evidence={
+                    "simulation_status": simulation.status.value,
+                    "exit_code": str(simulation.exit_code),
+                    "boot_marker_seen": str(simulation.boot_marker_seen).lower(),
+                    "screenshot_verified": str(
+                        project.screenshot_path.is_file()
+                        and project.screenshot_path.stat().st_size > 0
+                    ).lower(),
+                    "unsupported_instances": str(len(project.unsupported_instances)),
+                    "wokwi_cli": (
+                        "available"
+                        if simulation.status is not SimulationStatus.SKIPPED
+                        else "unavailable"
+                    ),
+                },
+                artifacts=_existing_artifacts(paths, _simulation_artifact_names()),
+                details={
+                    "simulation_status": simulation.status.value,
+                    "reason": _redact_text(simulation.reason, paths.run_dir),
+                    "stdout": _redact_text(simulation.stdout, paths.run_dir, limit=4000),
+                    "stderr": _redact_text(simulation.stderr, paths.run_dir, limit=4000),
+                    "serial_tail": _redact_text(
+                        simulation.serial_text[-4000:], paths.run_dir, limit=4000
+                    ),
+                    "unsupported_part_ids": list(project.unsupported_part_ids),
                 },
             )
 
@@ -1107,7 +1414,17 @@ def run(
     )
     artifacts = _existing_artifacts(
         paths,
-        ("spec", "base_stl", "lid_stl", "assembled_stl", "sketch", "guide"),
+        (
+            "spec",
+            "base_stl",
+            "lid_stl",
+            "assembled_stl",
+            "sketch",
+            "firmware_bin",
+            "firmware_elf",
+            *_simulation_artifact_names(),
+            "guide",
+        ),
     )
     artifacts["report"] = paths.artifact_inventory()["report"]
     artifacts["trace"] = paths.artifact_inventory()["trace"]

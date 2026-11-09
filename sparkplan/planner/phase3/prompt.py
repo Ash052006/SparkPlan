@@ -126,7 +126,7 @@ def _board_digest(board: Part) -> dict:
     strapping: list[int] = []
     plain_output: list[int] = []
     for g in model.gpio:
-        if g.forbidden:
+        if (g.forbidden or g.gpio in (1, 3)) and g.gpio not in forbidden:
             forbidden.append(g.gpio)
         if g.input_only:
             input_only.append(g.gpio)
@@ -142,10 +142,8 @@ def _board_digest(board: Part) -> dict:
             g.caps.output
             and not g.input_only
             and not g.forbidden
-            and not g.caps.adc
-            and not g.caps.pwm
-            and not g.caps.i2c
             and not g.strapping
+            and g.gpio not in (1, 3)
         ):
             plain_output.append(g.gpio)
 

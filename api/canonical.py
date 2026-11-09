@@ -63,6 +63,33 @@ _DOWNLOADS: Final[dict[str, _Download]] = {
         "sketch.ino",
         "sketch/sketch.ino",
     ),
+    "firmware.bin": _Download(
+        "firmware_bin", "application/octet-stream", "firmware.bin", "firmware.bin"
+    ),
+    "firmware.elf": _Download(
+        "firmware_elf", "application/octet-stream", "firmware.elf", "firmware.elf"
+    ),
+    "diagram.json": _Download(
+        "simulation_diagram", "application/json", "diagram.json", "simulation/diagram.json"
+    ),
+    "wokwi.toml": _Download(
+        "simulation_config", "text/plain; charset=utf-8", "wokwi.toml", "simulation/wokwi.toml"
+    ),
+    "scenario.yaml": _Download(
+        "simulation_scenario",
+        "text/yaml; charset=utf-8",
+        "scenario.yaml",
+        "simulation/scenario.yaml",
+    ),
+    "simulation.log": _Download(
+        "simulation_log", "text/plain; charset=utf-8", "simulation.log", "simulation/serial.log"
+    ),
+    "screenshot.png": _Download(
+        "simulation_screenshot", "image/png", "screenshot.png", "simulation/screenshot.png"
+    ),
+    "project.zip": _Download(
+        "simulation_project", "application/zip", "project.zip", "simulation/project.zip"
+    ),
     "GUIDE.md": _Download("guide", "text/markdown; charset=utf-8", "GUIDE.md", "GUIDE.md"),
 }
 

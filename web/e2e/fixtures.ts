@@ -64,6 +64,10 @@ export const RUN: RunResult = {
       issues: [arduinoIssue],
       reason: "arduino-cli not found; install it or set SPARKPLAN_ARDUINO_CLI.",
     },
+    {
+      ...stage("simulation", "unverified"),
+      reason: "wokwi-cli is not installed in this test environment.",
+    },
     stage("guide", "passed"),
   ],
   issues: [warningRunIssue],
@@ -101,7 +105,15 @@ export const REFUSAL_RUN: RunResult = {
       issues: [unsupportedIssue],
       reason: "SparkPlan has no flight-control hardware.",
     },
-    ...["validation", "geometry", "slicing", "firmware_generation", "firmware_compile", "guide"].map(
+    ...[
+      "validation",
+      "geometry",
+      "slicing",
+      "firmware_generation",
+      "firmware_compile",
+      "simulation",
+      "guide",
+    ].map(
       (name) => ({
         ...stage(name, "skipped"),
         reason: "Not reached because the planner refused the idea.",

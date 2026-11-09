@@ -96,7 +96,7 @@ export type Catalog = {
   capabilities: string[];
 };
 
-export type VerificationValue = boolean | "skipped";
+export type VerificationValue = boolean | "skipped" | "partial";
 
 export type Verification = {
   validated: VerificationValue;
@@ -128,6 +128,14 @@ export type ArtifactName =
   | "lid_stl"
   | "assembled_stl"
   | "sketch"
+  | "firmware_bin"
+  | "firmware_elf"
+  | "simulation_diagram"
+  | "simulation_config"
+  | "simulation_scenario"
+  | "simulation_log"
+  | "simulation_screenshot"
+  | "simulation_project"
   | "guide";
 
 export type ArtifactLink = {
@@ -145,6 +153,7 @@ export const STAGE_ORDER = [
   "slicing",
   "firmware_generation",
   "firmware_compile",
+  "simulation",
   "guide",
 ] as const;
 
@@ -155,6 +164,7 @@ export const STAGE_LABELS: Record<(typeof STAGE_ORDER)[number], string> = {
   slicing: "Slicing",
   firmware_generation: "Firmware",
   firmware_compile: "Compile",
+  simulation: "Simulation",
   guide: "Guide",
 };
 
@@ -166,6 +176,14 @@ export const ARTIFACT_LINKS: ArtifactLink[] = [
   { name: "lid_stl", filename: "lid.stl", label: "Lid STL" },
   { name: "assembled_stl", filename: "assembled.stl", label: "Assembled STL" },
   { name: "sketch", filename: "sketch.ino", label: "Firmware" },
+  { name: "firmware_bin", filename: "firmware.bin", label: "Firmware binary" },
+  { name: "firmware_elf", filename: "firmware.elf", label: "Firmware ELF" },
+  { name: "simulation_diagram", filename: "diagram.json", label: "Wokwi diagram" },
+  { name: "simulation_config", filename: "wokwi.toml", label: "Wokwi configuration" },
+  { name: "simulation_scenario", filename: "scenario.yaml", label: "Wokwi scenario" },
+  { name: "simulation_log", filename: "simulation.log", label: "Simulation serial log" },
+  { name: "simulation_screenshot", filename: "screenshot.png", label: "Simulation screenshot" },
+  { name: "simulation_project", filename: "project.zip", label: "Wokwi project" },
   { name: "guide", filename: "GUIDE.md", label: "Build guide" },
 ];
 
@@ -318,4 +336,14 @@ export async function fetchTrace(runId: string, signal?: AbortSignal): Promise<T
 
 export async function fetchCatalog(signal?: AbortSignal): Promise<Catalog> {
   return requestJson<Catalog>("/catalog", { signal });
+}
+
+export async function fetchArtifactBytes(
+  runId: string,
+  filename: string,
+  signal?: AbortSignal,
+): Promise<Blob> {
+  const response = await fetch(artifactUrl(runId, filename), { signal });
+  if (!response.ok) throw new ApiError(await responseError(response), response.status);
+  return response.blob();
 }

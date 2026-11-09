@@ -212,6 +212,8 @@ def _verification_cell(value: bool | str) -> str:
         return "true"
     if value is False:
         return "false"
+    if value == "partial":
+        return "partial"
     return "skipped"
 
 

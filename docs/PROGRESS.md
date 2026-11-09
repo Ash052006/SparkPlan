@@ -1353,8 +1353,8 @@ from the Validation region and present in Stage findings.
 
 **UNVERIFIED / remaining limitations**
 
-- No physical print, wiring, flashing, or hardware test was performed.
-- Simulation remains genuinely unimplemented; `simulated` is `skipped`.
+- No physical print, wiring, flashing, or hardware test was performed (no physical hardware testing).
+- Simulation: previously skipped due to firmware binary selection bug (flashed `boot_app0.bin` instead of app). Fixed by preferring `sketch.ino.bin`/largest app binary and excluding `boot_app0.bin` from fallback (see Phase 5C below). Real Wokwi CLI runs now pass for the two required fixtures; simulation is not universal/guaranteed for all cases and other fixtures may behave differently.
 - The lid slicing warnings mean a real print may need supports/brim; print
   quality and fit are unverified.
 - GitHub Actions was not run for this worktree at verification time.
@@ -1364,6 +1364,91 @@ from the Validation region and present in Stage findings.
 - The UI fix, README/Vite local-port override, Playwright fixture changes, and
   screenshots are committed with Phase 8. `.env` toolchain values and the
   generated `build/` and `runs/` data are local/untracked.
+
+
+## Phase 5C — Wokwi simulation integration (PARTIAL VERIFICATION)
+
+**Scope**
+Integrated deterministic Wokwi project generation, bounded CLI execution, simulation stage in pipeline, artifacts, API/UI support. Preserved honesty guarantees (simulation status never inferred; missing prerequisites → skipped/failed/unverified).
+
+**Root cause (firmware binary selection)**
+- ESP32 Arduino builds produce `boot_app0.bin` (~8KB), `sketch.ino.bootloader.bin`, `sketch.ino.partitions.bin`, `sketch.ino.bin` (app). Previous `_firmware_outputs` excluded only bootloader/partitions/spiffs; `boot_app0.bin` remained and was selected first by lexicographic sort. Simulator received the wrong binary → only bootloader/ROM logs, no `SPARKPLAN_READY`, timeouts/exit code 42, missing screenshots.
+
+**Fixes (minimal, evidence-based)**
+- `sparkplan/firmware/compile.py::_firmware_outputs`: prefer `<sketch>.ino.bin`/`app.bin`/`firmware.bin`; else select largest non-bootloader/partition/spiffs binary excluding `boot_app0.bin`. Added regression tests `tests/firmware/test_compile_firmware_outputs.py` (2 passed).
+- `scripts/wokwi_smoke.py`: serialize `BuildSpec` via `spec.model_dump(mode="json")` for `FakeLLM` (fixes `PLAN_EXCEPTION` due to non-serializable objects).
+
+**Real Wokwi CLI verification (real CLI, no fake CLI)**
+Environment: `WOKWI_CLI_TOKEN` sourced (redacted), `SPARKPLAN_WOKWI_CLI=$HOME/.wokwi/bin/wokwi-cli` (wokwi-cli 0.29.1 arm64). Artifacts preserved in `runs/`.
+
+- **motion_led** — `run_id: wokwi-smoke-motion_led-1792768899`
+  - Pipeline: `run_status: ok`, `stage_order` includes `simulation` (8 stages). Simulation stage: `status: passed`, `reason: null`.
+  - Evidence: `cli_exit: 0`, `boot_marker_seen: true`, `screenshot_verified: true`, `unsupported_instances: 0`, `unsupported_part_ids: []`.
+  - Artifacts: `simulation/diagram.json`, `simulation/wokwi.toml`, `simulation/scenario.yaml`, `simulation/serial.log` (340 bytes), `simulation/screenshot.png` (15358 bytes), `simulation/project.zip`. Serial tail contains `SPARKPLAN_READY`. Scenario: wait for `SPARKPLAN_READY`, delay 1000ms, take screenshot of `board`.
+  - Behavior assertions: boot marker observed; scenario completed successfully per CLI stdout; screenshot captured. No behavior-specific log lines (e.g. `rule ... fired`) were observed in serial log for this fixture in this run — boot/marker + screenshot are the verified simulation behaviors for the configured scenario.
+
+- **buzzer_series_resistor** — `run_id: wokwi-smoke-buzzer_series_resistor-1792768935`
+  - Pipeline: `run_status: ok`, simulation stage `status: passed`.
+  - Evidence: `cli_exit: 0`, `boot_marker_seen: true`, `screenshot_verified: true`, `unsupported_instances: 0`.
+  - Artifacts: same set, `diagram.json`/`screenshot.png` present; serial log ends with `SPARKPLAN_READY`. Scenario completed successfully. Behavior assertions similar (boot/marker + screenshot). No additional behavior markers observed in serial log for this run.
+
+**Tests/lint (this session)**
+- `uv run pytest tests/firmware/test_compile_firmware_outputs.py -v` → **2 passed**.
+- `bash -c 'set -a; source .env; set +a; uv run ruff check sparkplan/firmware/compile.py tests/firmware/test_compile_firmware_outputs.py scripts/wokwi_smoke.py'` → **All checks passed**.
+- Full suite: `uv run pytest -q` completed in environment (569 passed, 1 skipped previously reported; existing tests preserved).
+
+**Root cause (UART0 GPIO 1/3 conflict and Wokwi exit code 42)**
+- Failing run `ccc9eb3fb20141ccac42dd337f15408b` hung in Wokwi CLI until the 30-second timeout, exiting with code 42.
+- The BuildSpec had assigned PIR output to `board.1` and LED anode to `board.3`. On the ESP32, GPIO 1 is hardware `U0TXD` (UART0 TX) and GPIO 3 is `U0RXD` (UART0 RX).
+- Generated Arduino code configured `pinMode(1, INPUT)` and `pinMode(3, OUTPUT)`. Reconfiguring GPIO 1 detached the IO matrix from UART0 TX, silencing serial output. When the firmware printed `Serial.println("SPARKPLAN_READY")`, no serial bytes were transmitted to the simulator console. Wokwi CLI waited for the scenario's `wait-serial: 'SPARKPLAN_READY'` marker until timeout.
+- In addition, wires to numeric pins (`board.1`, `board.3`, `board.4`, `board.13`) produced false `SIMULATION_UNSUPPORTED_CONNECTION` warnings and were omitted from `diagram.json` because `esp32_devkit_30pin.wokwi.pin_map` keyed pins with `"D"` prefixes (`"D1"`, `"D3"`, `"D4"`, `"D13"`).
+- The planner chose GPIO 1 and 3 because `_board_digest()` in `sparkplan/planner/phase3/prompt.py` filtered `plain_output` with `and not g.caps.pwm and not g.caps.adc`. Since every general-purpose output pin on the ESP32 supports PWM, that filter eliminated all 15 general-purpose output pins and left only GPIO 1 and 3 in the prompt's `plain_output` list.
+
+**Fixes (evidence-based and verified)**
+- `catalog/parts.json`: set `"forbidden": true` on GPIO 1 and GPIO 3 for `esp32_devkit_30pin` with `source_note` documenting reservation for USB serial logging (UART0).
+- `sparkplan/validators/phase2/pins_check.py`: added validation check for `gpio_pin.forbidden` or `gpio in {1, 3}`, raising `GPIO_RESERVED` for UART0 pins.
+- `sparkplan/planner/phase3/prompt.py`: updated `_board_digest()` so `forbidden` includes `[1, 3, 6, 7, 8, 9, 10, 11]` and `plain_output` includes all clean non-input-only non-forbidden output GPIOs (`[4, 13, 14, 16, 17, 18, 19, 21, 22, 23, 25, 26, 27, 32, 33]`).
+- `sparkplan/simulation/project.py`: added `_simulator_pin()` with canonical board pin alias resolution (`"4"` / `"D4"` / `"GPIO4"`) to map board connections to Wokwi pins without generating false `SIMULATION_UNSUPPORTED_CONNECTION` warnings.
+- Added regression tests:
+  - `tests/validators/phase2/test_p2_pins.py::test_uart0_reserved_pin_fails` (GPIO 1 / GPIO 3 rejected with `GPIO_RESERVED`).
+  - `tests/simulation/test_project.py` (3 unit tests verifying simulator pin alias resolution, numeric pin wiring in `diagram.json`, and unmapped pin reporting).
+
+**Live end-to-end verification**
+- Verified live end-to-end run `eefe490add1749689b42333728c8e346` (`"A motion display that lights up when a PIR sensor detects movement."`):
+  - Planner allocated `pir.OUT -> board.4` and `led.ANODE -> board.13`.
+  - All 8 pipeline stages passed (`plan`, `validation`, `geometry`, `slicing`, `firmware_generation`, `firmware_compile`, `simulation`, `guide`).
+  - Simulation stage: `status: passed`, `cli_exit: 0`, `boot_marker_seen: true`, `screenshot_verified: true`, `unsupported_instances: 0`.
+  - Real Wokwi CLI executed cleanly in ~2.8 seconds, received `SPARKPLAN_READY`, took screenshot of `board`, and terminated with exit code 0.
+
+**Root cause (SIMULATION_SCREENSHOT_MISSING due to --expect-text early exit)**
+- In run `325a74ad39794dab891c4dd132a385df`, all stages passed through compile, but simulation failed with `SIMULATION_SCREENSHOT_MISSING` despite wokwi-cli exiting 0 and `SPARKPLAN_READY` matching.
+- `sparkplan/simulation/runner.py` passed both `--scenario scenario.yaml` and `--expect-text SPARKPLAN_READY` to `wokwi-cli`.
+- In `wokwi-cli`, matching `--expect-text` immediately logs `Expected text found: "SPARKPLAN_READY" -> TEST PASSED.` and terminates the simulation process.
+- Because `scenario.yaml` contains `wait-serial: 'SPARKPLAN_READY'` followed by `delay: 1000ms` and `take-screenshot`, passing `--expect-text` on the CLI caused Wokwi to exit immediately upon seeing the marker, cutting short the delay and preventing `screenshot.png` from being captured.
+- **Fix**: Removed `--expect-text` from `_command` in `sparkplan/simulation/runner.py`. The scenario YAML controls the simulation flow, waits for the boot marker, allows the post-boot delay, captures the screenshot, and completes normally.
+- Added regression test `tests/simulation/test_project.py::test_command_does_not_use_expect_text_with_scenario`.
+- Verified live end-to-end run `5d30bb9b221f49c0ad33bece8458aabf` ("Build a smart home temperature monitoring system using an ESP32. It should read temperature, display it on an OLED screen and turn on an LED whenever the temperature exceeds 30°C."):
+  - All 8 stages passed: `plan`, `validation`, `geometry`, `slicing`, `firmware_generation`, `firmware_compile`, `simulation`, `guide`.
+  - Simulation stage: `status: passed`, `boot_marker_seen: true`, `screenshot_verified: true`, `screenshot.png` captured (381 bytes), `exit_code: 0`.
+
+**Web Frontend Simulation Viewer (Phase 5C UI)**
+- `web/src/components/WokwiDiagramViewer.tsx`: interactive SVG circuit diagram viewer rendered directly from `diagram.json`. Supports 9 Wokwi parts, automatic scaling, elbow-routed colored wires, hover component/wire highlights, pin labels, and part chips.
+- `web/src/components/SimulationPanel.tsx`: 3-tab tabbed simulation panel:
+  1. **Circuit tab**: interactive SVG circuit viewer with color legend and component list.
+  2. **Serial Monitor tab**: monospace terminal viewer showing ESP32 boot output from `serial.log` with line numbers and highlighted `SPARKPLAN_READY`.
+  3. **Screenshot tab**: captured Wokwi screenshot display and download link.
+  - Evidence strip displaying `boot_marker_seen`, `exit_code`, `screenshot_verified`, `unsupported_instances`, and download button for `project.zip`.
+  - Honest disclosure banner: "Virtual simulation — physical hardware: UNVERIFIED".
+- `web/src/App.tsx` & `web/src/styles.css`: wired `<SimulationPanel />` with conditional rendering guard (only shown when simulation artifacts exist) and design-token-matched styles.
+
+**Verification performed (Phase 5C completion gate)**
+- `make test`: **581 passed, 1 skipped, 2 warnings in 170.80s (0:02:50)**.
+- `make lint`: ruff `All checks passed!`; black `142 files would be left unchanged.`
+- `npm --prefix web run typecheck`: **0 errors**.
+- `npm --prefix web run build`: **built cleanly in 711ms**.
+
+**Phase 5C status**
+- **GATE PASSED** — real Wokwi simulations pass for required fixtures with evidence (CLI exit 0, `SPARKPLAN_READY`, non-empty screenshots, diagram/wokwi.toml/scenario present). Full UI integration for circuit diagram, serial monitor, and screenshot. Simulation, firmware compilation, behavioral verification, and physical hardware testing remain distinct statuses; **no physical hardware testing performed**. Other fixtures/prerequisites not exercised here remain subject to existing honesty rules.
 
 ## Phase 9 — documentation and demo (GATE PASSED)
 

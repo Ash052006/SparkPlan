@@ -35,6 +35,7 @@ STAGE_NAMES = (
     "slicing",
     "firmware_generation",
     "firmware_compile",
+    "simulation",
     "guide",
 )
 
@@ -433,7 +434,16 @@ def test_default_canonical_runner_end_to_end_through_root_api(
     assert result.status_code == 200
     body = result.json()
     assert body["status"] == "ok"
-    assert [stage["status"] for stage in body["stages"]] == ["passed"] * 7
+    assert [stage["status"] for stage in body["stages"]] == [
+        "passed",
+        "passed",
+        "passed",
+        "passed",
+        "passed",
+        "passed",
+        "unverified",
+        "passed",
+    ]
 
     guide = client.get(f"/runs/{run_id}/files/GUIDE.md")
     assert guide.status_code == 200
