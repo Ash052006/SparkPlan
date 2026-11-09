@@ -55,16 +55,131 @@ type PartsProps = {
   loading: boolean;
 };
 
+const PART_PRICES: Record<string, number> = {
+  esp32_devkit_30pin: 4.5,
+  dht22: 3.5,
+  capacitive_soil_moisture: 1.8,
+  ssd1306_i2c: 3.0,
+  bme280: 4.2,
+  bh1750: 1.5,
+  hc_sr04: 1.5,
+  sg90_servo: 2.2,
+  piezo_buzzer: 0.6,
+  led_5mm: 0.1,
+  resistor_220r: 0.05,
+  button_tactile: 0.2,
+  pir_motion: 2.0,
+  ws2812b_8led: 2.5,
+  voltage_divider: 0.5,
+};
+
+function exportBomCsv(spec: SupportedSpec, catalog: Catalog | null) {
+  const names = new Map(catalog?.parts.map((part) => [part.id, part]) ?? []);
+  const rows = [
+    [
+      "Qty",
+      "Reference ID",
+      "Part Name",
+      "Category",
+      "Est Unit Price (USD)",
+      "Est Total (USD)",
+      "Supplier Search (DigiKey)",
+    ],
+  ];
+  let grandTotal = 0;
+  for (const part of spec.parts) {
+    const cp = names.get(part.part_id);
+    const qty = part.quantity ?? 1;
+    const unitPrice = PART_PRICES[part.part_id] ?? 2.0;
+    const total = qty * unitPrice;
+    grandTotal += total;
+    const supplierUrl = `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(cp?.name ?? part.part_id)}`;
+    rows.push([
+      String(qty),
+      part.instance_id,
+      `"${(cp?.name ?? part.part_id).replace(/"/g, '""')}"`,
+      cp?.category ?? "component",
+      unitPrice.toFixed(2),
+      total.toFixed(2),
+      supplierUrl,
+    ]);
+  }
+  rows.push(["", "", "Total Estimated BOM", "", "", grandTotal.toFixed(2), ""]);
+  const csvContent = rows.map((r) => r.join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sparkplan-bom-${spec.parts.length}-parts.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportKiCadNetlist(spec: SupportedSpec, catalog: Catalog | null) {
+  const names = new Map(catalog?.parts.map((part) => [part.id, part]) ?? []);
+  const comps = spec.parts
+    .map((p) => {
+      const cp = names.get(p.part_id);
+      return `    (comp (ref "${p.instance_id}") (value "${cp?.name ?? p.part_id}") (footprint "SparkPlan:${p.part_id}"))`;
+    })
+    .join("\n");
+
+  const nets = spec.connections
+    .map((conn, idx) => {
+      return (
+        `    (net (code ${idx + 1}) (name "NET_${conn.from_instance}_${conn.from_pin}")\n` +
+        `      (node (ref "${conn.from_instance}") (pin "${conn.from_pin}"))\n` +
+        `      (node (ref "${conn.to_instance}") (pin "${conn.to_pin}")))`
+      );
+    })
+    .join("\n");
+
+  const netlist = `(export (version D)\n  (design\n    (source "SparkPlan")\n    (date "${new Date().toISOString()}")\n  )\n  (components\n${comps}\n  )\n  (nets\n${nets}\n  )\n)\n`;
+  const blob = new Blob([netlist], { type: "text/plain;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "circuit.net";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function PartsPanel({ spec, catalog, loading }: PartsProps) {
   const names = new Map(catalog?.parts.map((part) => [part.id, part]) ?? []);
+  const totalCost = spec?.parts.reduce((sum, p) => {
+    const qty = p.quantity ?? 1;
+    const price = PART_PRICES[p.part_id] ?? 2.0;
+    return sum + qty * price;
+  }, 0) ?? 0;
+
   return (
     <section className="panel" aria-labelledby="parts-heading">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">Bill of materials</p>
-          <h2 id="parts-heading">Parts</h2>
+          <h2 id="parts-heading">Parts & Sourcing</h2>
         </div>
-        {spec && <span className="muted">{spec.parts.length} lines</span>}
+        {spec && (
+          <div className="bom-header-right">
+            <span className="bom-cost-badge">Est. BOM: ${totalCost.toFixed(2)}</span>
+            <button
+              type="button"
+              className="ghost-button bom-btn"
+              onClick={() => exportBomCsv(spec, catalog)}
+              title="Download spreadsheet for DigiKey / Mouser ordering"
+            >
+              📥 Export CSV
+            </button>
+            <button
+              type="button"
+              className="ghost-button bom-btn"
+              onClick={() => exportKiCadNetlist(spec, catalog)}
+              title="Export netlist for KiCad schematic and PCB design"
+            >
+              📐 KiCad Netlist
+            </button>
+          </div>
+        )}
       </div>
       {loading && <p className="muted">Loading the validated parts list...</p>}
       {!loading && !spec && <p className="muted">No parts list is available.</p>}
@@ -77,12 +192,17 @@ export function PartsPanel({ spec, catalog, loading }: PartsProps) {
                 <th scope="col">Qty</th>
                 <th scope="col">Instance</th>
                 <th scope="col">Part</th>
-                <th scope="col">Type</th>
+                <th scope="col">Est. Price</th>
+                <th scope="col">Sourcing</th>
               </tr>
             </thead>
             <tbody>
               {spec.parts.map((part) => {
                 const catalogPart = names.get(part.part_id);
+                const unitPrice = PART_PRICES[part.part_id] ?? 2.0;
+                const searchName = catalogPart?.name ?? part.part_id;
+                const digikeyUrl = `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(searchName)}`;
+
                 return (
                   <tr key={part.instance_id}>
                     <td>{part.quantity ?? 1}</td>
@@ -91,12 +211,21 @@ export function PartsPanel({ spec, catalog, loading }: PartsProps) {
                       {part.label && <span className="cell-note">{part.label}</span>}
                     </td>
                     <td>
-                      <span className="part-name">{catalogPart?.name ?? part.part_id}</span>
-                      <span className="cell-note">{part.part_id}</span>
+                      <span className="part-name">{searchName}</span>
+                      <span className="cell-note">{titleCase(catalogPart?.category ?? "component")}</span>
                     </td>
                     <td>
-                      <span>{titleCase(catalogPart?.category ?? "catalog part")}</span>
-                      {catalogPart && <span className="cell-note">{catalogPart.interface}</span>}
+                      <span className="part-price">${unitPrice.toFixed(2)}</span>
+                    </td>
+                    <td>
+                      <a
+                        href={digikeyUrl}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="sourcing-link"
+                      >
+                        Find on DigiKey ↗
+                      </a>
                     </td>
                   </tr>
                 );

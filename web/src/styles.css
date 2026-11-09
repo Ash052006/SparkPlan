@@ -1748,6 +1748,48 @@ code {
   padding: 10px 20px;
 }
 
+/* ── Interactive BOM & Sourcing ─────────────────────────────────────── */
+
+.bom-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bom-cost-badge {
+  background: color-mix(in srgb, var(--success) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+  color: var(--success);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.bom-btn {
+  font-size: 0.76rem;
+  padding: 6px 12px;
+}
+
+.part-price {
+  font-family: monospace;
+  font-weight: 600;
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.sourcing-link {
+  font-size: 0.78rem;
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.sourcing-link:hover {
+  text-decoration: underline;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
