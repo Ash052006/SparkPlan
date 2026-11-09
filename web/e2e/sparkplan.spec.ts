@@ -165,6 +165,26 @@ test.describe("successful build", () => {
     expect(dimensions.scrollWidth).toBe(dimensions.clientWidth);
     expect(errors).toEqual([]);
   });
+
+  test("opens and closes the Web Serial hardware flasher modal", async ({ page }) => {
+    const errors = watchErrors(page);
+    await mockSuccess(page);
+
+    await page.goto("/");
+    await page.getByLabel("Hardware idea").fill("a motion activated night light");
+    await page.getByRole("button", { name: "Generate build" }).click();
+
+    await expect(page.getByRole("heading", { name: "Downloads" })).toBeVisible();
+    const flashBtn = page.getByRole("button", { name: "⚡ Flash to ESP32" });
+    await expect(flashBtn).toBeVisible();
+    await flashBtn.click();
+
+    await expect(page.getByRole("heading", { name: "⚡ Flash to Physical ESP32" })).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("heading", { name: "⚡ Flash to Physical ESP32" })).toHaveCount(0);
+
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("refused build", () => {

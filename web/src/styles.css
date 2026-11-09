@@ -1554,6 +1554,200 @@ code {
   .sim-console { max-height: 300px; font-size: 0.68rem; }
 }
 
+/* ── Hardware Flasher Modal ───────────────────────────────────────── */
+
+.downloads-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flash-esp32-btn {
+  font-size: 0.82rem;
+  padding: 8px 14px;
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.flash-esp32-btn:hover {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.flasher-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 580px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 12px;
+}
+
+.close-btn {
+  font-size: 1.1rem;
+  padding: 4px 10px;
+  color: var(--text-muted);
+}
+
+.flasher-unsupported {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--code-bg);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.flasher-instructions ol {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.flasher-device-badge {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.badge-chip {
+  color: var(--primary);
+}
+
+.badge-mac {
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.flasher-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flasher-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--code-bg);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.flasher-progress-fill {
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.2s ease;
+}
+
+.flasher-progress-text {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  font-family: monospace;
+  text-align: right;
+}
+
+.flasher-log-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flasher-log-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.flasher-success-pill {
+  background: var(--success);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.flasher-log {
+  font-family: monospace;
+  font-size: 0.74rem;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text);
+  margin: 0;
+}
+
+.flasher-error {
+  color: var(--danger);
+  font-size: 0.8rem;
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.flasher-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.flasher-primary-btn {
+  font-size: 0.88rem;
+  padding: 10px 20px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

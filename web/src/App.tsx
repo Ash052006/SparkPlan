@@ -31,6 +31,7 @@ import {
 } from "./components/Results";
 import SimulationPanel from "./components/SimulationPanel";
 import { WokwiDiagram } from "./components/WokwiDiagramViewer";
+import HardwareFlasher from "./components/HardwareFlasher";
 import StlViewer from "./StlViewer";
 import { Theme, useTheme } from "./theme";
 
@@ -58,6 +59,7 @@ export default function App() {
   const [serialLog, setSerialLog] = useState("");
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [loadingLog, setLoadingLog] = useState(false);
+  const [isFlasherOpen, setIsFlasherOpen] = useState(false);
   const [traceError, setTraceError] = useState("");
   const [firmwareError, setFirmwareError] = useState("");
   const [guideError, setGuideError] = useState("");
@@ -80,6 +82,7 @@ export default function App() {
     setGuide("");
     setWokwiDiagram(null);
     setSerialLog("");
+    setIsFlasherOpen(false);
     setLoadingDiagram(false);
     setLoadingLog(false);
     setTraceError("");
@@ -361,7 +364,13 @@ export default function App() {
               <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
             </div>
 
-            <DownloadsPanel run={run} />
+            <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
+
+            <HardwareFlasher
+              runId={run.run_id}
+              isOpen={isFlasherOpen}
+              onClose={() => setIsFlasherOpen(false)}
+            />
           </>
         )}
 

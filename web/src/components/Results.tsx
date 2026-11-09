@@ -285,7 +285,13 @@ export function GuidePanel({ guide, error, loading }: GuideProps) {
   );
 }
 
-export function DownloadsPanel({ run }: { run: RunResult }) {
+export function DownloadsPanel({
+  run,
+  onOpenFlasher,
+}: {
+  run: RunResult;
+  onOpenFlasher?: () => void;
+}) {
   const links = ARTIFACT_LINKS.filter((artifact) => Boolean(run.artifacts[artifact.name]));
   if (links.length === 0) return null;
   return (
@@ -295,9 +301,20 @@ export function DownloadsPanel({ run }: { run: RunResult }) {
           <p className="eyebrow">Files</p>
           <h2 id="downloads-heading">Downloads</h2>
         </div>
-        <a className="primary-button download-bundle" href={bundleUrl(run.run_id)} download>
-          Download bundle
-        </a>
+        <div className="downloads-actions">
+          {Boolean(run.artifacts.firmware_bin) && onOpenFlasher && (
+            <button
+              type="button"
+              className="ghost-button flash-esp32-btn"
+              onClick={onOpenFlasher}
+            >
+              ⚡ Flash to ESP32
+            </button>
+          )}
+          <a className="primary-button download-bundle" href={bundleUrl(run.run_id)} download>
+            Download bundle
+          </a>
+        </div>
       </div>
       <ul className="download-list">
         {links.map((artifact) => (
