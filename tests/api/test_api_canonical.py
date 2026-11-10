@@ -458,3 +458,32 @@ def test_default_canonical_runner_end_to_end_through_root_api(
     with zipfile.ZipFile(io.BytesIO(bundle.content)) as archive:
         assert "trace.json" in archive.namelist()
         assert "sketch/sketch.ino" in archive.namelist()
+
+
+def test_diagnostics_endpoint(tmp_path: Path) -> None:
+    client = client_for(tmp_path)
+    res = client.get("/diagnostics")
+    assert res.status_code == 200
+    body = res.json()
+    assert body["status"] == "ok"
+    assert "version" in body
+    assert "queue" in body
+    assert "toolchain" in body
+    assert "arduino_cli" in body["toolchain"]
+    assert "wokwi_cli" in body["toolchain"]
+
+
+def test_events_stream_for_completed_run(tmp_path: Path) -> None:
+    persist_all(tmp_path / "runs", "run_done")
+    client = client_for(tmp_path)
+    res = client.get("/runs/run_done/events")
+    assert res.status_code == 200
+    assert "text/event-stream" in res.headers["content-type"]
+    assert "event: complete" in res.text
+    assert "run_done" in res.text
+
+
+def test_events_stream_for_unknown_run_returns_404(tmp_path: Path) -> None:
+    client = client_for(tmp_path)
+    res = client.get("/runs/unknown_run_123/events")
+    assert res.status_code == 404

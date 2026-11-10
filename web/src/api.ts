@@ -286,7 +286,7 @@ export type WaitForRunOptions = {
   maxPolls?: number;
 };
 
-export async function waitForRun(
+async function pollRun(
   runId: string,
   onUpdate?: (result: RunResult) => void,
   options: WaitForRunOptions = {},
@@ -305,6 +305,54 @@ export async function waitForRun(
     throw new ApiError("The run did not finish within the polling window.");
   }
   return result;
+}
+
+export async function waitForRun(
+  runId: string,
+  onUpdate?: (result: RunResult) => void,
+  options: WaitForRunOptions = {},
+): Promise<RunResult> {
+  // Attempt SSE streaming first if EventSource is available in this environment
+  if (typeof EventSource !== "undefined" && !options.signal) {
+    try {
+      const eventsUrl = `/runs/${encodeURIComponent(runId)}/events`;
+      return await new Promise<RunResult>((resolve, reject) => {
+        const es = new EventSource(eventsUrl);
+        let completed = false;
+
+        es.addEventListener("update", (e) => {
+          try {
+            const data = JSON.parse(e.data) as RunResult;
+            onUpdate?.(data);
+          } catch {}
+        });
+
+        es.addEventListener("complete", (e) => {
+          try {
+            const data = JSON.parse(e.data) as RunResult;
+            completed = true;
+            es.close();
+            resolve(data);
+          } catch (err) {
+            es.close();
+            reject(err);
+          }
+        });
+
+        es.onerror = () => {
+          es.close();
+          if (!completed) {
+            // Fall back to polling seamlessly
+            pollRun(runId, onUpdate, options).then(resolve).catch(reject);
+          }
+        };
+      });
+    } catch {
+      // Fall back to polling
+    }
+  }
+
+  return pollRun(runId, onUpdate, options);
 }
 
 export async function fetchArtifactText(

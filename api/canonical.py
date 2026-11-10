@@ -7,7 +7,11 @@ The older ``/v1`` and synchronous ``/v2`` routes remain available.
 
 from __future__ import annotations
 
+import asyncio
 import io
+import json
+import os
+import shutil
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +21,7 @@ from api.jobs import JobQueueFull, RunJobManager
 from api.limits import RateLimiter
 from api.v2 import CanonicalRunner
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sparkplan.llm.phase3.client import (
     LLMClient,
@@ -331,6 +336,27 @@ def create_root_router(
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @router.get("/diagnostics")
+    def diagnostics() -> dict[str, Any]:
+        return {
+            "status": "ok",
+            "version": "0.9.0",
+            "queue": {
+                "pending_jobs": manager.pending_count,
+            },
+            "toolchain": {
+                "arduino_cli": bool(
+                    shutil.which("arduino-cli") or os.environ.get("SPARKPLAN_ARDUINO_CLI")
+                ),
+                "wokwi_cli": bool(
+                    shutil.which("wokwi-cli") or os.environ.get("SPARKPLAN_WOKWI_CLI")
+                ),
+                "prusa_slicer": bool(
+                    shutil.which("prusa-slicer") or os.environ.get("SPARKPLAN_PRUSA_SLICER")
+                ),
+            },
+        }
+
     @router.get("/catalog")
     def get_catalog_payload() -> dict[str, Any]:
         return _guard(lambda: _catalog_payload(canonical_catalog))
@@ -379,6 +405,54 @@ def create_root_router(
     @router.get("/runs/{run_id}", response_model=RunResult)
     def get_run(run_id: str) -> RunResult:
         return _guard(lambda: _resolve_result(run_id, runs_root, manager)[0])
+
+    @router.get("/runs/{run_id}/events")
+    async def get_run_events(run_id: str) -> StreamingResponse:
+        try:
+            _resolve_result(run_id, runs_root, manager)
+        except Exception:
+            raise _error(404, "run_not_found", "unknown run") from None
+
+        async def event_generator():
+            last_status = None
+            for _ in range(600):
+                try:
+                    result, _ = _resolve_result(run_id, runs_root, manager)
+                except Exception:
+                    break
+
+                curr_status = (
+                    result.status.value if hasattr(result.status, "value") else str(result.status)
+                )
+                if curr_status != last_status:
+                    last_status = curr_status
+                    data = (
+                        result.model_dump_json()
+                        if hasattr(result, "model_dump_json")
+                        else json.dumps(result)
+                    )
+                    yield f"event: update\ndata: {data}\n\n"
+
+                if curr_status != "running":
+                    data = (
+                        result.model_dump_json()
+                        if hasattr(result, "model_dump_json")
+                        else json.dumps(result)
+                    )
+                    yield f"event: complete\ndata: {data}\n\n"
+                    return
+
+                await asyncio.sleep(0.5)
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     @router.get("/runs/{run_id}/files/{name}")
     def get_file(run_id: str, name: str) -> Response:
