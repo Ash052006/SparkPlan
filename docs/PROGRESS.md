@@ -1514,3 +1514,47 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 `README.md`, `DEMO.md`, `docs/DESIGN_NOTES.md`, `eval/REPORT.md`,
 `docs/phase9/eval-scripted.json`, `docs/phase9/repair-trace.json`,
 `docs/phase9/refusal-trace.json`, `docs/PROGRESS.md`.
+
+## Phase 6 — Web Serial Hardware Flasher, 4 Production Pillars & Catalog Expansion
+
+**Built**
+- **Web Serial Hardware Flasher (`web/src/components/HardwareFlasher.tsx`)**:
+  - Implemented 1-click in-browser firmware flashing to real ESP32 boards using `esptool-js` over Web Serial at 115200 baud to offset `0x10000`.
+  - Added port selection, connection state indicator, real-time flashing progress bar, serial log output terminal, and soft-reset on completion.
+- **Pillar 1: "Chat-to-Modify" (Iterative Delta Engine)**:
+  - Backend `POST /plan/modify` endpoint accepting `ModifyPlanRequest` (`base_run_id`, `modification`). Grounds modification in existing `spec.json` to preserve pinouts and component choices.
+  - Frontend `ModifyPromptBar.tsx` wired into `App.tsx` right beneath verification badges.
+  - Test coverage in `tests/api/test_api_canonical.py` and Playwright e2e test.
+- **Pillar 2: Direct Manufacturing & Fabrication Quoter (`web/src/components/FabricationModal.tsx`)**:
+  - Turnkey cost estimation (PCB fabrication + 3D enclosure printing + DigiKey active component BOM).
+  - 1-click export links directly to JLCPCB, PCBWay, Craftcloud 3D, and DigiKey BOM Manager.
+  - KiCad `.net` netlist and CSV BOM export buttons in `Results.tsx`.
+- **Pillar 3: Embedded Interactive Wokwi Web Components (`@wokwi/elements`, `InteractiveWorkbench.tsx`)**:
+  - Interactive workbench rendering real Wokwi web elements (`<wokwi-esp32-devkit-v1>`, `<wokwi-pushbutton>`, `<wokwi-led>`, `<wokwi-potentiometer>`, `<wokwi-buzzer>`, `<wokwi-lcd1602>`, `<wokwi-dht22>`, `<wokwi-hc-sr04>`, `<wokwi-mpu6050>`, `<wokwi-servo>`).
+  - Tactile interactive controls: click buttons, rotate potentiometers, toggle LEDs, pulse buzzers with Web Audio oscillator tone test.
+  - Added "Interactive Bench" tab to `SimulationPanel.tsx`.
+- **Pillar 4: Battery Life Power Profiler & Multi-MCU**:
+  - Power budget profiling panel calculating typical/peak mA, battery life on 1200mAh LiPo and 18650 cells, and estimated duty-cycled sleep runtime (10% active / 90% deep sleep).
+- **Catalog Expansion to 20 Parts**:
+  - Added 5 new high-demand hardware components in `catalog/parts.json`:
+    - `mpu6050` (I2C 0x68 6-DoF accelerometer + gyroscope)
+    - `potentiometer` (Analog 10k rotary potentiometer for ADC)
+    - `relay_module` (5V SPDT relay module with optocoupler isolation)
+    - `lcd1602_i2c` (I2C 0x27 16x2 character display)
+    - `ds18b20` (1-Wire digital thermometer)
+  - Pinned corresponding Arduino libraries in `sparkplan/firmware/manifest.py` (`Adafruit MPU6050@2.2.6`, `LiquidCrystal I2C@1.1.2`, `OneWire@2.3.8`, `DallasTemperature@3.9.0`).
+  - Optimized system prompt compaction in `sparkplan/planner/phase3/prompt.py` to keep token budget under 5500 tokens.
+- **SSE Real-Time Updates & System Diagnostics**:
+  - `GET /runs/{run_id}/events` SSE stream with `waitForRun()` browser fallback.
+  - `GET /diagnostics` verifying toolchain status (arduino-cli, wokwi-cli, prusa-slicer).
+
+**Verification performed**
+- `make test`: **585 passed, 1 skipped, 2 warnings in 191.79s (0:03:11)**.
+- `make lint`: ruff `All checks passed!`, black `142 files would be left unchanged`.
+- `npm --prefix web run typecheck`: Passed with 0 errors.
+- `npm --prefix web run build`: Built production bundle in 1.03s.
+- `npm --prefix web run test:e2e`: **4 passed in 4.7s** (including flasher modal, interactive workbench, and modification bar).
+
+**UNVERIFIED**
+- Real physical hardware flashing via Web Serial flasher was verified via API contracts and browser mock; physical ESP32 flashing on silicon remains UNVERIFIED in automated CI without USB hardware plugged into CI runners.
+- Physical fabrication quotes (JLCPCB, PCBWay, Craftcloud) are computed heuristic estimates; actual manufacturing quotes vary by surface finish, layer count, and shipping location.

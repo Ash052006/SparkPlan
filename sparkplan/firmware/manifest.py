@@ -183,6 +183,52 @@ PINNED_LIBRARIES: dict[str, LibraryEntry] = {
             repository="https://github.com/TMRh20/RF24.git",
             notes="Used by nrf24l01",
         ),
+        LibraryEntry(
+            arduino_name="Adafruit MPU6050",
+            pinned_version="2.2.6",
+            source_url=(
+                "https://downloads.arduino.cc/libraries/github.com/adafruit/"
+                "Adafruit_MPU6050-2.2.6.zip"
+            ),
+            checksum="SHA-256:b407d963c6ba4de189ce69edbda2e1d281fb3c9c045a04b29bab1de31818e4af",
+            repository="https://github.com/adafruit/Adafruit_MPU6050.git",
+            transitive_deps=("Adafruit BusIO", "Adafruit Unified Sensor"),
+            notes="Used by mpu6050",
+        ),
+        LibraryEntry(
+            arduino_name="LiquidCrystal I2C",
+            pinned_version="1.1.2",
+            source_url=(
+                "https://downloads.arduino.cc/libraries/github.com/marcoschwartz/"
+                "LiquidCrystal_I2C-1.1.2.zip"
+            ),
+            checksum="SHA-256:5b41f8c1b226eff853044fd8039b891df1acd67c09f0678bf28f69ec9ea2077b",
+            repository="https://github.com/marcoschwartz/LiquidCrystal_I2C.git",
+            notes="Used by lcd1602_i2c",
+        ),
+        LibraryEntry(
+            arduino_name="OneWire",
+            pinned_version="2.3.8",
+            source_url=(
+                "https://downloads.arduino.cc/libraries/github.com/PaulStoffregen/"
+                "OneWire-2.3.8.zip"
+            ),
+            checksum="SHA-256:6c2428fabaaedc8fcc8c773cece98492babd6bf66718fec7b1bb418dfb1ff628",
+            repository="https://github.com/PaulStoffregen/OneWire.git",
+            notes="Used by ds18b20",
+        ),
+        LibraryEntry(
+            arduino_name="DallasTemperature",
+            pinned_version="3.9.0",
+            source_url=(
+                "https://downloads.arduino.cc/libraries/github.com/milesburton/"
+                "Arduino-Temperature-Control-Library-3.9.0.zip"
+            ),
+            checksum="SHA-256:5821d3703ad585d85cacc18a9622934cd221610eae8fac7836f1e9fb0cdb000d",
+            repository="https://github.com/milesburton/Arduino-Temperature-Control-Library.git",
+            transitive_deps=("OneWire",),
+            notes="Used by ds18b20",
+        ),
     )
 }
 

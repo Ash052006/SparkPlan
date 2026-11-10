@@ -80,6 +80,7 @@ export const RUN: RunResult = {
     assembled_stl: "assembled.stl",
     sketch: "sketch/sketch.ino",
     firmware_bin: "firmware.bin",
+    simulation_diagram: "diagram.json",
     guide: "GUIDE.md",
   },
   refusal: null,
@@ -340,6 +341,22 @@ export const ARTIFACTS: Record<string, { body: string; contentType: string }> = 
   "GUIDE.md": { body: GUIDE, contentType: "text/markdown; charset=utf-8" },
   "sketch.ino": { body: SKETCH, contentType: "text/plain; charset=utf-8" },
   "firmware.bin": { body: "SPARKPLAN_ESP32_BINARY_TEST", contentType: "application/octet-stream" },
+  "diagram.json": {
+    body: JSON.stringify({
+      version: 1,
+      author: "SparkPlan",
+      editor: "wokwi",
+      parts: [
+        { type: "board-esp32-devkit-c-v4", id: "esp32", top: 0, left: 0, attrs: {} },
+        { type: "wokwi-led", id: "led1", top: 100, left: 100, attrs: { color: "red" } },
+      ],
+      connections: [
+        ["esp32:GND.1", "led1:C", "black", []],
+        ["esp32:2", "led1:A", "green", []],
+      ],
+    }),
+    contentType: "application/json",
+  },
   "base.stl": { body: boxStl(60, 40, 10), contentType: "model/stl" },
   "lid.stl": { body: boxStl(60, 40, 5), contentType: "model/stl" },
   "assembled.stl": { body: boxStl(60, 40, 15), contentType: "model/stl" },

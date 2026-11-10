@@ -2007,6 +2007,294 @@ code {
   padding: 6px 14px;
 }
 
+/* =============================================================================
+   Modify Prompt Bar (Pillar 1: Chat-to-Modify Delta Engine)
+   ============================================================================= */
+
+.modify-bar-card {
+  margin: 18px 0;
+  padding: 16px 20px;
+  background: color-mix(in srgb, var(--surface) 90%, var(--primary));
+  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--primary));
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modify-bar-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.modify-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+  padding: 6px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.modify-bar-heading h4 {
+  margin: 0 0 4px 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.modify-bar-heading p {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.modify-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.modify-input {
+  flex: 1;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.modify-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
+}
+
+.modify-submit-btn {
+  white-space: nowrap;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* =============================================================================
+   Interactive Workbench (Pillar 3: Authentic Wokwi Web Components)
+   ============================================================================= */
+
+.sim-interactive-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.interactive-bench-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bench-header-card {
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.bench-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.bench-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  border-radius: 999px;
+}
+
+.bench-title-row h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.bench-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.bench-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.bench-component-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 190px;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.bench-component-card:hover {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+}
+
+.bench-component-card.esp-card {
+  grid-column: span 1;
+}
+
+.bench-component-card.wide-card {
+  grid-column: span 2;
+}
+
+@media (max-width: 680px) {
+  .bench-component-card.wide-card {
+    grid-column: span 1;
+  }
+}
+
+.bench-card-meta {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  padding-bottom: 6px;
+}
+
+.bench-card-meta .component-id {
+  font-family: var(--font-mono, monospace);
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.bench-card-meta .component-role {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bench-element-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 90px;
+  user-select: none;
+}
+
+.bench-element-wrapper.interactive-clickable {
+  cursor: pointer;
+  transform: scale(1);
+  transition: transform 0.08s ease;
+}
+
+.bench-element-wrapper.interactive-clickable:active {
+  transform: scale(0.96);
+}
+
+.bench-controls {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  padding-top: 8px;
+}
+
+.bench-btn {
+  background: color-mix(in srgb, var(--surface) 60%, var(--bg));
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.bench-btn:hover {
+  background: var(--surface);
+  border-color: var(--primary);
+}
+
+.bench-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.bench-status-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono, monospace);
+}
+
+.bench-press-hint {
+  font-size: 0.73rem;
+  color: var(--text-muted);
+}
+
+.bench-slider-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bench-range {
+  flex: 1;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.bench-val-display {
+  font-size: 0.7rem;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-muted);
+  min-width: 60px;
+  text-align: right;
+}
+
+.generic-bench-module {
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.generic-bench-module .generic-icon {
+  font-size: 2rem;
+}
+
+.generic-bench-module .generic-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

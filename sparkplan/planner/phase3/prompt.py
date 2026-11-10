@@ -101,10 +101,6 @@ def _part_digest(part: Part) -> dict:
         entry["readings"] = [f"{r.name}:{r.unit}" for r in part.firmware.readings]
     if part.mount.value != "base":
         entry["mount"] = part.mount.value
-    if part.description:
-        # Short hint only; capabilities drive selection. Truncated to keep the
-        # request small (the full text is not needed to pick a part).
-        entry["desc"] = part.description[:60].rstrip()
     return entry
 
 
@@ -164,7 +160,6 @@ def _board_digest(board: Part) -> dict:
             "strapping_warn": strapping,
             "plain_output": plain_output,
         },
-        "note": model.source_note,
     }
 
 

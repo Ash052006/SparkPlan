@@ -12,12 +12,14 @@ import {
   fetchArtifactText,
   fetchCatalog,
   fetchTrace,
+  modifyRun,
   startRun,
   waitForRun,
 } from "./api";
 import PromptForm from "./components/PromptForm";
 import ProgressStepper from "./components/ProgressStepper";
 import VerificationBadges from "./components/VerificationBadges";
+import ModifyPromptBar from "./components/ModifyPromptBar";
 import {
   ArtifactErrors,
   DownloadsPanel,
@@ -227,6 +229,36 @@ export default function App() {
     }
   }
 
+  async function handleModify(modification: string) {
+    if (!run || loading || !modification.trim()) return;
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const runId = await modifyRun(run.run_id, modification.trim(), controller.signal);
+      const result = await waitForRun(
+        runId,
+        (payload) => {
+          if (!controller.signal.aborted) setRun(payload);
+        },
+        { signal: controller.signal },
+      );
+      setRun(result);
+      if (result.status === "ok") {
+        await loadArtifacts(result, controller.signal);
+      }
+    } catch (caught) {
+      if (!isAbort(caught)) setError(errorMessage(caught));
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }
+
   const validationStage: RunStageResult | null =
     run?.stages.find((stage) => stage.name === "validation") ?? null;
   const planStage = run?.stages.find((stage) => stage.name === "plan");
@@ -320,6 +352,8 @@ export default function App() {
             </div>
 
             <VerificationBadges verification={trace?.verification ?? null} traceError={traceError} />
+
+            <ModifyPromptBar onModify={(mod) => void handleModify(mod)} loading={loading} />
 
             <nav className="studio-toolbar" aria-label="Engineering studio views">
               <div className="studio-tabs" role="tablist">

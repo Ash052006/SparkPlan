@@ -185,6 +185,25 @@ test.describe("successful build", () => {
 
     expect(errors).toEqual([]);
   });
+
+  test("renders iterative modification bar and interactive simulation bench", async ({ page }) => {
+    const errors = watchErrors(page);
+    await mockSuccess(page);
+
+    await page.goto("/");
+    await page.getByLabel("Hardware idea").fill("a motion activated night light");
+    await page.getByRole("button", { name: "Generate build" }).click();
+
+    await expect(page.getByRole("heading", { name: "Iterative Hardware Modification" })).toBeVisible();
+    await expect(page.getByPlaceholder(/e\.g\. 'Add a passive buzzer/)).toBeVisible();
+
+    const benchTab = page.getByRole("tab", { name: /Interactive Bench/ });
+    await expect(benchTab).toBeVisible();
+    await benchTab.click();
+    await expect(page.getByText("Live Hardware Workbench")).toBeVisible();
+
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("refused build", () => {

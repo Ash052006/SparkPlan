@@ -487,3 +487,23 @@ def test_events_stream_for_unknown_run_returns_404(tmp_path: Path) -> None:
     client = client_for(tmp_path)
     res = client.get("/runs/unknown_run_123/events")
     assert res.status_code == 404
+
+
+def test_modify_plan_endpoint(tmp_path: Path) -> None:
+    persist_all(tmp_path / "runs", "base_run_1")
+    calls: list[str] = []
+
+    def runner(idea: str, llm: object, *, run_id: str, catalog: Any, runs_root: Any) -> RunResult:
+        calls.append(idea)
+        result, _ = persist_all(tmp_path / "runs", run_id)
+        return result
+
+    client = client_for(tmp_path, runner=runner)
+    res = client.post(
+        "/plan/modify",
+        json={"base_run_id": "base_run_1", "modification": "Add a buzzer that beeps"},
+    )
+    assert res.status_code == 202
+    assert "run_id" in res.json()
+    assert len(calls) == 1
+    assert "Add a buzzer that beeps" in calls[0]

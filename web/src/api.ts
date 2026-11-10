@@ -254,6 +254,23 @@ export async function startRun(idea: string, signal?: AbortSignal): Promise<stri
   return body.run_id;
 }
 
+export async function modifyRun(
+  baseRunId: string,
+  modification: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const body = await requestJson<{ run_id?: unknown }>("/plan/modify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ base_run_id: baseRunId, modification }),
+    signal,
+  });
+  if (typeof body.run_id !== "string" || body.run_id.length === 0) {
+    throw new ApiError("The server did not return a run id.");
+  }
+  return body.run_id;
+}
+
 export async function fetchRun(runId: string, signal?: AbortSignal): Promise<RunResult> {
   return requestJson<RunResult>(`/runs/${encodeURIComponent(runId)}`, { signal });
 }

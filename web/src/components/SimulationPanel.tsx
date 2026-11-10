@@ -11,8 +11,9 @@
 import { useEffect, useRef, useState } from "react";
 import { RunResult, RunStageResult, artifactUrl } from "../api";
 import WokwiDiagramViewer, { WokwiDiagram } from "./WokwiDiagramViewer";
+import InteractiveWorkbench from "./InteractiveWorkbench";
 
-type Tab = "circuit" | "console" | "screenshot";
+type Tab = "interactive" | "circuit" | "console" | "screenshot";
 
 type Props = {
   run: RunResult;
@@ -75,7 +76,7 @@ export default function SimulationPanel({
   loadingDiagram,
   loadingLog,
 }: Props) {
-  const [tab, setTab] = useState<Tab>("circuit");
+  const [tab, setTab] = useState<Tab>("interactive");
   const consoleRef = useRef<HTMLPreElement>(null);
 
   const simStage = run.stages.find((s) => s.name === "simulation");
@@ -179,11 +180,19 @@ export default function SimulationPanel({
       <div className="sim-tabs" role="tablist">
         <button
           role="tab"
+          aria-selected={tab === "interactive"}
+          className={`sim-tab ${tab === "interactive" ? "active" : ""}`}
+          onClick={() => setTab("interactive")}
+        >
+          <span className="sim-tab-icon">🎮</span> Interactive Bench
+        </button>
+        <button
+          role="tab"
           aria-selected={tab === "circuit"}
           className={`sim-tab ${tab === "circuit" ? "active" : ""}`}
           onClick={() => setTab("circuit")}
         >
-          <span className="sim-tab-icon">🔌</span> Circuit
+          <span className="sim-tab-icon">🔌</span> Schematic
         </button>
         <button
           role="tab"
@@ -210,6 +219,14 @@ export default function SimulationPanel({
 
       {/* Tab content */}
       <div className="sim-tab-content">
+        {/* ── Interactive Workbench ── */}
+        {tab === "interactive" && (
+          <div className="sim-interactive-wrap">
+            {loadingDiagram && <div className="sim-loading">Loading simulation components…</div>}
+            {!loadingDiagram && <InteractiveWorkbench diagram={diagram} />}
+          </div>
+        )}
+
         {/* ── Circuit Diagram ── */}
         {tab === "circuit" && (
           <div className="sim-circuit-wrap">

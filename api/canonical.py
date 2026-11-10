@@ -47,6 +47,15 @@ class PlanRequest(BaseModel):
     idea: str = Field(min_length=1, max_length=MAX_IDEA_LENGTH)
 
 
+class ModifyPlanRequest(BaseModel):
+    """A natural language modification delta for an existing build."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    base_run_id: str = Field(min_length=1, max_length=128)
+    modification: str = Field(min_length=1, max_length=MAX_IDEA_LENGTH)
+
+
 @dataclass(frozen=True)
 class _Download:
     logical: str
@@ -402,6 +411,65 @@ def create_root_router(
 
         return _guard(operation)
 
+    @router.post("/plan/modify", status_code=202)
+    def modify_plan(
+        request: ModifyPlanRequest, http_request: Request, response: Response
+    ) -> dict[str, str]:
+        def operation() -> dict[str, str]:
+            client_host = http_request.client.host if http_request.client else "unknown"
+            retry_after = limiter.check(client_host)
+            if retry_after is not None:
+                raise _error(
+                    429,
+                    "rate_limited",
+                    "Too many plan requests. Try again shortly.",
+                    headers={"Retry-After": RateLimiter.retry_after_header(retry_after)},
+                )
+            selected_llm = _require_llm()
+
+            # Retrieve base run specification if available
+            base_result, base_paths = _resolve_result(request.base_run_id, runs_root, manager)
+            base_spec_text = ""
+            if base_paths is not None:
+                try:
+                    spec_path = base_paths.artifact("spec")
+                    if spec_path.is_file():
+                        base_spec_text = spec_path.read_text(encoding="utf-8")
+                except Exception:
+                    pass
+
+            idea_with_context = (
+                f"Existing hardware project:\n{base_spec_text}\n\n"
+                f"Requested user modification:\n{request.modification}"
+                if base_spec_text
+                else f"Modified hardware idea: {request.modification}"
+            )
+
+            def runner_for_job(idea: str, run_id: str) -> RunResult:
+                result = execute(
+                    idea,
+                    selected_llm,
+                    catalog=canonical_catalog,
+                    run_id=run_id,
+                    **_run_kwargs(),
+                )
+                if not isinstance(result, RunResult):
+                    raise TypeError("canonical runner must return RunResult")
+                return result
+
+            try:
+                run_id = manager.submit(idea_with_context, runner_for_job)
+            except JobQueueFull:
+                raise _error(
+                    503,
+                    "queue_full",
+                    "The background run queue is full. Try again shortly.",
+                ) from None
+            response.headers["Location"] = f"/runs/{run_id}"
+            return {"run_id": run_id}
+
+        return _guard(operation)
+
     @router.get("/runs/{run_id}", response_model=RunResult)
     def get_run(run_id: str) -> RunResult:
         return _guard(lambda: _resolve_result(run_id, runs_root, manager)[0])
@@ -465,4 +533,4 @@ def create_root_router(
     return router
 
 
-__all__ = ["MAX_IDEA_LENGTH", "PlanRequest", "create_root_router"]
+__all__ = ["MAX_IDEA_LENGTH", "ModifyPlanRequest", "PlanRequest", "create_root_router"]
