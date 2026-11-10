@@ -7,6 +7,7 @@ import {
   SupportedSpec,
   Trace,
   artifactUrl,
+  bundleUrl,
   fetchArtifactJson,
   fetchArtifactText,
   fetchCatalog,
@@ -60,6 +61,7 @@ export default function App() {
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [loadingLog, setLoadingLog] = useState(false);
   const [isFlasherOpen, setIsFlasherOpen] = useState(false);
+  const [studioTab, setStudioTab] = useState<"all" | "circuit" | "cad" | "firmware" | "bom" | "guide">("all");
   const [traceError, setTraceError] = useState("");
   const [firmwareError, setFirmwareError] = useState("");
   const [guideError, setGuideError] = useState("");
@@ -83,6 +85,7 @@ export default function App() {
     setWokwiDiagram(null);
     setSerialLog("");
     setIsFlasherOpen(false);
+    setStudioTab("all");
     setLoadingDiagram(false);
     setLoadingLog(false);
     setTraceError("");
@@ -315,21 +318,102 @@ export default function App() {
 
             <VerificationBadges verification={trace?.verification ?? null} traceError={traceError} />
 
-            <div className="results-grid">
-              <div className="results-column">
-                <PartsPanel spec={spec} catalog={catalog} loading={loadingArtifacts && !spec} />
-                <WiringPanel spec={spec} />
+            <nav className="studio-toolbar" aria-label="Engineering studio views">
+              <div className="studio-tabs" role="tablist">
+                <button
+                  type="button"
+                  className={`studio-tab ${studioTab === "all" ? "active" : ""}`}
+                  onClick={() => setStudioTab("all")}
+                  role="tab"
+                  aria-selected={studioTab === "all"}
+                >
+                  🗂️ All Views
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab ${studioTab === "circuit" ? "active" : ""}`}
+                  onClick={() => setStudioTab("circuit")}
+                  role="tab"
+                  aria-selected={studioTab === "circuit"}
+                >
+                  ⚡ Circuit & Sim
+                </button>
+                {canViewStl && (
+                  <button
+                    type="button"
+                    className={`studio-tab ${studioTab === "cad" ? "active" : ""}`}
+                    onClick={() => setStudioTab("cad")}
+                    role="tab"
+                    aria-selected={studioTab === "cad"}
+                  >
+                    🧊 3D CAD
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`studio-tab ${studioTab === "firmware" ? "active" : ""}`}
+                  onClick={() => setStudioTab("firmware")}
+                  role="tab"
+                  aria-selected={studioTab === "firmware"}
+                >
+                  💻 Firmware
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab ${studioTab === "bom" ? "active" : ""}`}
+                  onClick={() => setStudioTab("bom")}
+                  role="tab"
+                  aria-selected={studioTab === "bom"}
+                >
+                  📋 BOM & Wiring
+                </button>
+                <button
+                  type="button"
+                  className={`studio-tab ${studioTab === "guide" ? "active" : ""}`}
+                  onClick={() => setStudioTab("guide")}
+                  role="tab"
+                  aria-selected={studioTab === "guide"}
+                >
+                  📖 Guide & Files
+                </button>
               </div>
-              <div className="results-column">
-                <ValidationPanel
-                  issues={validationStage?.issues ?? []}
-                  validationStage={validationStage}
-                />
-                {run && <StageFindingsPanel stages={run.stages} />}
+              <div className="studio-actions">
+                {Boolean(run.artifacts.firmware_bin) && (
+                  <button
+                    type="button"
+                    className="primary-button studio-action-btn"
+                    onClick={() => setIsFlasherOpen(true)}
+                  >
+                    ⚡ Flash ESP32
+                  </button>
+                )}
+                <a
+                  className="ghost-button studio-action-btn"
+                  href={bundleUrl(run.run_id)}
+                  download
+                >
+                  📦 Bundle
+                </a>
               </div>
-            </div>
+            </nav>
 
-            {canViewStl && (
+            {(studioTab === "all" || studioTab === "bom") && (
+              <div className="results-grid">
+                <div className="results-column">
+                  <PartsPanel spec={spec} catalog={catalog} loading={loadingArtifacts && !spec} />
+                  <WiringPanel spec={spec} />
+                </div>
+                <div className="results-column">
+                  <ValidationPanel
+                    issues={validationStage?.issues ?? []}
+                    validationStage={validationStage}
+                  />
+                  {run && <StageFindingsPanel stages={run.stages} />}
+                </div>
+              </div>
+            )}
+
+            {(studioTab === "all" || studioTab === "cad") && canViewStl && (
               <section className="panel viewer-panel" aria-labelledby="enclosure-heading">
                 <div className="panel-heading">
                   <div>
@@ -347,24 +431,33 @@ export default function App() {
               </section>
             )}
 
-            {(run?.artifacts.simulation_diagram ||
-              run?.artifacts.simulation_log ||
-              run?.artifacts.simulation_screenshot) && (
-              <SimulationPanel
-                run={run}
-                diagram={wokwiDiagram}
-                serialLog={serialLog}
-                loadingDiagram={loadingDiagram}
-                loadingLog={loadingLog}
-              />
+            {(studioTab === "all" || studioTab === "circuit") &&
+              (run?.artifacts.simulation_diagram ||
+                run?.artifacts.simulation_log ||
+                run?.artifacts.simulation_screenshot) && (
+                <SimulationPanel
+                  run={run}
+                  diagram={wokwiDiagram}
+                  serialLog={serialLog}
+                  loadingDiagram={loadingDiagram}
+                  loadingLog={loadingLog}
+                />
+              )}
+
+            {(studioTab === "all" || studioTab === "firmware" || studioTab === "guide") && (
+              <div className="results-grid">
+                {(studioTab === "all" || studioTab === "firmware") && (
+                  <FirmwarePanel code={sketch} error={firmwareError} loading={loadingArtifacts && !sketch} />
+                )}
+                {(studioTab === "all" || studioTab === "guide") && (
+                  <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
+                )}
+              </div>
             )}
 
-            <div className="results-grid">
-              <FirmwarePanel code={sketch} error={firmwareError} loading={loadingArtifacts && !sketch} />
-              <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
-            </div>
-
-            <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
+            {(studioTab === "all" || studioTab === "bom" || studioTab === "guide") && (
+              <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
+            )}
 
             <HardwareFlasher
               runId={run.run_id}
