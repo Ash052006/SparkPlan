@@ -33,6 +33,7 @@ import {
 import SimulationPanel from "./components/SimulationPanel";
 import { WokwiDiagram } from "./components/WokwiDiagramViewer";
 import HardwareFlasher from "./components/HardwareFlasher";
+import FabricationModal from "./components/FabricationModal";
 import StlViewer from "./StlViewer";
 import { Theme, useTheme } from "./theme";
 
@@ -61,6 +62,7 @@ export default function App() {
   const [loadingDiagram, setLoadingDiagram] = useState(false);
   const [loadingLog, setLoadingLog] = useState(false);
   const [isFlasherOpen, setIsFlasherOpen] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
   const [studioTab, setStudioTab] = useState<"all" | "circuit" | "cad" | "firmware" | "bom" | "guide">("all");
   const [traceError, setTraceError] = useState("");
   const [firmwareError, setFirmwareError] = useState("");
@@ -85,6 +87,7 @@ export default function App() {
     setWokwiDiagram(null);
     setSerialLog("");
     setIsFlasherOpen(false);
+    setIsFabOpen(false);
     setStudioTab("all");
     setLoadingDiagram(false);
     setLoadingLog(false);
@@ -378,6 +381,14 @@ export default function App() {
                 </button>
               </div>
               <div className="studio-actions">
+                <button
+                  type="button"
+                  className="ghost-button studio-action-btn"
+                  onClick={() => setIsFabOpen(true)}
+                  title="Instant PCB and 3D printing fabrication quote"
+                >
+                  🏭 Order Fab
+                </button>
                 {Boolean(run.artifacts.firmware_bin) && (
                   <button
                     type="button"
@@ -400,7 +411,12 @@ export default function App() {
             {(studioTab === "all" || studioTab === "bom") && (
               <div className="results-grid">
                 <div className="results-column">
-                  <PartsPanel spec={spec} catalog={catalog} loading={loadingArtifacts && !spec} />
+                  <PartsPanel
+                    spec={spec}
+                    catalog={catalog}
+                    loading={loadingArtifacts && !spec}
+                    onOpenFab={() => setIsFabOpen(true)}
+                  />
                   <WiringPanel spec={spec} />
                 </div>
                 <div className="results-column">
@@ -463,6 +479,14 @@ export default function App() {
               runId={run.run_id}
               isOpen={isFlasherOpen}
               onClose={() => setIsFlasherOpen(false)}
+            />
+
+            <FabricationModal
+              runId={run.run_id}
+              spec={spec}
+              catalog={catalog}
+              isOpen={isFabOpen}
+              onClose={() => setIsFabOpen(false)}
             />
           </>
         )}

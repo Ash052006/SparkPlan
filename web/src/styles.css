@@ -1869,6 +1869,144 @@ code {
   }
 }
 
+/* ── Power & Battery Life Profiler ────────────────────────────────── */
+
+.power-profile-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  background: color-mix(in srgb, var(--surface) 80%, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+}
+
+.power-metric {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.power-label {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.power-val {
+  font-family: monospace;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.power-val.highlight {
+  color: var(--success);
+}
+
+/* ── Fabrication Modal ────────────────────────────────────────────── */
+
+.fab-modal {
+  max-width: 680px;
+}
+
+.fab-quote-banner {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--primary) 25%, transparent);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+
+.fab-quote-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fab-quote-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fab-quote-val {
+  font-family: monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.fab-quote-total .fab-quote-val.highlight {
+  color: var(--success);
+  font-size: 1.15rem;
+}
+
+.fab-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.fab-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fab-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.fab-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.fab-card-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.fab-card-header p {
+  margin: 2px 0 0;
+  font-size: 0.76rem;
+}
+
+.fab-card-specs {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.fab-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.fab-action-btn {
+  font-size: 0.78rem;
+  padding: 6px 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

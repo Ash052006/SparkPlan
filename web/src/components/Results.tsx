@@ -53,6 +53,7 @@ type PartsProps = {
   spec: SupportedSpec | null;
   catalog: Catalog | null;
   loading: boolean;
+  onOpenFab?: () => void;
 };
 
 const PART_PRICES: Record<string, number> = {
@@ -149,13 +150,33 @@ function exportKiCadNetlist(spec: SupportedSpec, catalog: Catalog | null) {
   URL.revokeObjectURL(url);
 }
 
-export function PartsPanel({ spec, catalog, loading }: PartsProps) {
+export function PartsPanel({ spec, catalog, loading, onOpenFab }: PartsProps) {
   const names = new Map(catalog?.parts.map((part) => [part.id, part]) ?? []);
   const totalCost = spec?.parts.reduce((sum, p) => {
     const qty = p.quantity ?? 1;
     const price = PART_PRICES[p.part_id] ?? 2.0;
     return sum + qty * price;
   }, 0) ?? 0;
+
+  const typicalCurrentMa =
+    spec?.parts.reduce((sum, p) => {
+      const cp = names.get(p.part_id);
+      const qty = p.quantity ?? 1;
+      return sum + qty * (cp?.typical_current_ma ?? 5.0);
+    }, 0) ?? 80;
+
+  const peakCurrentMa =
+    spec?.parts.reduce((sum, p) => {
+      const cp = names.get(p.part_id);
+      const qty = p.quantity ?? 1;
+      return sum + qty * (cp?.peak_current_ma ?? 20.0);
+    }, 0) ?? 240;
+
+  const lipoHours = (1200 / Math.max(1, typicalCurrentMa)).toFixed(1);
+  const dutyCycle10PctDays = (
+    (1200 / Math.max(0.1, 0.1 * typicalCurrentMa + 0.9 * 0.05)) /
+    24
+  ).toFixed(1);
 
   return (
     <section className="panel" aria-labelledby="parts-heading">
@@ -167,6 +188,16 @@ export function PartsPanel({ spec, catalog, loading }: PartsProps) {
         {spec && (
           <div className="bom-header-right">
             <span className="bom-cost-badge">Est. BOM: ${totalCost.toFixed(2)}</span>
+            {onOpenFab && (
+              <button
+                type="button"
+                className="ghost-button bom-btn"
+                onClick={onOpenFab}
+                title="Instant PCB and 3D printing fabrication quote"
+              >
+                🏭 Order Fab
+              </button>
+            )}
             <button
               type="button"
               className="ghost-button bom-btn"
@@ -189,7 +220,27 @@ export function PartsPanel({ spec, catalog, loading }: PartsProps) {
       {loading && <p className="muted">Loading the validated parts list...</p>}
       {!loading && !spec && <p className="muted">No parts list is available.</p>}
       {spec && (
-        <div className="table-wrap">
+        <>
+          <div className="power-profile-box">
+            <div className="power-metric">
+              <span className="power-label">⚡ Typ. Current:</span>
+              <span className="power-val">{typicalCurrentMa.toFixed(1)} mA</span>
+            </div>
+            <div className="power-metric">
+              <span className="power-label">🔥 Peak Current:</span>
+              <span className="power-val">{peakCurrentMa.toFixed(1)} mA</span>
+            </div>
+            <div className="power-metric">
+              <span className="power-label">🔋 1200mAh LiPo:</span>
+              <span className="power-val">{lipoHours} hrs</span>
+            </div>
+            <div className="power-metric">
+              <span className="power-label">🌙 10% Sleep Duty:</span>
+              <span className="power-val highlight">{dutyCycle10PctDays} days</span>
+            </div>
+          </div>
+
+          <div className="table-wrap">
           <table>
             <caption className="sr-only">Validated parts list</caption>
             <thead>
@@ -238,6 +289,7 @@ export function PartsPanel({ spec, catalog, loading }: PartsProps) {
             </tbody>
           </table>
         </div>
+        </>
       )}
       {!catalog && spec && (
         <p className="hint">Catalog names are unavailable. Part IDs are shown instead.</p>
