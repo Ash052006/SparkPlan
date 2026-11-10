@@ -109,6 +109,46 @@ const PART_META: Record<string, PartMeta> = {
     height: 48,
     icon: "🌈",
   },
+  "wokwi-potentiometer": {
+    label: "Potentiometer",
+    abbr: "POT",
+    color: "#4a3c10",
+    width: 52,
+    height: 52,
+    icon: "🎛",
+  },
+  "wokwi-mpu6050": {
+    label: "MPU6050 IMU",
+    abbr: "IMU",
+    color: "#1a4a5c",
+    width: 60,
+    height: 48,
+    icon: "🧭",
+  },
+  "wokwi-relay-module": {
+    label: "5V Relay",
+    abbr: "RLY",
+    color: "#103c5c",
+    width: 68,
+    height: 46,
+    icon: "⚡",
+  },
+  "wokwi-lcd1602": {
+    label: "LCD 1602",
+    abbr: "LCD",
+    color: "#0a4c28",
+    width: 90,
+    height: 55,
+    icon: "📟",
+  },
+  "wokwi-ds18b20": {
+    label: "DS18B20 Temp",
+    abbr: "DS18",
+    color: "#3c1a4a",
+    width: 48,
+    height: 48,
+    icon: "🌡",
+  },
 };
 
 function getPartMeta(type: string): PartMeta {

@@ -1818,5 +1818,466 @@
         "pixels": "8"
       }
     }
+  },
+  {
+    "id": "potentiometer",
+    "name": "Rotary Potentiometer (10k)",
+    "category": "input",
+    "description": "10 kOhm linear rotary potentiometer for analog voltage divider input.",
+    "supply_voltage_v": {
+      "min_v": 0.0,
+      "max_v": 3.3
+    },
+    "logic_level_v": 3.3,
+    "typical_current_ma": 0.33,
+    "peak_current_ma": 0.35,
+    "interface": "analog",
+    "pins": [
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SIG",
+        "role": "signal",
+        "direction": "out"
+      },
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      }
+    ],
+    "dimensions_mm": {
+      "x": 16.0,
+      "y": 16.0,
+      "z": 24.0
+    },
+    "dimensions_verified": false,
+    "mounting_holes": [],
+    "mount": "lid",
+    "exposure": {
+      "face": "top",
+      "opening_x_mm": 7.0,
+      "opening_y_mm": 7.0,
+      "offset_x_mm": 0.0,
+      "offset_y_mm": 0.0
+    },
+    "capabilities": [
+      "senses_knob_position",
+      "analog_input"
+    ],
+    "firmware": {
+      "library_deps": [],
+      "includes": [],
+      "globals": [],
+      "setup_lines": [
+        "pinMode(POT_PIN, INPUT);"
+      ],
+      "readings": [
+        {
+          "name": "pot_value",
+          "unit": "raw",
+          "type": "int",
+          "expression": "raw"
+        }
+      ],
+      "read_snippet": "int raw = analogRead(POT_PIN);",
+      "actions": [],
+      "pin_map": {
+        "POT_PIN": "SIG"
+      }
+    },
+    "notes": "Dimensions approximate (dimensions_verified=false). Connect outer pins to 3V3 and GND; wiper SIG connects to an ADC pin.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-potentiometer",
+      "pin_map": {
+        "GND": "GND",
+        "SIG": "SIG",
+        "VCC": "VCC"
+      },
+      "attrs": {}
+    }
+  },
+  {
+    "id": "mpu6050",
+    "name": "MPU6050 6-axis accelerometer & gyroscope",
+    "category": "sensor",
+    "description": "I2C 6-axis motion tracking sensor with 3-axis accelerometer and 3-axis gyroscope at address 0x68.",
+    "supply_voltage_v": {
+      "min_v": 3.0,
+      "max_v": 5.0
+    },
+    "logic_level_v": 3.3,
+    "typical_current_ma": 3.8,
+    "peak_current_ma": 4.5,
+    "interface": "i2c",
+    "i2c_address": "0x68",
+    "pins": [
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "SCL",
+        "role": "scl",
+        "direction": "in"
+      },
+      {
+        "name": "SDA",
+        "role": "sda",
+        "direction": "bidir"
+      }
+    ],
+    "dimensions_mm": {
+      "x": 20.5,
+      "y": 15.6,
+      "z": 3.2
+    },
+    "dimensions_verified": false,
+    "mounting_holes": [
+      {
+        "x": 3.0,
+        "y": 3.0,
+        "diameter": 3.0
+      }
+    ],
+    "mount": "base",
+    "exposure": {
+      "face": "none",
+      "opening_x_mm": 0.0,
+      "opening_y_mm": 0.0,
+      "offset_x_mm": 0.0,
+      "offset_y_mm": 0.0
+    },
+    "capabilities": [
+      "senses_acceleration",
+      "senses_rotation",
+      "senses_motion"
+    ],
+    "firmware": {
+      "library_deps": [
+        "Adafruit MPU6050",
+        "Adafruit Unified Sensor"
+      ],
+      "includes": [
+        "#include <Wire.h>",
+        "#include <Adafruit_MPU6050.h>",
+        "#include <Adafruit_Sensor.h>"
+      ],
+      "globals": [
+        "Adafruit_MPU6050 mpu;"
+      ],
+      "setup_lines": [
+        "mpu.begin(0x68);"
+      ],
+      "readings": [
+        {
+          "name": "accel_x",
+          "unit": "m/s^2",
+          "type": "float",
+          "expression": "a.acceleration.x"
+        }
+      ],
+      "read_snippet": "sensors_event_t a, g, temp;\nmpu.getEvent(&a, &g, &temp);",
+      "actions": [],
+      "object_name": "mpu"
+    },
+    "notes": "Dimensions approximate (dimensions_verified=false). I2C address 0x68. Module includes 3.3 V regulator and pullups.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-mpu6050",
+      "pin_map": {
+        "VCC": "VCC",
+        "GND": "GND",
+        "SCL": "SCL",
+        "SDA": "SDA"
+      },
+      "attrs": {}
+    }
+  },
+  {
+    "id": "relay_module",
+    "name": "5V single-channel relay module",
+    "category": "actuator",
+    "description": "Electromechanical 5V SPDT relay module with optocoupler isolation for switching AC or DC loads.",
+    "supply_voltage_v": {
+      "min_v": 4.5,
+      "max_v": 5.5
+    },
+    "logic_level_v": 3.3,
+    "typical_current_ma": 70.0,
+    "peak_current_ma": 90.0,
+    "interface": "digital",
+    "pins": [
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "IN",
+        "role": "signal",
+        "direction": "in"
+      }
+    ],
+    "dimensions_mm": {
+      "x": 43.0,
+      "y": 17.5,
+      "z": 18.5
+    },
+    "dimensions_verified": false,
+    "mounting_holes": [
+      {
+        "x": 3.0,
+        "y": 3.0,
+        "diameter": 3.0
+      }
+    ],
+    "mount": "base",
+    "exposure": {
+      "face": "back",
+      "opening_x_mm": 15.0,
+      "opening_y_mm": 10.0,
+      "offset_x_mm": 0.0,
+      "offset_y_mm": 0.0
+    },
+    "capabilities": [
+      "switches_power",
+      "actuates_relay"
+    ],
+    "firmware": {
+      "library_deps": [],
+      "includes": [],
+      "globals": [],
+      "setup_lines": [
+        "pinMode(RELAY_PIN, OUTPUT);",
+        "digitalWrite(RELAY_PIN, LOW);"
+      ],
+      "readings": [],
+      "read_snippet": "",
+      "actions": [
+        {
+          "name": "set_state",
+          "snippet": "digitalWrite(RELAY_PIN, value ? HIGH : LOW);"
+        }
+      ],
+      "pin_map": {
+        "RELAY_PIN": "IN"
+      }
+    },
+    "notes": "Dimensions approximate (dimensions_verified=false). Active-HIGH coil energization.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-relay-module",
+      "pin_map": {
+        "VCC": "VCC",
+        "GND": "GND",
+        "IN": "IN"
+      },
+      "attrs": {}
+    }
+  },
+  {
+    "id": "lcd1602_i2c",
+    "name": "16x2 Character LCD with I2C backpack",
+    "category": "display",
+    "description": "16 character by 2 line alphanumeric LCD display with PCF8574 I2C interface at address 0x27.",
+    "supply_voltage_v": {
+      "min_v": 4.5,
+      "max_v": 5.5
+    },
+    "logic_level_v": 3.3,
+    "typical_current_ma": 25.0,
+    "peak_current_ma": 50.0,
+    "interface": "i2c",
+    "i2c_address": "0x27",
+    "pins": [
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      },
+      {
+        "name": "SDA",
+        "role": "sda",
+        "direction": "bidir"
+      },
+      {
+        "name": "SCL",
+        "role": "scl",
+        "direction": "in"
+      }
+    ],
+    "dimensions_mm": {
+      "x": 80.0,
+      "y": 36.0,
+      "z": 12.0
+    },
+    "dimensions_verified": false,
+    "mounting_holes": [
+      {
+        "x": 2.5,
+        "y": 2.5,
+        "diameter": 3.0
+      }
+    ],
+    "mount": "lid",
+    "exposure": {
+      "face": "top",
+      "opening_x_mm": 72.0,
+      "opening_y_mm": 25.0,
+      "offset_x_mm": 0.0,
+      "offset_y_mm": 0.0
+    },
+    "capabilities": [
+      "displays_text",
+      "displays_status"
+    ],
+    "firmware": {
+      "library_deps": [
+        "LiquidCrystal I2C"
+      ],
+      "includes": [
+        "#include <Wire.h>",
+        "#include <LiquidCrystal_I2C.h>"
+      ],
+      "globals": [
+        "LiquidCrystal_I2C lcd(0x27, 16, 2);"
+      ],
+      "setup_lines": [
+        "lcd.init();",
+        "lcd.backlight();"
+      ],
+      "readings": [],
+      "read_snippet": "",
+      "actions": [],
+      "object_name": "lcd"
+    },
+    "notes": "Dimensions approximate (dimensions_verified=false). I2C address 0x27.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-lcd1602",
+      "pin_map": {
+        "GND": "GND",
+        "VCC": "VCC",
+        "SDA": "SDA",
+        "SCL": "SCL"
+      },
+      "attrs": {}
+    }
+  },
+  {
+    "id": "ds18b20",
+    "name": "DS18B20 1-wire digital temperature probe",
+    "category": "sensor",
+    "description": "Dallas 1-wire digital temperature sensor with 9 to 12 bit resolution (-55 to 125 C).",
+    "supply_voltage_v": {
+      "min_v": 3.0,
+      "max_v": 5.5
+    },
+    "logic_level_v": 3.3,
+    "typical_current_ma": 1.0,
+    "peak_current_ma": 1.5,
+    "interface": "digital",
+    "pins": [
+      {
+        "name": "GND",
+        "role": "gnd",
+        "direction": "power"
+      },
+      {
+        "name": "DATA",
+        "role": "signal",
+        "direction": "bidir"
+      },
+      {
+        "name": "VCC",
+        "role": "vcc",
+        "direction": "power"
+      }
+    ],
+    "dimensions_mm": {
+      "x": 6.0,
+      "y": 6.0,
+      "z": 50.0
+    },
+    "dimensions_verified": false,
+    "mounting_holes": [],
+    "mount": "wall",
+    "exposure": {
+      "face": "front",
+      "opening_x_mm": 7.0,
+      "opening_y_mm": 7.0,
+      "offset_x_mm": 0.0,
+      "offset_y_mm": 0.0
+    },
+    "capabilities": [
+      "senses_temperature"
+    ],
+    "firmware": {
+      "library_deps": [
+        "OneWire",
+        "DallasTemperature"
+      ],
+      "includes": [
+        "#include <OneWire.h>",
+        "#include <DallasTemperature.h>"
+      ],
+      "globals": [
+        "OneWire oneWire(ONEWIRE_PIN);",
+        "DallasTemperature sensors(&oneWire);"
+      ],
+      "setup_lines": [
+        "sensors.begin();"
+      ],
+      "readings": [
+        {
+          "name": "temperature_c",
+          "unit": "C",
+          "type": "float",
+          "expression": "tempC"
+        }
+      ],
+      "read_snippet": "sensors.requestTemperatures();\nfloat tempC = sensors.getTempCByIndex(0);",
+      "actions": [],
+      "pin_map": {
+        "ONEWIRE_PIN": "DATA"
+      }
+    },
+    "notes": "Dimensions approximate (dimensions_verified=false). Requires external 4.7k pull-up between DATA and 3V3 rail.",
+    "dimensions_source": null,
+    "dimensions_basis": "estimate",
+    "wokwi": {
+      "type": "wokwi-ds18b20",
+      "pin_map": {
+        "GND": "GND",
+        "DATA": "DQ",
+        "VCC": "VCC"
+      },
+      "attrs": {}
+    }
   }
 ]

@@ -37,15 +37,17 @@ REQUIRED_IDS = {
 
 
 def test_catalog_imports_and_has_15_parts():
-    assert len(CATALOG.parts) == 15
+    assert len(CATALOG.parts) >= 15
 
 
 def test_all_required_parts_present_with_addresses():
     ids = {p.id for p in CATALOG.parts}
-    assert ids == REQUIRED_IDS
+    assert REQUIRED_IDS.issubset(ids)
     assert CATALOG.get("ssd1306_oled_096").i2c_address == "0x3C"
     assert CATALOG.get("bme280").i2c_address == "0x76"
     assert CATALOG.get("bh1750").i2c_address == "0x23"
+    assert CATALOG.get("mpu6050").i2c_address == "0x68"
+    assert CATALOG.get("lcd1602_i2c").i2c_address == "0x27"
 
 
 def test_led_and_resistor_are_separate_entries():

@@ -71,6 +71,11 @@ const PART_PRICES: Record<string, number> = {
   pir_motion: 2.0,
   ws2812b_8led: 2.5,
   voltage_divider: 0.5,
+  potentiometer: 1.2,
+  mpu6050: 3.5,
+  relay_module: 1.8,
+  lcd1602_i2c: 3.8,
+  ds18b20: 2.2,
 };
 
 function exportBomCsv(spec: SupportedSpec, catalog: Catalog | null) {
