@@ -1558,3 +1558,32 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 **UNVERIFIED**
 - Real physical hardware flashing via Web Serial flasher was verified via API contracts and browser mock; physical ESP32 flashing on silicon remains UNVERIFIED in automated CI without USB hardware plugged into CI runners.
 - Physical fabrication quotes (JLCPCB, PCBWay, Craftcloud) are computed heuristic estimates; actual manufacturing quotes vary by surface finish, layer count, and shipping location.
+
+## Phase 7 — Awwwards-Grade UI & Engineering Studio Command Center
+
+**Built**
+- **Awwwards-Grade Design System & Atmosphere (`web/src/styles.css`)**:
+  - Deep obsidian cyber-industrial palette (`#07080c`) with ambient multi-spectrum radial lighting (cyan/indigo/emerald) and fixed 24px dot-matrix grid canvas.
+  - Linear/Geist-style micro-typography with geometric tracking (`-0.04em`), subtle gradient shimmer headlines, and frosted glassmorphic card overlays (`backdrop-filter: blur(24px)`).
+  - Header telemetry bar with live pulsing status indicator (`ONLINE`, `20 MODULES`, `ESP32-WROOM-32`), responsive to mobile viewports.
+- **Dual-Stage Engineering Studio Layout (`web/src/App.tsx`)**:
+  - Eliminated the long vertical scroll dump by restructuring the studio into an integrated Dual-Stage Viewport:
+    - Side-by-side Desktop Stage displaying the 3D CAD Enclosure (`StlViewer`) and Interactive Circuit Simulation (`SimulationPanel` / `@wokwi/elements`) with 1-click single-stage focus expansion.
+    - Balanced 2-column Telemetry Deck: Architecture & Wiring (Parts + Power Profiler + KiCad netlist) on the left, Firmware & Guide (Arduino C++ + Step-by-Step instructions) on the right.
+    - Verification & Downloads Deck: Validation checks, stage findings, and download bundle.
+- **Floating Studio Action Dock**:
+  - Non-intrusive floating glass HUD dock pinned to the bottom of the viewport with 1-click `⚡ Flash ESP32` (Web Serial), `🏭 Order Fab` (Turnkey quoter), and `📦 Bundle.zip` download.
+- **Enhanced Command-Bar Prompt Form (`web/src/components/PromptForm.tsx`)**:
+  - Elevated cyber-industrial intake card with live compiler badges.
+  - Keyboard shortcut support: `⌘+Enter` / `Ctrl+Enter` trigger with `<kbd>⌘↵</kbd>` badge.
+  - Glowing prototype chip presets with subtle hover lift and luminous borders.
+
+**Verification performed**
+- `make test`: **585 passed, 1 skipped, 2 warnings in 240.03s (0:04:00)**.
+- `make lint`: ruff `All checks passed!`, black `142 files would be left unchanged`.
+- `npm --prefix web run typecheck`: Passed with 0 errors.
+- `npm --prefix web run build`: Built production bundle in 904ms.
+- `npm --prefix web run test:e2e`: **4 passed in 8.1s** (mobile viewport 390px, flasher modal, interactive workbench, and refusal trace).
+
+**UNVERIFIED**
+- Browser WebGL 3D rendering and CSS glassmorphism visually validated in headless browser; physical tactile feel on diverse monitor color profiles (OLED/P3) remains UNVERIFIED in automated headless runs.

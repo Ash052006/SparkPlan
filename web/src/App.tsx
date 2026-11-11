@@ -281,7 +281,14 @@ export default function App() {
           </span>
         </a>
         <div className="header-actions">
-          <span className="header-note">ESP32 parts catalog</span>
+          <div className="telemetry-bar" aria-label="System status">
+            <span className="telemetry-pill live">
+              <span className="telemetry-dot" aria-hidden="true" />
+              ONLINE
+            </span>
+            <span className="telemetry-pill">20 MODULES</span>
+            <span className="telemetry-pill">ESP32-WROOM-32</span>
+          </div>
           <button
             type="button"
             className="theme-toggle"
@@ -295,13 +302,20 @@ export default function App() {
       </header>
 
       <main className="app-shell">
-        <section className="hero">
-          <p className="eyebrow">Plain-language hardware planning</p>
-          <h1>Ideas in. Validated builds out.</h1>
-          <p className="hero-copy">
-            SparkPlan turns a hardware idea into a checked parts list, wiring, a 3D-printable
-            enclosure, firmware, and a build guide.
-          </p>
+        <section className="hero hero-awwwards">
+          <div className="hero-glow-layer" aria-hidden="true" />
+          <div className="hero-content">
+            <div className="hero-eyebrow-wrap">
+              <span className="hero-pill">Autonomous Hardware Studio</span>
+              <span className="hero-separator">/</span>
+              <span className="hero-pill-sub">LLM Proposes · Code Verifies</span>
+            </div>
+            <h1 className="hero-title">Ideas in. Validated builds out.</h1>
+            <p className="hero-copy">
+              SparkPlan compiles plain-language ideas into verified pinouts, 3D-printable
+              parametric CAD, circuit simulation, and compilable C++ firmware.
+            </p>
+          </div>
         </section>
 
         <PromptForm
@@ -442,17 +456,74 @@ export default function App() {
               </div>
             </nav>
 
-            {(studioTab === "all" || studioTab === "bom") && (
+            {/* ── STAGE VIEWPORTS (3D CAD & INTERACTIVE SIMULATION) ── */}
+            {(studioTab === "all" || studioTab === "cad" || studioTab === "circuit") && (
+              <div className={`studio-stage-grid ${studioTab !== "all" ? "single-stage" : ""}`}>
+                {(studioTab === "all" || studioTab === "cad") && canViewStl && (
+                  <section className="panel viewer-panel stage-panel" aria-labelledby="enclosure-heading">
+                    <div className="panel-heading">
+                      <div>
+                        <p className="eyebrow">STL preview</p>
+                        <h2 id="enclosure-heading">Enclosure</h2>
+                      </div>
+                      <span className="stage-tag">Parametric 3D CAD</span>
+                    </div>
+                    <StlViewer
+                      baseUrl={artifactUrl(run.run_id, "base.stl")}
+                      lidUrl={artifactUrl(run.run_id, "lid.stl")}
+                      assembledUrl={assembledUrl}
+                      theme={theme}
+                    />
+                  </section>
+                )}
+
+                {(studioTab === "all" || studioTab === "circuit") &&
+                  (run?.artifacts.simulation_diagram ||
+                    run?.artifacts.simulation_log ||
+                    run?.artifacts.simulation_screenshot) && (
+                    <div className="stage-panel">
+                      <SimulationPanel
+                        run={run}
+                        diagram={wokwiDiagram}
+                        serialLog={serialLog}
+                        loadingDiagram={loadingDiagram}
+                        loadingLog={loadingLog}
+                      />
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* ── TELEMETRY & HARDWARE MATRIX ── */}
+            {(studioTab === "all" || studioTab === "bom" || studioTab === "firmware" || studioTab === "guide") && (
               <div className="results-grid">
-                <div className="results-column">
-                  <PartsPanel
-                    spec={spec}
-                    catalog={catalog}
-                    loading={loadingArtifacts && !spec}
-                    onOpenFab={() => setIsFabOpen(true)}
-                  />
-                  <WiringPanel spec={spec} />
-                </div>
+                {(studioTab === "all" || studioTab === "bom") && (
+                  <div className="results-column">
+                    <PartsPanel
+                      spec={spec}
+                      catalog={catalog}
+                      loading={loadingArtifacts && !spec}
+                      onOpenFab={() => setIsFabOpen(true)}
+                    />
+                    <WiringPanel spec={spec} />
+                  </div>
+                )}
+                {(studioTab === "all" || studioTab === "firmware" || studioTab === "guide") && (
+                  <div className="results-column">
+                    {(studioTab === "all" || studioTab === "firmware") && (
+                      <FirmwarePanel code={sketch} error={firmwareError} loading={loadingArtifacts && !sketch} />
+                    )}
+                    {(studioTab === "all" || studioTab === "guide") && (
+                      <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── VERIFICATION TRACE & PRODUCTION DOWNLOADS ── */}
+            {(studioTab === "all" || studioTab === "bom" || studioTab === "guide") && (
+              <div className="results-grid">
                 <div className="results-column">
                   <ValidationPanel
                     issues={validationStage?.issues ?? []}
@@ -460,54 +531,44 @@ export default function App() {
                   />
                   {run && <StageFindingsPanel stages={run.stages} />}
                 </div>
-              </div>
-            )}
-
-            {(studioTab === "all" || studioTab === "cad") && canViewStl && (
-              <section className="panel viewer-panel" aria-labelledby="enclosure-heading">
-                <div className="panel-heading">
-                  <div>
-                    <p className="eyebrow">STL preview</p>
-                    <h2 id="enclosure-heading">Enclosure</h2>
-                  </div>
-                  <span className="muted">Base, lid, assembled</span>
+                <div className="results-column">
+                  <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
                 </div>
-                <StlViewer
-                  baseUrl={artifactUrl(run.run_id, "base.stl")}
-                  lidUrl={artifactUrl(run.run_id, "lid.stl")}
-                  assembledUrl={assembledUrl}
-                  theme={theme}
-                />
-              </section>
-            )}
-
-            {(studioTab === "all" || studioTab === "circuit") &&
-              (run?.artifacts.simulation_diagram ||
-                run?.artifacts.simulation_log ||
-                run?.artifacts.simulation_screenshot) && (
-                <SimulationPanel
-                  run={run}
-                  diagram={wokwiDiagram}
-                  serialLog={serialLog}
-                  loadingDiagram={loadingDiagram}
-                  loadingLog={loadingLog}
-                />
-              )}
-
-            {(studioTab === "all" || studioTab === "firmware" || studioTab === "guide") && (
-              <div className="results-grid">
-                {(studioTab === "all" || studioTab === "firmware") && (
-                  <FirmwarePanel code={sketch} error={firmwareError} loading={loadingArtifacts && !sketch} />
-                )}
-                {(studioTab === "all" || studioTab === "guide") && (
-                  <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
-                )}
               </div>
             )}
 
-            {(studioTab === "all" || studioTab === "bom" || studioTab === "guide") && (
-              <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
-            )}
+            {/* ── FLOATING STUDIO ACTION DOCK ── */}
+            <aside className="studio-floating-dock" aria-label="Studio quick actions">
+              <div className="dock-meta">
+                <span className="dock-status-dot" />
+                <span className="dock-run-id">RUN <code>{run.run_id}</code></span>
+              </div>
+              <div className="dock-buttons">
+                {Boolean(run.artifacts.firmware_bin) && (
+                  <button
+                    type="button"
+                    className="primary-button dock-btn dock-btn-primary"
+                    onClick={() => setIsFlasherOpen(true)}
+                  >
+                    ⚡ Flash ESP32
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ghost-button dock-btn"
+                  onClick={() => setIsFabOpen(true)}
+                >
+                  🏭 Order Fab
+                </button>
+                <a
+                  className="ghost-button dock-btn"
+                  href={bundleUrl(run.run_id)}
+                  download
+                >
+                  📦 Bundle.zip
+                </a>
+              </div>
+            </aside>
 
             <HardwareFlasher
               runId={run.run_id}
