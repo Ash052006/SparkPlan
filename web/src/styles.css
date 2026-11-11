@@ -2991,6 +2991,426 @@ code {
   color: var(--text-muted);
 }
 
+/* =============================================================================
+   ChatGPT Layout & Collapsible Sidebar
+   ============================================================================= */
+
+.chatgpt-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background: var(--bg);
+}
+
+.chatgpt-main-viewport {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Sidebar */
+.chatgpt-sidebar {
+  width: 260px;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+  background: color-mix(in srgb, var(--surface) 97%, var(--bg));
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 120;
+  transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1), transform 0.22s ease;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.chatgpt-sidebar.collapsed {
+  width: 0;
+  border-right: none;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.sidebar-backdrop {
+  display: none;
+}
+
+.sidebar-header {
+  padding: 14px 14px 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-new-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--primary) 35%, transparent);
+  border-radius: var(--radius-sm);
+  color: var(--primary);
+  font-weight: 750;
+  font-size: 0.84rem;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.12s;
+}
+
+.sidebar-new-btn:hover {
+  background: color-mix(in srgb, var(--primary) 22%, transparent);
+  transform: translateY(-1px);
+}
+
+.sidebar-new-icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.sidebar-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 0.72rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+.sidebar-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-section-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  padding: 6px 8px;
+}
+
+.sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 8px;
+  transition: background 0.15s;
+  position: relative;
+}
+
+.sidebar-item:hover {
+  background: color-mix(in srgb, var(--surface) 80%, var(--bg));
+}
+
+.sidebar-item.active {
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+  color: var(--primary);
+  font-weight: 650;
+}
+
+.sidebar-item-button {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.84rem;
+  color: inherit;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.sidebar-item-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.sidebar-item-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.sidebar-turn-badge {
+  font-size: 0.68rem;
+  font-family: var(--font-mono, monospace);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.sidebar-item:hover .sidebar-delete-btn {
+  opacity: 1;
+}
+
+.sidebar-delete-btn:hover {
+  color: var(--danger);
+}
+
+.sidebar-footer {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sidebar-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.75rem;
+}
+
+.sidebar-footer-text {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* Header brand & toggle */
+.header-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sidebar-hamburger-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 6px 9px;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.sidebar-hamburger-btn:hover {
+  background: var(--surface-muted);
+  color: var(--text);
+}
+
+/* ── Clean Left & Right Margins for Single-Column Content ─────────── */
+.chat-shell {
+  width: min(840px, calc(100% - 64px));
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 24px 32px 140px 32px;
+}
+
+.site-header {
+  position: relative;
+  z-index: 150;
+  width: min(840px, calc(100% - 64px));
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 20px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+/* ── AI Optimizer & Cost-Cutting Suggestions Card ─────────────────── */
+.suggestions-panel {
+  border: 1px solid color-mix(in srgb, var(--primary) 30%, var(--border));
+  background: color-mix(in srgb, var(--surface) 97%, var(--primary));
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.ai-tag {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent);
+  font-weight: 750;
+}
+
+.suggestions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+  margin: 14px 0 16px 0;
+}
+
+.suggestion-card {
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+}
+
+.cost-card {
+  background: color-mix(in srgb, #10b981 8%, var(--surface));
+  border-color: color-mix(in srgb, #10b981 25%, transparent);
+}
+
+.reliability-card {
+  background: color-mix(in srgb, #3b82f6 8%, var(--surface));
+  border-color: color-mix(in srgb, #3b82f6 25%, transparent);
+}
+
+.suggestion-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.cost-badge {
+  color: #10b981;
+}
+
+.reliability-badge {
+  color: #38bdf8;
+}
+
+.suggestion-text {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin: 0;
+}
+
+.suggestion-pills-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.suggestion-pills-label {
+  font-size: 0.75rem;
+  font-weight: 750;
+  color: var(--text-muted);
+}
+
+.suggestion-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.15s, background 0.15s;
+}
+
+.suggestion-pill:hover {
+  transform: translateY(-1px);
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  color: var(--primary);
+}
+
+.pill-cost {
+  border-color: color-mix(in srgb, #10b981 40%, transparent);
+}
+
+.pill-power {
+  border-color: color-mix(in srgb, #f59e0b 40%, transparent);
+}
+
+.pill-feature {
+  border-color: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+@media (max-width: 768px) {
+  .chatgpt-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 250;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+  }
+
+  .chatgpt-sidebar.collapsed {
+    transform: translateX(-100%);
+    width: 260px;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 240;
+  }
+
+  .chat-shell {
+    width: 100%;
+    padding: 16px 16px 140px 16px;
+  }
+
+  .site-header {
+    width: 100%;
+    padding: 16px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

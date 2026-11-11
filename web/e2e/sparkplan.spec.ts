@@ -204,6 +204,22 @@ test.describe("successful build", () => {
 
     expect(errors).toEqual([]);
   });
+
+  test("toggles collapsible sidebar and creates new conversation session", async ({ page }) => {
+    const errors = watchErrors(page);
+    await mockSuccess(page);
+
+    await page.goto("/");
+    const hamburgerBtn = page.getByRole("button", { name: /sidebar/i }).first();
+    await expect(hamburgerBtn).toBeVisible();
+    await hamburgerBtn.click();
+
+    const newBuildBtn = page.getByRole("button", { name: "New Build" });
+    await expect(newBuildBtn).toBeVisible();
+    await newBuildBtn.click();
+
+    expect(errors).toEqual([]);
+  });
 });
 
 test.describe("refused build", () => {
