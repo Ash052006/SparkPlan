@@ -1587,3 +1587,30 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 
 **UNVERIFIED**
 - Browser WebGL 3D rendering and CSS glassmorphism visually validated in headless browser; physical tactile feel on diverse monitor color profiles (OLED/P3) remains UNVERIFIED in automated headless runs.
+
+## Phase 8 — Interactive Build Guide Checklist & Conversational ChatGPT Thread
+
+**Built**
+- **Interactive Markdown Checklist in Build Guide (`web/src/components/Results.tsx`, `web/src/styles.css`)**:
+  - Implemented an interactive `InteractiveCheckbox` component inside `ReactMarkdown`'s custom components renderer for `<input type="checkbox">`.
+  - Replaced static disabled checkboxes with tactile, stateful checkable boxes featuring emerald accent colors (`--success`), smooth transition animations, and CSS `:has(.interactive-checklist-checkbox:checked)` strikethrough/dimmed state for completed steps.
+  - Allows makers to step through the 9. Pre-flight test checklist step-by-step and track physical assembly progress.
+- **ChatGPT-Style Conversational Thread Architecture (`web/src/App.tsx`, `web/src/styles.css`)**:
+  - Refactored the hardware studio state model from a single run into a sequential thread of turns (`ChatTurn[]` model).
+  - First turn initiates a new build via `startRun(prompt)`. Follow-up turns dynamically invoke `modifyRun(baseRunId, prompt)` under the hood, retaining pin assignments and selected parts while applying requested modifications.
+  - User messages appear in sleek chat bubbles ("You"), followed by SparkPlan AI Compiler turns featuring live telemetry, progress stepper, dual-stage viewport, verification, wiring, CAD, firmware, and guide.
+  - Added auto-scrolling to the latest turn via `chatEndRef`.
+- **Persistent ChatGPT Sticky Input Dock (`web/src/App.tsx`, `web/src/styles.css`)**:
+  - Pinned a frosted-glass bottom chat input dock (`position: fixed; bottom: 0`) across the workspace.
+  - Auto-growing multiline textarea with `Enter` to submit, `Shift + Enter` for newlines, and mobile-friendly responsive layout.
+  - Preserved backward compatibility with the initial landing page intake card and Playwright test selector contracts (`page.getByLabel("Hardware idea")`, `page.getByRole("button", { name: "Generate build" })`).
+
+**Verification performed**
+- `make test`: **585 passed, 1 skipped, 2 warnings in 160.15s (0:02:40)**.
+- `make lint`: ruff `All checks passed!`, black `142 files would be left unchanged`.
+- `npm --prefix web run build`: Built production bundle in 984ms.
+- `npm --prefix web run test:e2e`: **4 passed in 5.0s** (including mobile 390px viewport, Web Serial flasher modal, interactive simulation bench, and refusal traces).
+
+**UNVERIFIED**
+- Long session persistence across hard browser window reloads (turns are stored in React component state in memory during the active session).
+
