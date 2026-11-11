@@ -1667,4 +1667,48 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 - Cross-tab synchronization of chat sessions in real-time (each tab maintains its own active React state tree).
 
 
+## Phase 11 — Production Pillars, PCB Gerbers, and ChatGPT Proposed Package Card
+
+**Built**
+- **Automated KiCad RS-274X PCB Gerber Generation (`sparkplan/geometry/pcb_gerber.py`, `gerbers.zip`)**:
+  - Deterministic Gerber and Excellon drill generator creating standard 2-layer fabrication packages (`board_outline.gko`, `copper_top.gtl`, `copper_bottom.gbl`, `soldermask_top.gts`, `soldermask_bottom.gbs`, `silkscreen_top.gto`, and `drill.drl`).
+  - Integrated into pipeline runner, artifact index, and downloads API (`/runs/{run_id}/files/gerbers.zip`).
+- **Interactive Pre-Flight Test Checklist (`web/src/components/Results.tsx`, `web/src/styles.css`)**:
+  - Replaced static/disabled task items with `<InteractiveTaskItem>` wrapped in clickable labels.
+  - Clicking either the checkbox or the test text toggles the completed state with smooth emerald strikethrough.
+  - Eliminated unwanted bullet points (`•`) in markdown task lists (`list-style: none`).
+- **Proposed Package Card (`web/src/components/Results.tsx`, `web/src/styles.css`)**:
+  - Re-architected Bill of Materials into a ChatGPT-style package card matching user design:
+    - Card top bar with package title and `Budget target` emerald badge.
+    - Prominent bold green price hero (`$10.00`).
+    - Subtitle displaying module count, connection count, and MCU/rail details.
+    - Clean component vs target cost table with horizontal dividing line.
+    - Centered circular toggle button `( ↓ )` expanding deep sourcing details, DigiKey links, power profiles, and CSV/KiCad exports.
+- **OAuth Authentication & Signed Sessions (`api/auth.py`, `web/src/components/UserMenu.tsx`)**:
+  - Supported GitHub and Google OAuth2 flows with secure HMAC-SHA256 signed session tokens.
+  - Offline developer mode (`/auth/mock-login`) ensuring zero external network calls during unit tests.
+  - Header profile menu with avatar, name, and logout dropdown.
+- **Tiered Token-Bucket Rate Limiting (`api/limits.py`)**:
+  - Enforced tiered limits protecting endpoints (10 req/min for anonymous IP clients, 60 req/min for authenticated users).
+- **Distributed Asynchronous Worker Queue (`sparkplan/queue.py`) & SSE Streaming**:
+  - Defined `JobQueue` protocol with `InMemoryJobQueue` and `RedisJobQueue` for distributed workers.
+  - Real-time Server-Sent Events stream endpoint (`/runs/{run_id}/stream` and `/runs/{run_id}/events`).
+- **Production Multi-Stage Container (`Dockerfile`, `docker-compose.yml`, `.dockerignore`)**:
+  - Multi-stage build packaging Vite frontend, pre-cached `arduino-cli` ESP32 cores and libraries, Python runtime with OpenCascade/CadQuery system libraries, and Redis broker.
+- **Hardware-in-the-Loop (HIL) Silicon Test Rig (`scripts/hil_runner.py`, `.github/workflows/hil.yml`)**:
+  - Standalone script auto-detecting USB serial ESP32 boards, flashing firmware binaries via `esptool`, monitoring UART serial stream at 115200 baud, and validating boot and telemetry.
+  - Includes `--mock` mode for automated CI verification.
+
+**Verification performed**
+- `make lint`: ruff and black clean (149 files checked).
+- `make test`: **599 passed, 1 skipped, 2 warnings in 157.09s (0:02:37)**.
+- `npm --prefix web run build`: Built production bundle in 998ms.
+- `npm --prefix web run test:e2e`: **5 passed in 5.1s** (interactive checklist, proposed package card, flasher modal, sidebar toggle, mobile width assertions).
+- `./scripts/hil_runner.py --mock`: Executed and verified in 0.16s.
+
+**UNVERIFIED**
+- Physical flashing on non-USB-serial ESP32 boards (e.g. JTAG/SWD debug probes).
+- Live OAuth provider token exchange without production OAuth client credentials set in `.env`.
+
+
 
