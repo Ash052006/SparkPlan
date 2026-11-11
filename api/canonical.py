@@ -105,6 +105,7 @@ _DOWNLOADS: Final[dict[str, _Download]] = {
         "simulation_project", "application/zip", "project.zip", "simulation/project.zip"
     ),
     "GUIDE.md": _Download("guide", "text/markdown; charset=utf-8", "GUIDE.md", "GUIDE.md"),
+    "gerbers.zip": _Download("gerbers", "application/zip", "gerbers.zip", "gerbers.zip"),
 }
 
 _ARCHIVE_TIMESTAMP: Final = (1980, 1, 1, 0, 0, 0)

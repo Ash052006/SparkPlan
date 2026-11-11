@@ -185,6 +185,7 @@ export const ARTIFACT_LINKS: ArtifactLink[] = [
   { name: "simulation_screenshot", filename: "screenshot.png", label: "Simulation screenshot" },
   { name: "simulation_project", filename: "project.zip", label: "Wokwi project" },
   { name: "guide", filename: "GUIDE.md", label: "Build guide" },
+  { name: "gerbers", filename: "gerbers.zip", label: "KiCad PCB Gerbers" },
 ];
 
 export class ApiError extends Error {

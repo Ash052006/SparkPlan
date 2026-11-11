@@ -121,6 +121,12 @@ test.describe("successful build", () => {
     await expect(page.locator("#guide-heading")).toBeVisible();
     await expect(page.getByText("Wire the DHT22")).toBeVisible();
 
+    const checklistCheckbox = page.locator(".interactive-checklist-checkbox").first();
+    await expect(checklistCheckbox).toBeVisible();
+    await expect(checklistCheckbox).not.toBeChecked();
+    await checklistCheckbox.click();
+    await expect(checklistCheckbox).toBeChecked();
+
     const viewer = page.getByRole("img", { name: /Interactive 3D view/ });
     await expect(viewer).toBeVisible();
     await expect(page.locator(".viewer-error")).toHaveCount(0);
