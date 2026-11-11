@@ -1652,7 +1652,10 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
     - Reliability & power efficiency recommendations (100nF decoupling capacitors, deep sleep duty cycling).
     - 1-click interactive modification chips that instantly load into the bottom chat dock.
 - **Spacious Margins & Clean Column Breathing Space (`web/src/styles.css`)**:
-  - Added clean horizontal padding (`padding: 24px 32px 140px 32px`) to the single-column content container, ensuring generous margins and no cramped edges on either side.
+  - Added clean horizontal padding (`padding: 24px 24px 140px 24px`) to the single-column content container, ensuring generous margins and no cramped edges on either side.
+- **Chatbox Alignment with Content (`web/src/styles.css`)**:
+  - Pinned `.chatgpt-dock` left offset to `260px` when desktop sidebar is open (and `0px` when collapsed or on mobile), and harmonized `.chatgpt-dock-inner` with `.chat-shell` (`width: min(800px, 100%)`, `24px` horizontal padding).
+  - Left and right edges of the bottom chat dock now align with the content cards down to the pixel.
 
 **Verification performed**
 - `npm --prefix web run build`: Built production bundle in 950ms.
