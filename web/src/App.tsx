@@ -19,7 +19,9 @@ import {
 import PromptForm from "./components/PromptForm";
 import ProgressStepper from "./components/ProgressStepper";
 import VerificationBadges from "./components/VerificationBadges";
-import ModifyPromptBar from "./components/ModifyPromptBar";
+import OptimizationSuggestions from "./components/OptimizationSuggestions";
+import Sidebar from "./components/Sidebar";
+import { ChatSession, ChatTurn } from "./types/chat";
 import {
   ArtifactErrors,
   DownloadsPanel,
@@ -51,38 +53,30 @@ function themeLabel(theme: Theme): string {
   return theme === "dark" ? "Use light theme" : "Use dark theme";
 }
 
-export interface ChatTurn {
-  id: string;
-  prompt: string;
-  run: RunResult | null;
-  spec: SupportedSpec | null;
-  trace: Trace | null;
-  sketch: string;
-  guide: string;
-  wokwiDiagram: WokwiDiagram | null;
-  serialLog: string;
-  loading: boolean;
-  loadingArtifacts: boolean;
-  loadingDiagram: boolean;
-  loadingLog: boolean;
-  traceError: string;
-  firmwareError: string;
-  guideError: string;
-  artifactErrors: string[];
-  error: string;
-  studioTab: "all" | "circuit" | "cad" | "firmware" | "bom" | "guide";
-  timestamp: Date;
-}
-
 export default function App() {
   const [idea, setIdea] = useState("");
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([
+    {
+      id: "session-1",
+      title: "New Hardware Build",
+      turns: [],
+      createdAt: new Date(),
+    },
+  ]);
+  const [activeSessionId, setActiveSessionId] = useState<string>("session-1");
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth >= 900;
+  });
   const [catalog, setCatalog] = useState<Catalog | null>(null);
   const [loading, setLoading] = useState(false);
   const [bottomInput, setBottomInput] = useState("");
   const [theme, toggleTheme] = useTheme();
   const [activeFlasherRunId, setActiveFlasherRunId] = useState<string | null>(null);
   const [activeFab, setActiveFab] = useState<{ runId: string; spec: SupportedSpec | null } | null>(null);
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? sessions[0];
+  const turns = activeSession ? activeSession.turns : [];
 
   const abortRef = useRef<AbortController | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -99,13 +93,50 @@ export default function App() {
   }, [turns.length, loading]);
 
   function updateTurn(id: string, patch: Partial<ChatTurn> | ((prev: ChatTurn) => Partial<ChatTurn>)) {
-    setTurns((prev) =>
-      prev.map((t) => {
-        if (t.id !== id) return t;
-        const updates = typeof patch === "function" ? patch(t) : patch;
-        return { ...t, ...updates };
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeSessionId) return s;
+        return {
+          ...s,
+          turns: s.turns.map((t) => {
+            if (t.id !== id) return t;
+            const updates = typeof patch === "function" ? patch(t) : patch;
+            return { ...t, ...updates };
+          }),
+        };
       }),
     );
+  }
+
+  function handleNewSession() {
+    const newId = `session-${Date.now()}`;
+    const newSession: ChatSession = {
+      id: newId,
+      title: "New Hardware Build",
+      turns: [],
+      createdAt: new Date(),
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    setIdea("");
+    setBottomInput("");
+  }
+
+  function handleDeleteSession(id: string) {
+    setSessions((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      if (next.length === 0) {
+        const freshId = `session-${Date.now()}`;
+        return [{ id: freshId, title: "New Hardware Build", turns: [], createdAt: new Date() }];
+      }
+      return next;
+    });
+    if (activeSessionId === id) {
+      const remaining = sessions.filter((s) => s.id !== id);
+      if (remaining.length > 0) {
+        setActiveSessionId(remaining[0].id);
+      }
+    }
   }
 
   async function loadArtifactsForTurn(turnId: string, result: RunResult, signal: AbortSignal) {
@@ -251,7 +282,20 @@ export default function App() {
       timestamp: new Date(),
     };
 
-    setTurns((prev) => [...prev, newTurn]);
+    // Auto-name active session title if it is still default
+    if (activeSession && (activeSession.title === "New Hardware Build" || activeSession.turns.length === 0)) {
+      const cleanTitle = text.length > 28 ? `${text.slice(0, 28)}…` : text;
+      setSessions((prev) =>
+        prev.map((s) => (s.id === activeSessionId ? { ...s, title: cleanTitle } : s)),
+      );
+    }
+
+    setSessions((prev) =>
+      prev.map((s) => {
+        if (s.id !== activeSessionId) return s;
+        return { ...s, turns: [...s.turns, newTurn] };
+      }),
+    );
 
     try {
       let runId: string;
@@ -286,37 +330,63 @@ export default function App() {
   }
 
   return (
-    <div className="page chat-page">
-      <header className="site-header">
-        <a className="brand" href="/">
-          <span className="brand-mark" aria-hidden="true">
-            SP
-          </span>
-          <span>
-            <strong>SparkPlan</strong>
-            <span className="brand-subtitle">Hardware, checked.</span>
-          </span>
-        </a>
-        <div className="header-actions">
-          <div className="telemetry-bar" aria-label="System status">
-            <span className="telemetry-pill live">
-              <span className="telemetry-dot" aria-hidden="true" />
-              ONLINE
-            </span>
-            <span className="telemetry-pill">20 MODULES</span>
-            <span className="telemetry-pill">ESP32-WROOM-32</span>
+    <div className="chatgpt-layout page">
+      <Sidebar
+        sessions={sessions}
+        activeSessionId={activeSessionId}
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen((v) => !v)}
+        onSelectSession={(id) => {
+          setActiveSessionId(id);
+          setBottomInput("");
+          setIdea("");
+        }}
+        onNewSession={handleNewSession}
+        onDeleteSession={handleDeleteSession}
+      />
+
+      <div className={`chatgpt-main-viewport ${sidebarOpen ? "sidebar-open" : "sidebar-collapsed"}`}>
+        <header className="site-header">
+          <div className="header-brand-wrap">
+            <button
+              type="button"
+              className="sidebar-hamburger-btn"
+              onClick={() => setSidebarOpen((v) => !v)}
+              aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+              title="Toggle chat history"
+            >
+              ☰
+            </button>
+            <a className="brand" href="/">
+              <span className="brand-mark" aria-hidden="true">
+                SP
+              </span>
+              <span>
+                <strong>SparkPlan</strong>
+                <span className="brand-subtitle">Hardware, checked.</span>
+              </span>
+            </a>
           </div>
-          <button
-            type="button"
-            className="theme-toggle"
-            onClick={toggleTheme}
-            aria-label={themeLabel(theme)}
-            title={themeLabel(theme)}
-          >
-            {theme === "dark" ? "Light" : "Dark"}
-          </button>
-        </div>
-      </header>
+          <div className="header-actions">
+            <div className="telemetry-bar" aria-label="System status">
+              <span className="telemetry-pill live">
+                <span className="telemetry-dot" aria-hidden="true" />
+                ONLINE
+              </span>
+              <span className="telemetry-pill">20 MODULES</span>
+              <span className="telemetry-pill">ESP32-WROOM-32</span>
+            </div>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={themeLabel(theme)}
+              title={themeLabel(theme)}
+            >
+              {theme === "dark" ? "Light" : "Dark"}
+            </button>
+          </div>
+        </header>
 
       <main className="app-shell chat-shell">
         {turns.length === 0 && (
@@ -520,7 +590,13 @@ export default function App() {
                               onOpenFlasher={() => setActiveFlasherRunId(turn.run!.run_id)}
                             />
 
-                            <ModifyPromptBar onModify={(mod) => void handleSend(mod)} loading={loading} />
+                            <OptimizationSuggestions
+                              spec={turn.spec}
+                              onApplySuggestion={(suggestion) => {
+                                setBottomInput(suggestion);
+                                bottomInputRef.current?.focus();
+                              }}
+                            />
                           </div>
                         </>
                       )}
@@ -577,7 +653,7 @@ export default function App() {
                     }
                   }
                 }}
-                placeholder="Send a follow-up modification or a new hardware idea..."
+                placeholder="e.g. 'Add a passive buzzer that beeps when temp > 30°C' or enter a new hardware idea..."
                 rows={1}
                 className="chatgpt-dock-input"
                 disabled={loading}
@@ -617,6 +693,7 @@ export default function App() {
           onClose={() => setActiveFab(null)}
         />
       )}
+      </div>
     </div>
   );
 }

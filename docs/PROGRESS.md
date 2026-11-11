@@ -1635,4 +1635,33 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 **UNVERIFIED**
 - Long session persistence across hard browser window reloads (turns are stored in React component state in memory during the active session).
 
+## Phase 10 — Collapsible Chat Sidebar, Unified Bottom Input & AI Optimizer Suggestions
+
+**Built**
+- **Collapsible Left Chat Sidebar (`web/src/components/Sidebar.tsx`, `web/src/styles.css`)**:
+  - Implemented ChatGPT-style conversation sidebar with smooth expansion and collapse.
+  - "+ New Build" action button to spawn fresh hardware compilation threads.
+  - Session history list with idea titles, turn counts, and delete actions.
+  - Responsive behavior: docked 260px sidebar on desktop (>=900px), off-canvas slide-out drawer with backdrop on mobile (<900px).
+- **Consolidated Single Chat Bar (Eliminated Duplicate Input)**:
+  - Removed duplicate inline text boxes inside the results. All modifications and follow-up ideas are typed directly in the sticky bottom chat dock.
+  - Integrated `Iterative Hardware Modification` section and updated dock placeholder (`e.g. 'Add a passive buzzer that beeps when temp > 30°C' or enter a new hardware idea...`).
+- **AI Hardware Optimizer & Cost Reduction Advice (`web/src/components/OptimizationSuggestions.tsx`)**:
+  - Embedded intelligence card in the single-column stream analyzing parts and architecture:
+    - Cost reduction opportunities (e.g. sensor substitutions DHT22 vs DHT11, shared I2C buses, SMD passives).
+    - Reliability & power efficiency recommendations (100nF decoupling capacitors, deep sleep duty cycling).
+    - 1-click interactive modification chips that instantly load into the bottom chat dock.
+- **Spacious Margins & Clean Column Breathing Space (`web/src/styles.css`)**:
+  - Added clean horizontal padding (`padding: 24px 32px 140px 32px`) to the single-column content container, ensuring generous margins and no cramped edges on either side.
+
+**Verification performed**
+- `npm --prefix web run build`: Built production bundle in 950ms.
+- `npm --prefix web run test:e2e`: **5 passed in 4.9s** (added test for sidebar toggle and session creation, all mobile and flasher tests green).
+- `make lint`: ruff and black clean (142 files unchanged).
+- `make test`: **585 passed, 1 skipped, 2 warnings in 163.54s (0:02:43)**.
+
+**UNVERIFIED**
+- Cross-tab synchronization of chat sessions in real-time (each tab maintains its own active React state tree).
+
+
 
