@@ -173,7 +173,8 @@ h3 {
 .site-header {
   position: relative;
   z-index: 150;
-  width: min(1180px, calc(100% - 40px));
+  width: min(840px, calc(100% - 32px));
+  max-width: 840px;
   margin: 0 auto;
   padding: 22px 0;
   display: flex;
@@ -262,7 +263,8 @@ h3 {
 }
 
 .app-shell {
-  width: min(1180px, calc(100% - 40px));
+  width: min(840px, calc(100% - 32px));
+  max-width: 840px;
   margin: 0 auto;
   padding-bottom: 48px;
 }
@@ -1151,7 +1153,7 @@ code {
 @media (max-width: 680px) {
   .site-header,
   .app-shell {
-    width: min(1180px, calc(100% - 28px));
+    width: calc(100% - 28px);
   }
 
   .header-note,
@@ -2857,6 +2859,59 @@ code {
   font-weight: 700;
 }
 
+/* ChatGPT-Style Single-Column Stack */
+.chat-assistant-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  max-width: 100%;
+}
+
+.chat-assistant-stack > * {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.chat-assistant-stack > .panel {
+  margin-top: 0;
+}
+
+/* Modeled directly after ChatGPT's proposed package card (User screenshot) */
+.chatgpt-metric-hero {
+  margin: 6px 0 16px 0;
+  padding: 14px 18px;
+  background: color-mix(in srgb, var(--surface) 60%, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.chatgpt-metric-val {
+  font-size: 1.85rem;
+  font-weight: 850;
+  color: #10b981;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.chatgpt-metric-sub {
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.chatgpt-metric-desc {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 /* Sticky ChatGPT Bottom Dock */
 .chatgpt-dock {
   position: fixed;
@@ -2871,7 +2926,8 @@ code {
 
 .chatgpt-dock-inner {
   pointer-events: auto;
-  width: min(840px, 100%);
+  width: min(840px, calc(100% - 32px));
+  max-width: 840px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;

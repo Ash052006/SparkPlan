@@ -221,6 +221,16 @@ export function PartsPanel({ spec, catalog, loading, onOpenFab }: PartsProps) {
       {!loading && !spec && <p className="muted">No parts list is available.</p>}
       {spec && (
         <>
+          <div className="chatgpt-metric-hero">
+            <div className="chatgpt-metric-val">
+              ${totalCost.toFixed(2)}
+              <span className="chatgpt-metric-sub">Target BOM cost</span>
+            </div>
+            <div className="chatgpt-metric-desc">
+              {spec.parts.length} validated catalog modules · ESP32-WROOM-32 MCU · 5V / 3.3V power rails
+            </div>
+          </div>
+
           <div className="power-profile-box">
             <div className="power-metric">
               <span className="power-label">⚡ Typ. Current:</span>

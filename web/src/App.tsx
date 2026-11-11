@@ -444,214 +444,84 @@ export default function App() {
                             </div>
                           </div>
 
-                          <VerificationBadges
-                            verification={turn.trace?.verification ?? null}
-                            traceError={turn.traceError}
-                          />
+                          <div className="chat-assistant-stack">
+                            <VerificationBadges
+                              verification={turn.trace?.verification ?? null}
+                              traceError={turn.traceError}
+                            />
 
-                          <ModifyPromptBar onModify={(mod) => void handleSend(mod)} loading={loading} />
+                            <PartsPanel
+                              spec={turn.spec}
+                              catalog={catalog}
+                              loading={turn.loadingArtifacts && !turn.spec}
+                              onOpenFab={() =>
+                                setActiveFab({ runId: turn.run!.run_id, spec: turn.spec })
+                              }
+                            />
 
-                          <nav className="studio-toolbar" aria-label="Engineering studio views">
-                            <div className="studio-tabs" role="tablist">
-                              <button
-                                type="button"
-                                className={`studio-tab ${turn.studioTab === "all" ? "active" : ""}`}
-                                onClick={() => updateTurn(turn.id, { studioTab: "all" })}
-                                role="tab"
-                                aria-selected={turn.studioTab === "all"}
-                              >
-                                🗂️ All Views
-                              </button>
-                              <button
-                                type="button"
-                                className={`studio-tab ${turn.studioTab === "circuit" ? "active" : ""}`}
-                                onClick={() => updateTurn(turn.id, { studioTab: "circuit" })}
-                                role="tab"
-                                aria-selected={turn.studioTab === "circuit"}
-                              >
-                                ⚡ Circuit & Sim
-                              </button>
-                              {canViewStl && (
-                                <button
-                                  type="button"
-                                  className={`studio-tab ${turn.studioTab === "cad" ? "active" : ""}`}
-                                  onClick={() => updateTurn(turn.id, { studioTab: "cad" })}
-                                  role="tab"
-                                  aria-selected={turn.studioTab === "cad"}
-                                >
-                                  🧊 3D CAD
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                className={`studio-tab ${turn.studioTab === "firmware" ? "active" : ""}`}
-                                onClick={() => updateTurn(turn.id, { studioTab: "firmware" })}
-                                role="tab"
-                                aria-selected={turn.studioTab === "firmware"}
-                              >
-                                💻 Firmware
-                              </button>
-                              <button
-                                type="button"
-                                className={`studio-tab ${turn.studioTab === "bom" ? "active" : ""}`}
-                                onClick={() => updateTurn(turn.id, { studioTab: "bom" })}
-                                role="tab"
-                                aria-selected={turn.studioTab === "bom"}
-                              >
-                                📋 BOM & Wiring
-                              </button>
-                              <button
-                                type="button"
-                                className={`studio-tab ${turn.studioTab === "guide" ? "active" : ""}`}
-                                onClick={() => updateTurn(turn.id, { studioTab: "guide" })}
-                                role="tab"
-                                aria-selected={turn.studioTab === "guide"}
-                              >
-                                📖 Guide & Files
-                              </button>
-                            </div>
+                            <WiringPanel spec={turn.spec} />
 
-                            <div className="studio-actions">
-                              <button
-                                type="button"
-                                className="ghost-button studio-action-btn"
-                                onClick={() =>
-                                  setActiveFab({ runId: turn.run!.run_id, spec: turn.spec })
-                                }
-                                title="Instant PCB and 3D printing fabrication quote"
+                            {canViewStl && (
+                              <section
+                                className="panel viewer-panel stage-panel"
+                                aria-labelledby={`enclosure-heading-${turn.id}`}
                               >
-                                🏭 Order Fab
-                              </button>
-                              {Boolean(turn.run.artifacts.firmware_bin) && (
-                                <button
-                                  type="button"
-                                  className="primary-button studio-action-btn"
-                                  onClick={() => setActiveFlasherRunId(turn.run!.run_id)}
-                                >
-                                  ⚡ Flash ESP32
-                                </button>
-                              )}
-                              <a
-                                className="ghost-button studio-action-btn"
-                                href={bundleUrl(turn.run.run_id)}
-                                download
-                              >
-                                📦 Bundle
-                              </a>
-                            </div>
-                          </nav>
-
-                          {/* ── STAGE VIEWPORTS (3D CAD & SIMULATION) ── */}
-                          {(turn.studioTab === "all" ||
-                            turn.studioTab === "cad" ||
-                            turn.studioTab === "circuit") && (
-                            <div
-                              className={`studio-stage-grid ${
-                                turn.studioTab !== "all" ? "single-stage" : ""
-                              }`}
-                            >
-                              {(turn.studioTab === "all" || turn.studioTab === "cad") &&
-                                canViewStl && (
-                                  <section
-                                    className="panel viewer-panel stage-panel"
-                                    aria-labelledby={`enclosure-heading-${turn.id}`}
-                                  >
-                                    <div className="panel-heading">
-                                      <div>
-                                        <p className="eyebrow">STL preview</p>
-                                        <h2 id={`enclosure-heading-${turn.id}`}>Enclosure</h2>
-                                      </div>
-                                      <span className="stage-tag">Parametric 3D CAD</span>
-                                    </div>
-                                    <StlViewer
-                                      baseUrl={artifactUrl(turn.run.run_id, "base.stl")}
-                                      lidUrl={artifactUrl(turn.run.run_id, "lid.stl")}
-                                      assembledUrl={assembledUrl}
-                                      theme={theme}
-                                    />
-                                  </section>
-                                )}
-
-                              {(turn.studioTab === "all" || turn.studioTab === "circuit") &&
-                                (turn.run.artifacts.simulation_diagram ||
-                                  turn.run.artifacts.simulation_log ||
-                                  turn.run.artifacts.simulation_screenshot) && (
-                                  <div className="stage-panel">
-                                    <SimulationPanel
-                                      run={turn.run}
-                                      diagram={turn.wokwiDiagram}
-                                      serialLog={turn.serialLog}
-                                      loadingDiagram={turn.loadingDiagram}
-                                      loadingLog={turn.loadingLog}
-                                    />
+                                <div className="panel-heading">
+                                  <div>
+                                    <p className="eyebrow">STL preview</p>
+                                    <h2 id={`enclosure-heading-${turn.id}`}>Enclosure</h2>
                                   </div>
-                                )}
-                            </div>
-                          )}
-
-                          {/* ── TELEMETRY & HARDWARE MATRIX ── */}
-                          {(turn.studioTab === "all" ||
-                            turn.studioTab === "bom" ||
-                            turn.studioTab === "firmware" ||
-                            turn.studioTab === "guide") && (
-                            <div className="results-grid">
-                              {(turn.studioTab === "all" || turn.studioTab === "bom") && (
-                                <div className="results-column">
-                                  <PartsPanel
-                                    spec={turn.spec}
-                                    catalog={catalog}
-                                    loading={turn.loadingArtifacts && !turn.spec}
-                                    onOpenFab={() =>
-                                      setActiveFab({ runId: turn.run!.run_id, spec: turn.spec })
-                                    }
-                                  />
-                                  <WiringPanel spec={turn.spec} />
+                                  <span className="stage-tag">Parametric 3D CAD</span>
                                 </div>
-                              )}
-                              {(turn.studioTab === "all" ||
-                                turn.studioTab === "firmware" ||
-                                turn.studioTab === "guide") && (
-                                <div className="results-column">
-                                  {(turn.studioTab === "all" ||
-                                    turn.studioTab === "firmware") && (
-                                    <FirmwarePanel
-                                      code={turn.sketch}
-                                      error={turn.firmwareError}
-                                      loading={turn.loadingArtifacts && !turn.sketch}
-                                    />
-                                  )}
-                                  {(turn.studioTab === "all" || turn.studioTab === "guide") && (
-                                    <GuidePanel
-                                      guide={turn.guide}
-                                      error={turn.guideError}
-                                      loading={turn.loadingArtifacts && !turn.guide}
-                                    />
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )}
-
-                          {/* ── VERIFICATION TRACE & PRODUCTION DOWNLOADS ── */}
-                          {(turn.studioTab === "all" ||
-                            turn.studioTab === "bom" ||
-                            turn.studioTab === "guide") && (
-                            <div className="results-grid">
-                              <div className="results-column">
-                                <ValidationPanel
-                                  issues={validationStage?.issues ?? []}
-                                  validationStage={validationStage}
+                                <StlViewer
+                                  baseUrl={artifactUrl(turn.run.run_id, "base.stl")}
+                                  lidUrl={artifactUrl(turn.run.run_id, "lid.stl")}
+                                  assembledUrl={assembledUrl}
+                                  theme={theme}
                                 />
-                                {turn.run && <StageFindingsPanel stages={turn.run.stages} />}
-                              </div>
-                              <div className="results-column">
-                                <DownloadsPanel
+                              </section>
+                            )}
+
+                            {(turn.run.artifacts.simulation_diagram ||
+                              turn.run.artifacts.simulation_log ||
+                              turn.run.artifacts.simulation_screenshot) && (
+                              <div className="stage-panel">
+                                <SimulationPanel
                                   run={turn.run}
-                                  onOpenFlasher={() => setActiveFlasherRunId(turn.run!.run_id)}
+                                  diagram={turn.wokwiDiagram}
+                                  serialLog={turn.serialLog}
+                                  loadingDiagram={turn.loadingDiagram}
+                                  loadingLog={turn.loadingLog}
                                 />
                               </div>
-                            </div>
-                          )}
+                            )}
+
+                            <FirmwarePanel
+                              code={turn.sketch}
+                              error={turn.firmwareError}
+                              loading={turn.loadingArtifacts && !turn.sketch}
+                            />
+
+                            <GuidePanel
+                              guide={turn.guide}
+                              error={turn.guideError}
+                              loading={turn.loadingArtifacts && !turn.guide}
+                            />
+
+                            <ValidationPanel
+                              issues={validationStage?.issues ?? []}
+                              validationStage={validationStage}
+                            />
+
+                            {turn.run && <StageFindingsPanel stages={turn.run.stages} />}
+
+                            <DownloadsPanel
+                              run={turn.run}
+                              onOpenFlasher={() => setActiveFlasherRunId(turn.run!.run_id)}
+                            />
+
+                            <ModifyPromptBar onModify={(mod) => void handleSend(mod)} loading={loading} />
+                          </div>
                         </>
                       )}
 

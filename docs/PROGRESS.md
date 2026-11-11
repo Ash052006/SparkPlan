@@ -1614,3 +1614,25 @@ merged to `main` as `b047322`, and tagged `phase-8` before this branch started.
 **UNVERIFIED**
 - Long session persistence across hard browser window reloads (turns are stored in React component state in memory during the active session).
 
+## Phase 9 — Unified Single-Column ChatGPT Layout & Identical Width Stream
+
+**Built**
+- **1-Column Hardware Studio Architecture (`web/src/App.tsx`, `web/src/styles.css`)**:
+  - Eliminated all multi-column splits, side-by-side grids, and tab bars (`.studio-stage-grid`, `.results-grid`, `.studio-toolbar`).
+  - Restructured assistant responses into a unified single-column vertical reading stream (`.chat-assistant-stack`): Verification Badges → Parts & BOM → Wiring & Pinout → 3D CAD Enclosure → Simulation & Interactive Bench → Firmware Code → Build Guide & Checklist → Validation Checks → Production Downloads → Iterative Modification Bar.
+- **Identical Width Stream Container (`web/src/styles.css`)**:
+  - Enforced a uniform maximum width (`min(840px, calc(100% - 32px))`) across all interface components: `.site-header`, `.app-shell`, `.hero`, `.prompt-card`, `.chat-shell`, `.chat-thread`, `.chat-turn-card`, `.chat-assistant-stack`, and `.chatgpt-dock-inner`.
+  - Content flows naturally with consistent horizontal margins on desktop, tablet, and mobile without width jumping or misalignments.
+- **ChatGPT-Style Metrics Hero Card (`web/src/components/Results.tsx`, `web/src/styles.css`)**:
+  - Modeled the Bill of Materials card directly after ChatGPT's package card layout (from user reference screenshot): large emerald-green target cost metric (`$XX.XX`), subtitle summary with module count, MCU, and power rail specifications, followed by clean divider-separated parts sourcing table.
+
+**Verification performed**
+- `npm --prefix web run build`: Built production bundle in 961ms.
+- `npm --prefix web run test:e2e`: **4 passed in 4.9s** (all contracts for mobile viewport, flasher, simulation bench, and refusal traces satisfied).
+- `make lint`: ruff and black clean (142 files unchanged).
+- `make test`: 585 passed, 1 skipped.
+
+**UNVERIFIED**
+- Long session persistence across hard browser window reloads (turns are stored in React component state in memory during the active session).
+
+
