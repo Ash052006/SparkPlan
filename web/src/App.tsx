@@ -51,63 +51,72 @@ function themeLabel(theme: Theme): string {
   return theme === "dark" ? "Use light theme" : "Use dark theme";
 }
 
+export interface ChatTurn {
+  id: string;
+  prompt: string;
+  run: RunResult | null;
+  spec: SupportedSpec | null;
+  trace: Trace | null;
+  sketch: string;
+  guide: string;
+  wokwiDiagram: WokwiDiagram | null;
+  serialLog: string;
+  loading: boolean;
+  loadingArtifacts: boolean;
+  loadingDiagram: boolean;
+  loadingLog: boolean;
+  traceError: string;
+  firmwareError: string;
+  guideError: string;
+  artifactErrors: string[];
+  error: string;
+  studioTab: "all" | "circuit" | "cad" | "firmware" | "bom" | "guide";
+  timestamp: Date;
+}
+
 export default function App() {
   const [idea, setIdea] = useState("");
-  const [run, setRun] = useState<RunResult | null>(null);
-  const [spec, setSpec] = useState<SupportedSpec | null>(null);
+  const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [catalog, setCatalog] = useState<Catalog | null>(null);
-  const [trace, setTrace] = useState<Trace | null>(null);
-  const [sketch, setSketch] = useState("");
-  const [guide, setGuide] = useState("");
-  const [wokwiDiagram, setWokwiDiagram] = useState<WokwiDiagram | null>(null);
-  const [serialLog, setSerialLog] = useState("");
-  const [loadingDiagram, setLoadingDiagram] = useState(false);
-  const [loadingLog, setLoadingLog] = useState(false);
-  const [isFlasherOpen, setIsFlasherOpen] = useState(false);
-  const [isFabOpen, setIsFabOpen] = useState(false);
-  const [studioTab, setStudioTab] = useState<"all" | "circuit" | "cad" | "firmware" | "bom" | "guide">("all");
-  const [traceError, setTraceError] = useState("");
-  const [firmwareError, setFirmwareError] = useState("");
-  const [guideError, setGuideError] = useState("");
-  const [artifactErrors, setArtifactErrors] = useState<string[]>([]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [loadingArtifacts, setLoadingArtifacts] = useState(false);
+  const [bottomInput, setBottomInput] = useState("");
   const [theme, toggleTheme] = useTheme();
+  const [activeFlasherRunId, setActiveFlasherRunId] = useState<string | null>(null);
+  const [activeFab, setActiveFab] = useState<{ runId: string; spec: SupportedSpec | null } | null>(null);
+
   const abortRef = useRef<AbortController | null>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const bottomInputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 
-  function resetResult() {
-    setRun(null);
-    setSpec(null);
-    setTrace(null);
-    setSketch("");
-    setGuide("");
-    setWokwiDiagram(null);
-    setSerialLog("");
-    setIsFlasherOpen(false);
-    setIsFabOpen(false);
-    setStudioTab("all");
-    setLoadingDiagram(false);
-    setLoadingLog(false);
-    setTraceError("");
-    setFirmwareError("");
-    setGuideError("");
-    setArtifactErrors([]);
+  useEffect(() => {
+    if (turns.length > 0) {
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [turns.length, loading]);
+
+  function updateTurn(id: string, patch: Partial<ChatTurn> | ((prev: ChatTurn) => Partial<ChatTurn>)) {
+    setTurns((prev) =>
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const updates = typeof patch === "function" ? patch(t) : patch;
+        return { ...t, ...updates };
+      }),
+    );
   }
 
-  async function loadArtifacts(result: RunResult, signal: AbortSignal) {
-    setLoadingArtifacts(true);
+  async function loadArtifactsForTurn(turnId: string, result: RunResult, signal: AbortSignal) {
+    updateTurn(turnId, { loadingArtifacts: true });
     const tasks: { label: string; promise: Promise<void> }[] = [];
 
     if (result.artifacts.spec) {
       tasks.push({
         label: "Parts list",
         promise: fetchArtifactJson<SupportedSpec>(result.run_id, "spec.json", signal).then((payload) => {
-          if (!signal.aborted) setSpec(payload);
+          if (!signal.aborted) updateTurn(turnId, { spec: payload });
         }),
       });
     }
@@ -116,20 +125,18 @@ export default function App() {
         label: "Verification trace",
         promise: fetchTrace(result.run_id, signal).then((payload) => {
           if (signal.aborted) return;
-          setTrace(payload);
-          setTraceError("");
+          updateTurn(turnId, { trace: payload, traceError: "" });
         }),
       });
     } else {
-      setTraceError("No verification trace was generated for this run.");
+      updateTurn(turnId, { traceError: "No verification trace was generated for this run." });
     }
     if (result.artifacts.sketch) {
       tasks.push({
         label: "Firmware",
         promise: fetchArtifactText(result.run_id, "sketch.ino", signal).then((text) => {
           if (signal.aborted) return;
-          setSketch(text);
-          setFirmwareError("");
+          updateTurn(turnId, { sketch: text, firmwareError: "" });
         }),
       });
     }
@@ -138,8 +145,7 @@ export default function App() {
         label: "Build guide",
         promise: fetchArtifactText(result.run_id, "GUIDE.md", signal).then((text) => {
           if (signal.aborted) return;
-          setGuide(text);
-          setGuideError("");
+          updateTurn(turnId, { guide: text, guideError: "" });
         }),
       });
     }
@@ -153,27 +159,26 @@ export default function App() {
     }
 
     if (result.artifacts.simulation_diagram) {
-      setLoadingDiagram(true);
+      updateTurn(turnId, { loadingDiagram: true });
       tasks.push({
         label: "Wokwi diagram",
         promise: fetchArtifactJson<WokwiDiagram>(result.run_id, "diagram.json", signal).then(
           (payload) => {
             if (!signal.aborted) {
-              setWokwiDiagram(payload);
-              setLoadingDiagram(false);
+              updateTurn(turnId, { wokwiDiagram: payload, loadingDiagram: false });
             }
           },
         ),
       });
     }
+
     if (result.artifacts.simulation_log) {
-      setLoadingLog(true);
+      updateTurn(turnId, { loadingLog: true });
       tasks.push({
         label: "Serial log",
         promise: fetchArtifactText(result.run_id, "simulation.log", signal).then((text) => {
           if (!signal.aborted) {
-            setSerialLog(text);
-            setLoadingLog(false);
+            updateTurn(turnId, { serialLog: text, loadingLog: false });
           }
         }),
       });
@@ -183,22 +188,31 @@ export default function App() {
     if (signal.aborted) return;
 
     const failures: string[] = [];
+    let tErr = "";
+    let fErr = "";
+    let gErr = "";
     outcomes.forEach((outcome, index) => {
       if (outcome.status === "rejected") {
         const message = errorMessage(outcome.reason);
         const label = tasks[index].label;
         failures.push(`${label}: ${message}`);
-        if (label === "Verification trace") setTraceError(message);
-        if (label === "Firmware") setFirmwareError(message);
-        if (label === "Build guide") setGuideError(message);
+        if (label === "Verification trace") tErr = message;
+        if (label === "Firmware") fErr = message;
+        if (label === "Build guide") gErr = message;
       }
     });
-    setArtifactErrors(failures);
-    setLoadingArtifacts(false);
+
+    updateTurn(turnId, (prev) => ({
+      artifactErrors: failures,
+      loadingArtifacts: false,
+      traceError: tErr || prev.traceError,
+      firmwareError: fErr || prev.firmwareError,
+      guideError: gErr || prev.guideError,
+    }));
   }
 
-  async function generate() {
-    const text = idea.trim();
+  async function handleSend(promptText: string) {
+    const text = promptText.trim();
     if (loading || text.length === 0 || text.length > MAX_IDEA_LENGTH) return;
 
     abortRef.current?.abort();
@@ -206,70 +220,73 @@ export default function App() {
     abortRef.current = controller;
 
     setLoading(true);
-    setError("");
-    resetResult();
+    setBottomInput("");
+    setIdea("");
+
+    // Identify if there is an existing successful build to modify
+    const lastSuccessfulTurn = [...turns].reverse().find((t) => t.run?.status === "ok");
+    const baseRunId = lastSuccessfulTurn?.run?.run_id;
+
+    const turnId = `turn-${Date.now()}`;
+    const newTurn: ChatTurn = {
+      id: turnId,
+      prompt: text,
+      run: null,
+      spec: null,
+      trace: null,
+      sketch: "",
+      guide: "",
+      wokwiDiagram: null,
+      serialLog: "",
+      loading: true,
+      loadingArtifacts: false,
+      loadingDiagram: false,
+      loadingLog: false,
+      traceError: "",
+      firmwareError: "",
+      guideError: "",
+      artifactErrors: [],
+      error: "",
+      studioTab: "all",
+      timestamp: new Date(),
+    };
+
+    setTurns((prev) => [...prev, newTurn]);
 
     try {
-      const runId = await startRun(text, controller.signal);
+      let runId: string;
+      if (baseRunId) {
+        runId = await modifyRun(baseRunId, text, controller.signal);
+      } else {
+        runId = await startRun(text, controller.signal);
+      }
+
       const result = await waitForRun(
         runId,
         (payload) => {
-          if (!controller.signal.aborted) setRun(payload);
+          if (!controller.signal.aborted) {
+            updateTurn(turnId, { run: payload });
+          }
         },
         { signal: controller.signal },
       );
-      setRun(result);
+
+      updateTurn(turnId, { run: result, loading: false });
+
       if (result.status === "ok") {
-        await loadArtifacts(result, controller.signal);
+        await loadArtifactsForTurn(turnId, result, controller.signal);
       }
     } catch (caught) {
-      if (!isAbort(caught)) setError(errorMessage(caught));
+      if (!isAbort(caught)) {
+        updateTurn(turnId, { loading: false, error: errorMessage(caught) });
+      }
     } finally {
       if (!controller.signal.aborted) setLoading(false);
     }
   }
-
-  async function handleModify(modification: string) {
-    if (!run || loading || !modification.trim()) return;
-
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    setLoading(true);
-    setError("");
-
-    try {
-      const runId = await modifyRun(run.run_id, modification.trim(), controller.signal);
-      const result = await waitForRun(
-        runId,
-        (payload) => {
-          if (!controller.signal.aborted) setRun(payload);
-        },
-        { signal: controller.signal },
-      );
-      setRun(result);
-      if (result.status === "ok") {
-        await loadArtifacts(result, controller.signal);
-      }
-    } catch (caught) {
-      if (!isAbort(caught)) setError(errorMessage(caught));
-    } finally {
-      if (!controller.signal.aborted) setLoading(false);
-    }
-  }
-
-  const validationStage: RunStageResult | null =
-    run?.stages.find((stage) => stage.name === "validation") ?? null;
-  const planStage = run?.stages.find((stage) => stage.name === "plan");
-  const outcomeReason = planStage?.reason ?? run?.issues[0]?.message ?? "";
-  const canViewStl = Boolean(run?.artifacts.base_stl && run.artifacts.lid_stl);
-  const assembledUrl = run?.artifacts.assembled_stl
-    ? artifactUrl(run.run_id, "assembled.stl")
-    : null;
 
   return (
-    <div className="page">
+    <div className="page chat-page">
       <header className="site-header">
         <a className="brand" href="/">
           <span className="brand-mark" aria-hidden="true">
@@ -301,298 +318,361 @@ export default function App() {
         </div>
       </header>
 
-      <main className="app-shell">
-        <section className="hero hero-awwwards">
-          <div className="hero-glow-layer" aria-hidden="true" />
-          <div className="hero-content">
-            <div className="hero-eyebrow-wrap">
-              <span className="hero-pill">Autonomous Hardware Studio</span>
-              <span className="hero-separator">/</span>
-              <span className="hero-pill-sub">LLM Proposes · Code Verifies</span>
-            </div>
-            <h1 className="hero-title">Ideas in. Validated builds out.</h1>
-            <p className="hero-copy">
-              SparkPlan compiles plain-language ideas into verified pinouts, 3D-printable
-              parametric CAD, circuit simulation, and compilable C++ firmware.
-            </p>
-          </div>
-        </section>
-
-        <PromptForm
-          idea={idea}
-          onIdeaChange={setIdea}
-          onSubmit={() => void generate()}
-          loading={loading}
-        />
-
-        {error && (
-          <div className="status-banner status-error" role="alert">
-            <div>
-              <strong>Could not complete the run.</strong>
-              <p>{error}</p>
-            </div>
-            <button type="button" className="ghost-button" onClick={() => void generate()}>
-              Retry
-            </button>
-          </div>
-        )}
-
-        {run?.status === "running" && (
-          <div className="status-banner status-info" role="status">
-            <div>
-              <strong>Building your plan...</strong>
-              <p>
-                Run <code>{run.run_id}</code> is queued or in progress. This page polls for
-                updates.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {(run || loading) && (
-          <ProgressStepper run={run} running={Boolean(loading && run?.status !== "ok" && run?.status !== "failed" && run?.status !== "refused" && run?.status !== "unsupported")} />
-        )}
-
-        {run?.status === "ok" && (
+      <main className="app-shell chat-shell">
+        {turns.length === 0 && (
           <>
-            <div className="status-banner status-success" role="status">
-              <div>
-                <strong>{loadingArtifacts ? "Build ready. Loading files..." : "Build ready."}</strong>
-                <p>
-                  Run <code>{run.run_id}</code> passed the pipeline. Review the checks before
-                  building.
+            <section className="hero hero-awwwards">
+              <div className="hero-glow-layer" aria-hidden="true" />
+              <div className="hero-content">
+                <div className="hero-eyebrow-wrap">
+                  <span className="hero-pill">Autonomous Hardware Studio</span>
+                  <span className="hero-separator">/</span>
+                  <span className="hero-pill-sub">LLM Proposes · Code Verifies</span>
+                </div>
+                <h1 className="hero-title">Ideas in. Validated builds out.</h1>
+                <p className="hero-copy">
+                  SparkPlan compiles plain-language ideas into verified pinouts, 3D-printable
+                  parametric CAD, circuit simulation, and compilable C++ firmware.
                 </p>
               </div>
-            </div>
+            </section>
 
-            <VerificationBadges verification={trace?.verification ?? null} traceError={traceError} />
-
-            <ModifyPromptBar onModify={(mod) => void handleModify(mod)} loading={loading} />
-
-            <nav className="studio-toolbar" aria-label="Engineering studio views">
-              <div className="studio-tabs" role="tablist">
-                <button
-                  type="button"
-                  className={`studio-tab ${studioTab === "all" ? "active" : ""}`}
-                  onClick={() => setStudioTab("all")}
-                  role="tab"
-                  aria-selected={studioTab === "all"}
-                >
-                  🗂️ All Views
-                </button>
-                <button
-                  type="button"
-                  className={`studio-tab ${studioTab === "circuit" ? "active" : ""}`}
-                  onClick={() => setStudioTab("circuit")}
-                  role="tab"
-                  aria-selected={studioTab === "circuit"}
-                >
-                  ⚡ Circuit & Sim
-                </button>
-                {canViewStl && (
-                  <button
-                    type="button"
-                    className={`studio-tab ${studioTab === "cad" ? "active" : ""}`}
-                    onClick={() => setStudioTab("cad")}
-                    role="tab"
-                    aria-selected={studioTab === "cad"}
-                  >
-                    🧊 3D CAD
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={`studio-tab ${studioTab === "firmware" ? "active" : ""}`}
-                  onClick={() => setStudioTab("firmware")}
-                  role="tab"
-                  aria-selected={studioTab === "firmware"}
-                >
-                  💻 Firmware
-                </button>
-                <button
-                  type="button"
-                  className={`studio-tab ${studioTab === "bom" ? "active" : ""}`}
-                  onClick={() => setStudioTab("bom")}
-                  role="tab"
-                  aria-selected={studioTab === "bom"}
-                >
-                  📋 BOM & Wiring
-                </button>
-                <button
-                  type="button"
-                  className={`studio-tab ${studioTab === "guide" ? "active" : ""}`}
-                  onClick={() => setStudioTab("guide")}
-                  role="tab"
-                  aria-selected={studioTab === "guide"}
-                >
-                  📖 Guide & Files
-                </button>
-              </div>
-              <div className="studio-actions">
-                <button
-                  type="button"
-                  className="ghost-button studio-action-btn"
-                  onClick={() => setIsFabOpen(true)}
-                  title="Instant PCB and 3D printing fabrication quote"
-                >
-                  🏭 Order Fab
-                </button>
-                {Boolean(run.artifacts.firmware_bin) && (
-                  <button
-                    type="button"
-                    className="primary-button studio-action-btn"
-                    onClick={() => setIsFlasherOpen(true)}
-                  >
-                    ⚡ Flash ESP32
-                  </button>
-                )}
-                <a
-                  className="ghost-button studio-action-btn"
-                  href={bundleUrl(run.run_id)}
-                  download
-                >
-                  📦 Bundle
-                </a>
-              </div>
-            </nav>
-
-            {/* ── STAGE VIEWPORTS (3D CAD & INTERACTIVE SIMULATION) ── */}
-            {(studioTab === "all" || studioTab === "cad" || studioTab === "circuit") && (
-              <div className={`studio-stage-grid ${studioTab !== "all" ? "single-stage" : ""}`}>
-                {(studioTab === "all" || studioTab === "cad") && canViewStl && (
-                  <section className="panel viewer-panel stage-panel" aria-labelledby="enclosure-heading">
-                    <div className="panel-heading">
-                      <div>
-                        <p className="eyebrow">STL preview</p>
-                        <h2 id="enclosure-heading">Enclosure</h2>
-                      </div>
-                      <span className="stage-tag">Parametric 3D CAD</span>
-                    </div>
-                    <StlViewer
-                      baseUrl={artifactUrl(run.run_id, "base.stl")}
-                      lidUrl={artifactUrl(run.run_id, "lid.stl")}
-                      assembledUrl={assembledUrl}
-                      theme={theme}
-                    />
-                  </section>
-                )}
-
-                {(studioTab === "all" || studioTab === "circuit") &&
-                  (run?.artifacts.simulation_diagram ||
-                    run?.artifacts.simulation_log ||
-                    run?.artifacts.simulation_screenshot) && (
-                    <div className="stage-panel">
-                      <SimulationPanel
-                        run={run}
-                        diagram={wokwiDiagram}
-                        serialLog={serialLog}
-                        loadingDiagram={loadingDiagram}
-                        loadingLog={loadingLog}
-                      />
-                    </div>
-                  )}
-              </div>
-            )}
-
-            {/* ── TELEMETRY & HARDWARE MATRIX ── */}
-            {(studioTab === "all" || studioTab === "bom" || studioTab === "firmware" || studioTab === "guide") && (
-              <div className="results-grid">
-                {(studioTab === "all" || studioTab === "bom") && (
-                  <div className="results-column">
-                    <PartsPanel
-                      spec={spec}
-                      catalog={catalog}
-                      loading={loadingArtifacts && !spec}
-                      onOpenFab={() => setIsFabOpen(true)}
-                    />
-                    <WiringPanel spec={spec} />
-                  </div>
-                )}
-                {(studioTab === "all" || studioTab === "firmware" || studioTab === "guide") && (
-                  <div className="results-column">
-                    {(studioTab === "all" || studioTab === "firmware") && (
-                      <FirmwarePanel code={sketch} error={firmwareError} loading={loadingArtifacts && !sketch} />
-                    )}
-                    {(studioTab === "all" || studioTab === "guide") && (
-                      <GuidePanel guide={guide} error={guideError} loading={loadingArtifacts && !guide} />
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── VERIFICATION TRACE & PRODUCTION DOWNLOADS ── */}
-            {(studioTab === "all" || studioTab === "bom" || studioTab === "guide") && (
-              <div className="results-grid">
-                <div className="results-column">
-                  <ValidationPanel
-                    issues={validationStage?.issues ?? []}
-                    validationStage={validationStage}
-                  />
-                  {run && <StageFindingsPanel stages={run.stages} />}
-                </div>
-                <div className="results-column">
-                  <DownloadsPanel run={run} onOpenFlasher={() => setIsFlasherOpen(true)} />
-                </div>
-              </div>
-            )}
-
-            {/* ── FLOATING STUDIO ACTION DOCK ── */}
-            <aside className="studio-floating-dock" aria-label="Studio quick actions">
-              <div className="dock-meta">
-                <span className="dock-status-dot" />
-                <span className="dock-run-id">RUN <code>{run.run_id}</code></span>
-              </div>
-              <div className="dock-buttons">
-                {Boolean(run.artifacts.firmware_bin) && (
-                  <button
-                    type="button"
-                    className="primary-button dock-btn dock-btn-primary"
-                    onClick={() => setIsFlasherOpen(true)}
-                  >
-                    ⚡ Flash ESP32
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="ghost-button dock-btn"
-                  onClick={() => setIsFabOpen(true)}
-                >
-                  🏭 Order Fab
-                </button>
-                <a
-                  className="ghost-button dock-btn"
-                  href={bundleUrl(run.run_id)}
-                  download
-                >
-                  📦 Bundle.zip
-                </a>
-              </div>
-            </aside>
-
-            <HardwareFlasher
-              runId={run.run_id}
-              isOpen={isFlasherOpen}
-              onClose={() => setIsFlasherOpen(false)}
-            />
-
-            <FabricationModal
-              runId={run.run_id}
-              spec={spec}
-              catalog={catalog}
-              isOpen={isFabOpen}
-              onClose={() => setIsFabOpen(false)}
+            <PromptForm
+              idea={idea}
+              onIdeaChange={setIdea}
+              onSubmit={() => void handleSend(idea)}
+              loading={loading}
             />
           </>
         )}
 
-        {run && (run.status === "refused" || run.status === "unsupported") && (
-          <RefusalPanel run={run} />
+        {/* ── CONVERSATION THREAD (CHATGPT STYLE) ── */}
+        {turns.length > 0 && (
+          <div className="chat-thread" role="log" aria-label="Hardware build conversation">
+            {turns.map((turn) => {
+              const validationStage: RunStageResult | null =
+                turn.run?.stages.find((stage) => stage.name === "validation") ?? null;
+              const planStage = turn.run?.stages.find((stage) => stage.name === "plan");
+              const outcomeReason = planStage?.reason ?? turn.run?.issues[0]?.message ?? "";
+              const canViewStl = Boolean(turn.run?.artifacts.base_stl && turn.run.artifacts.lid_stl);
+              const assembledUrl = turn.run?.artifacts.assembled_stl
+                ? artifactUrl(turn.run.run_id, "assembled.stl")
+                : null;
+
+              return (
+                <article key={turn.id} className="chat-turn-card">
+                  {/* User Turn */}
+                  <div className="chat-user-row">
+                    <div className="chat-user-avatar" aria-hidden="true">
+                      👤
+                    </div>
+                    <div className="chat-user-bubble">
+                      <span className="chat-user-label">You</span>
+                      <p className="chat-user-text">{turn.prompt}</p>
+                    </div>
+                  </div>
+
+                  {/* Assistant Turn */}
+                  <div className="chat-assistant-row">
+                    <div className="chat-assistant-body">
+                      <div className="chat-assistant-header">
+                        <div className="chat-assistant-avatar" aria-hidden="true">
+                          SP
+                        </div>
+                        <span className="chat-assistant-brand">SparkPlan Compiler</span>
+                        {turn.run && (
+                          <span className="chat-run-chip">
+                            RUN <code>{turn.run.run_id}</code>
+                          </span>
+                        )}
+                      </div>
+
+                      {turn.error && (
+                        <div className="status-banner status-error" role="alert">
+                          <div>
+                            <strong>Could not complete the run.</strong>
+                            <p>{turn.error}</p>
+                          </div>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() => void handleSend(turn.prompt)}
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      )}
+
+                      {turn.run?.status === "running" && (
+                        <div className="status-banner status-info" role="status">
+                          <div>
+                            <strong>Synthesizing build...</strong>
+                            <p>
+                              Run <code>{turn.run.run_id}</code> is queued or in progress. Updates
+                              stream automatically.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {(turn.run || turn.loading) && (
+                        <ProgressStepper
+                          run={turn.run}
+                          running={Boolean(
+                            turn.loading &&
+                              turn.run?.status !== "ok" &&
+                              turn.run?.status !== "failed" &&
+                              turn.run?.status !== "refused" &&
+                              turn.run?.status !== "unsupported",
+                          )}
+                        />
+                      )}
+
+                      {turn.run?.status === "ok" && (
+                        <>
+                          <div className="status-banner status-success" role="status">
+                            <div>
+                              <strong>
+                                {turn.loadingArtifacts
+                                  ? "Build ready. Loading files..."
+                                  : "Build ready."}
+                              </strong>
+                              <p>
+                                Run <code>{turn.run.run_id}</code> passed the pipeline. Review checks
+                                before physical assembly.
+                              </p>
+                            </div>
+                          </div>
+
+                          <VerificationBadges
+                            verification={turn.trace?.verification ?? null}
+                            traceError={turn.traceError}
+                          />
+
+                          <ModifyPromptBar onModify={(mod) => void handleSend(mod)} loading={loading} />
+
+                          <nav className="studio-toolbar" aria-label="Engineering studio views">
+                            <div className="studio-tabs" role="tablist">
+                              <button
+                                type="button"
+                                className={`studio-tab ${turn.studioTab === "all" ? "active" : ""}`}
+                                onClick={() => updateTurn(turn.id, { studioTab: "all" })}
+                                role="tab"
+                                aria-selected={turn.studioTab === "all"}
+                              >
+                                🗂️ All Views
+                              </button>
+                              <button
+                                type="button"
+                                className={`studio-tab ${turn.studioTab === "circuit" ? "active" : ""}`}
+                                onClick={() => updateTurn(turn.id, { studioTab: "circuit" })}
+                                role="tab"
+                                aria-selected={turn.studioTab === "circuit"}
+                              >
+                                ⚡ Circuit & Sim
+                              </button>
+                              {canViewStl && (
+                                <button
+                                  type="button"
+                                  className={`studio-tab ${turn.studioTab === "cad" ? "active" : ""}`}
+                                  onClick={() => updateTurn(turn.id, { studioTab: "cad" })}
+                                  role="tab"
+                                  aria-selected={turn.studioTab === "cad"}
+                                >
+                                  🧊 3D CAD
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className={`studio-tab ${turn.studioTab === "firmware" ? "active" : ""}`}
+                                onClick={() => updateTurn(turn.id, { studioTab: "firmware" })}
+                                role="tab"
+                                aria-selected={turn.studioTab === "firmware"}
+                              >
+                                💻 Firmware
+                              </button>
+                              <button
+                                type="button"
+                                className={`studio-tab ${turn.studioTab === "bom" ? "active" : ""}`}
+                                onClick={() => updateTurn(turn.id, { studioTab: "bom" })}
+                                role="tab"
+                                aria-selected={turn.studioTab === "bom"}
+                              >
+                                📋 BOM & Wiring
+                              </button>
+                              <button
+                                type="button"
+                                className={`studio-tab ${turn.studioTab === "guide" ? "active" : ""}`}
+                                onClick={() => updateTurn(turn.id, { studioTab: "guide" })}
+                                role="tab"
+                                aria-selected={turn.studioTab === "guide"}
+                              >
+                                📖 Guide & Files
+                              </button>
+                            </div>
+
+                            <div className="studio-actions">
+                              <button
+                                type="button"
+                                className="ghost-button studio-action-btn"
+                                onClick={() =>
+                                  setActiveFab({ runId: turn.run!.run_id, spec: turn.spec })
+                                }
+                                title="Instant PCB and 3D printing fabrication quote"
+                              >
+                                🏭 Order Fab
+                              </button>
+                              {Boolean(turn.run.artifacts.firmware_bin) && (
+                                <button
+                                  type="button"
+                                  className="primary-button studio-action-btn"
+                                  onClick={() => setActiveFlasherRunId(turn.run!.run_id)}
+                                >
+                                  ⚡ Flash ESP32
+                                </button>
+                              )}
+                              <a
+                                className="ghost-button studio-action-btn"
+                                href={bundleUrl(turn.run.run_id)}
+                                download
+                              >
+                                📦 Bundle
+                              </a>
+                            </div>
+                          </nav>
+
+                          {/* ── STAGE VIEWPORTS (3D CAD & SIMULATION) ── */}
+                          {(turn.studioTab === "all" ||
+                            turn.studioTab === "cad" ||
+                            turn.studioTab === "circuit") && (
+                            <div
+                              className={`studio-stage-grid ${
+                                turn.studioTab !== "all" ? "single-stage" : ""
+                              }`}
+                            >
+                              {(turn.studioTab === "all" || turn.studioTab === "cad") &&
+                                canViewStl && (
+                                  <section
+                                    className="panel viewer-panel stage-panel"
+                                    aria-labelledby={`enclosure-heading-${turn.id}`}
+                                  >
+                                    <div className="panel-heading">
+                                      <div>
+                                        <p className="eyebrow">STL preview</p>
+                                        <h2 id={`enclosure-heading-${turn.id}`}>Enclosure</h2>
+                                      </div>
+                                      <span className="stage-tag">Parametric 3D CAD</span>
+                                    </div>
+                                    <StlViewer
+                                      baseUrl={artifactUrl(turn.run.run_id, "base.stl")}
+                                      lidUrl={artifactUrl(turn.run.run_id, "lid.stl")}
+                                      assembledUrl={assembledUrl}
+                                      theme={theme}
+                                    />
+                                  </section>
+                                )}
+
+                              {(turn.studioTab === "all" || turn.studioTab === "circuit") &&
+                                (turn.run.artifacts.simulation_diagram ||
+                                  turn.run.artifacts.simulation_log ||
+                                  turn.run.artifacts.simulation_screenshot) && (
+                                  <div className="stage-panel">
+                                    <SimulationPanel
+                                      run={turn.run}
+                                      diagram={turn.wokwiDiagram}
+                                      serialLog={turn.serialLog}
+                                      loadingDiagram={turn.loadingDiagram}
+                                      loadingLog={turn.loadingLog}
+                                    />
+                                  </div>
+                                )}
+                            </div>
+                          )}
+
+                          {/* ── TELEMETRY & HARDWARE MATRIX ── */}
+                          {(turn.studioTab === "all" ||
+                            turn.studioTab === "bom" ||
+                            turn.studioTab === "firmware" ||
+                            turn.studioTab === "guide") && (
+                            <div className="results-grid">
+                              {(turn.studioTab === "all" || turn.studioTab === "bom") && (
+                                <div className="results-column">
+                                  <PartsPanel
+                                    spec={turn.spec}
+                                    catalog={catalog}
+                                    loading={turn.loadingArtifacts && !turn.spec}
+                                    onOpenFab={() =>
+                                      setActiveFab({ runId: turn.run!.run_id, spec: turn.spec })
+                                    }
+                                  />
+                                  <WiringPanel spec={turn.spec} />
+                                </div>
+                              )}
+                              {(turn.studioTab === "all" ||
+                                turn.studioTab === "firmware" ||
+                                turn.studioTab === "guide") && (
+                                <div className="results-column">
+                                  {(turn.studioTab === "all" ||
+                                    turn.studioTab === "firmware") && (
+                                    <FirmwarePanel
+                                      code={turn.sketch}
+                                      error={turn.firmwareError}
+                                      loading={turn.loadingArtifacts && !turn.sketch}
+                                    />
+                                  )}
+                                  {(turn.studioTab === "all" || turn.studioTab === "guide") && (
+                                    <GuidePanel
+                                      guide={turn.guide}
+                                      error={turn.guideError}
+                                      loading={turn.loadingArtifacts && !turn.guide}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* ── VERIFICATION TRACE & PRODUCTION DOWNLOADS ── */}
+                          {(turn.studioTab === "all" ||
+                            turn.studioTab === "bom" ||
+                            turn.studioTab === "guide") && (
+                            <div className="results-grid">
+                              <div className="results-column">
+                                <ValidationPanel
+                                  issues={validationStage?.issues ?? []}
+                                  validationStage={validationStage}
+                                />
+                                {turn.run && <StageFindingsPanel stages={turn.run.stages} />}
+                              </div>
+                              <div className="results-column">
+                                <DownloadsPanel
+                                  run={turn.run}
+                                  onOpenFlasher={() => setActiveFlasherRunId(turn.run!.run_id)}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
+                      {turn.run &&
+                        (turn.run.status === "refused" || turn.run.status === "unsupported") && (
+                          <RefusalPanel run={turn.run} />
+                        )}
+
+                      {turn.run?.status === "failed" && (
+                        <FailurePanel run={turn.run} reason={outcomeReason} />
+                      )}
+
+                      <ArtifactErrors errors={turn.artifactErrors} />
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+            <div ref={chatEndRef} />
+          </div>
         )}
-
-        {run?.status === "failed" && <FailurePanel run={run} reason={outcomeReason} />}
-
-        <ArtifactErrors errors={artifactErrors} />
 
         <footer className="site-footer">
           <p>
@@ -601,6 +681,72 @@ export default function App() {
           </p>
         </footer>
       </main>
+
+      {/* ── STICKY CHATGPT-STYLE BOTTOM PROMPT BAR (SHOWN WHEN THREAD ACTIVE) ── */}
+      {turns.length > 0 && (
+        <div className="chatgpt-dock" role="region" aria-label="Hardware conversation bar">
+          <div className="chatgpt-dock-inner">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!loading && bottomInput.trim()) {
+                  void handleSend(bottomInput);
+                }
+              }}
+              className="chatgpt-dock-form"
+            >
+              <textarea
+                ref={bottomInputRef}
+                value={bottomInput}
+                onChange={(e) => setBottomInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!loading && bottomInput.trim()) {
+                      void handleSend(bottomInput);
+                    }
+                  }
+                }}
+                placeholder="Send a follow-up modification or a new hardware idea..."
+                rows={1}
+                className="chatgpt-dock-input"
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                className="primary-button chatgpt-dock-send-btn"
+                disabled={loading || !bottomInput.trim()}
+                aria-label="Send modification"
+              >
+                {loading ? <span className="spinner-dot" /> : "⚡ Send"}
+              </button>
+            </form>
+            <div className="chatgpt-dock-footnote">
+              Grounded in 20-part catalog · Press <code>Enter ↵</code> to send, <code>Shift + Enter</code> for line break
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HARDWARE FLASHER MODAL ── */}
+      {activeFlasherRunId && (
+        <HardwareFlasher
+          runId={activeFlasherRunId}
+          isOpen={Boolean(activeFlasherRunId)}
+          onClose={() => setActiveFlasherRunId(null)}
+        />
+      )}
+
+      {/* ── FABRICATION QUOTE MODAL ── */}
+      {activeFab && (
+        <FabricationModal
+          runId={activeFab.runId}
+          spec={activeFab.spec}
+          catalog={catalog}
+          isOpen={Boolean(activeFab)}
+          onClose={() => setActiveFab(null)}
+        />
+      )}
     </div>
   );
 }

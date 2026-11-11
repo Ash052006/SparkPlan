@@ -444,6 +444,20 @@ export function FirmwarePanel({ code, error, loading }: FirmwareProps) {
   );
 }
 
+function InteractiveCheckbox({ checked: initialChecked }: { checked?: boolean }) {
+  const [checked, setChecked] = useState(Boolean(initialChecked));
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      onChange={() => setChecked((prev) => !prev)}
+      className="interactive-checklist-checkbox"
+      disabled={false}
+      style={{ cursor: "pointer", accentColor: "var(--primary)" }}
+    />
+  );
+}
+
 type GuideProps = {
   guide: string;
   error: string;
@@ -464,7 +478,19 @@ export function GuidePanel({ guide, error, loading }: GuideProps) {
       {!loading && !error && !guide && <p className="muted">No build guide is available.</p>}
       {guide && (
         <div className="markdown">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{guide}</ReactMarkdown>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              input: ({ node, ...props }) => {
+                if (props.type === "checkbox") {
+                  return <InteractiveCheckbox checked={props.checked} />;
+                }
+                return <input {...props} />;
+              },
+            }}
+          >
+            {guide}
+          </ReactMarkdown>
         </div>
       )}
     </section>
