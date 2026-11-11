@@ -476,6 +476,7 @@ def create_root_router(
         return _guard(lambda: _resolve_result(run_id, runs_root, manager)[0])
 
     @router.get("/runs/{run_id}/events")
+    @router.get("/runs/{run_id}/stream")
     async def get_run_events(run_id: str) -> StreamingResponse:
         try:
             _resolve_result(run_id, runs_root, manager)

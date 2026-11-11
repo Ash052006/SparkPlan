@@ -1,0 +1,58 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: sparkplan:latest
+    container_name: sparkplan-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - SPARKPLAN_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+      - SPARKPLAN_SECRET_KEY=${SPARKPLAN_SECRET_KEY:-insecure-prod-placeholder-change-me}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - sparkplan-runs:/tmp/sparkplan_runs
+
+  redis:
+    image: redis:7-alpine
+    container_name: sparkplan-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
+  worker:
+    image: sparkplan:latest
+    container_name: sparkplan-worker
+    restart: unless-stopped
+    command: ["python", "-m", "sparkplan.queue"]
+    environment:
+      - SPARKPLAN_ENV=production
+      - REDIS_URL=redis://redis:6379/0
+      - SPARKPLAN_SECRET_KEY=${SPARKPLAN_SECRET_KEY:-insecure-prod-placeholder-change-me}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    volumes:
+      - sparkplan-runs:/tmp/sparkplan_runs
+
+volumes:
+  sparkplan-runs:
+  redis-data:

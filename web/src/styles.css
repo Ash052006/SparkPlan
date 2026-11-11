@@ -3442,6 +3442,241 @@ code {
   box-sizing: border-box;
 }
 
+/* ── UserMenu and OAuth Authentication Styles ────────────────────────── */
+.user-menu-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-signin-btn {
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.auth-signin-btn:hover {
+  background: var(--surface-muted);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.user-profile-wrap {
+  position: relative;
+}
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px 3px 4px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.user-profile-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--surface-muted);
+}
+
+.user-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.user-name-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  min-width: 200px;
+  padding: 8px 0;
+}
+
+.user-dropdown-header {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.84rem;
+}
+
+.user-dropdown-email {
+  font-size: 0.76rem;
+  word-break: break-all;
+}
+
+.user-provider-tag {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+.user-dropdown-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.user-dropdown-item:hover {
+  background: var(--surface-muted);
+}
+
+.user-dropdown-item.logout-item {
+  color: var(--danger, #ef4444);
+}
+
+/* OAuth Modal */
+.auth-modal {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-modal-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 4px 0 20px 0;
+  line-height: 1.45;
+}
+
+.auth-providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border);
+}
+
+.github-oauth-btn {
+  background: #24292f;
+  color: #ffffff;
+}
+
+.github-oauth-btn:hover {
+  background: #1b1f23;
+  border-color: #ffffff;
+}
+
+.google-oauth-btn {
+  background: #ffffff;
+  color: #1f2937;
+  border-color: #e5e7eb;
+}
+
+.google-oauth-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.auth-or-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.auth-or-divider::before,
+.auth-or-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-or-divider span {
+  padding: 0 10px;
+}
+
+.dev-login-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+}
+
+.dev-login-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
 .site-header {
   position: relative;
   z-index: 150;
@@ -3605,7 +3840,18 @@ code {
 
   .site-header {
     width: 100%;
-    padding: 16px;
+    padding: 14px 12px;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .auth-signin-btn {
+    padding: 4px 8px;
+    font-size: 0.78rem;
   }
 
   .sidebar-open .chatgpt-dock,

@@ -53,3 +53,20 @@ def test_job_manager_fails_safely_when_runner_returns_wrong_type() -> None:
     assert isinstance(result, RunResult)
     assert result.status.value == "failed"
     assert result.issues[0].code == "RUN_WORKER_FAILED"
+
+
+def test_rate_limiter_tiered_authenticated() -> None:
+    now = 1000.0
+    limiter = RateLimiter(limit=2, authenticated_limit=5, window_s=60.0, clock=lambda: now)
+
+    # Anonymous user gets rejected on 3rd request
+    assert limiter.check("anon_ip", is_authenticated=False) is None
+    assert limiter.check("anon_ip", is_authenticated=False) is None
+    retry_after = limiter.check("anon_ip", is_authenticated=False)
+    assert retry_after is not None and retry_after > 0
+
+    # Authenticated user gets up to 5 requests
+    for _ in range(5):
+        assert limiter.check("auth_user_1", is_authenticated=True) is None
+    auth_retry = limiter.check("auth_user_1", is_authenticated=True)
+    assert auth_retry is not None and auth_retry > 0

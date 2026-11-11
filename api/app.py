@@ -12,6 +12,7 @@ from dataclasses import asdict, is_dataclass
 from pathlib import Path
 from typing import Any
 
+from api.auth import create_auth_router
 from api.canonical import create_root_router
 from api.jobs import RunJobManager
 from api.limits import RateLimiter
@@ -106,6 +107,7 @@ def create_app(
             allow_headers=["Content-Type"],
         )
 
+    app.include_router(create_auth_router())
     app.include_router(
         create_v2_router(
             llm=canonical_llm,
