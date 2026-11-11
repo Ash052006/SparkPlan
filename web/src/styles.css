@@ -2879,6 +2879,191 @@ code {
 }
 
 /* Modeled directly after ChatGPT's proposed package card (User screenshot) */
+.proposed-package-card {
+  position: relative;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 22px 24px 18px 24px;
+  margin-top: 18px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+}
+
+.package-card-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.package-title {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.badge-budget-target {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  font-size: 0.74rem;
+  font-weight: 650;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.package-price-hero {
+  font-size: 2.2rem;
+  font-weight: 850;
+  color: #10b981;
+  letter-spacing: -0.03em;
+  margin: 4px 0 2px 0;
+  line-height: 1.15;
+}
+
+.package-meta-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-muted);
+  letter-spacing: -0.005em;
+  margin-bottom: 14px;
+}
+
+.package-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 12px 0 10px 0;
+}
+
+.package-breakdown {
+  width: 100%;
+}
+
+.package-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.package-breakdown-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.package-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.package-breakdown-row:last-child {
+  border-bottom: none;
+}
+
+.package-part-title {
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding-right: 12px;
+}
+
+.package-part-cost {
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.package-expand-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
+}
+
+.package-circle-expand-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.16s ease;
+}
+
+.package-circle-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(1px);
+}
+
+.circle-arrow-icon {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* Pre-flight checklist and task-list item styling */
+.markdown ul.contains-task-list {
+  list-style: none !important;
+  padding-left: 0 !important;
+  margin: 10px 0;
+}
+
+.markdown li.task-list-item {
+  list-style: none !important;
+  list-style-type: none !important;
+  margin: 6px 0 !important;
+}
+
+.checklist-label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+  width: 100%;
+  padding: 5px 8px;
+  border-radius: 6px;
+  transition: background 0.14s ease;
+}
+
+.checklist-label:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.checklist-text {
+  font-size: 0.94rem;
+  line-height: 1.45;
+  color: var(--text);
+  transition: color 0.14s ease;
+}
+
+.task-list-item.is-checked .checklist-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: #10b981;
+}
+
 .chatgpt-metric-hero {
   margin: 6px 0 16px 0;
   padding: 14px 18px;
@@ -3257,6 +3442,241 @@ code {
   box-sizing: border-box;
 }
 
+/* ── UserMenu and OAuth Authentication Styles ────────────────────────── */
+.user-menu-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.auth-signin-btn {
+  font-size: 0.82rem;
+  padding: 5px 12px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.auth-signin-btn:hover {
+  background: var(--surface-muted);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.user-profile-wrap {
+  position: relative;
+}
+
+.user-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px 10px 3px 4px;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.user-profile-btn:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: var(--surface-muted);
+}
+
+.user-avatar-img {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.user-avatar-fallback {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.user-name-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.user-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 1100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  min-width: 200px;
+  padding: 8px 0;
+}
+
+.user-dropdown-header {
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.84rem;
+}
+
+.user-dropdown-email {
+  font-size: 0.76rem;
+  word-break: break-all;
+}
+
+.user-provider-tag {
+  align-self: flex-start;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  background: rgba(37, 99, 235, 0.12);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-top: 4px;
+}
+
+.user-dropdown-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 6px 0;
+}
+
+.user-dropdown-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.user-dropdown-item:hover {
+  background: var(--surface-muted);
+}
+
+.user-dropdown-item.logout-item {
+  color: var(--danger, #ef4444);
+}
+
+/* OAuth Modal */
+.auth-modal {
+  max-width: 420px;
+  width: 100%;
+}
+
+.auth-modal-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  margin: 4px 0 20px 0;
+  line-height: 1.45;
+}
+
+.auth-providers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.oauth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 11px 16px;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border);
+}
+
+.github-oauth-btn {
+  background: #24292f;
+  color: #ffffff;
+}
+
+.github-oauth-btn:hover {
+  background: #1b1f23;
+  border-color: #ffffff;
+}
+
+.google-oauth-btn {
+  background: #ffffff;
+  color: #1f2937;
+  border-color: #e5e7eb;
+}
+
+.google-oauth-btn:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.auth-or-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 4px 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.auth-or-divider::before,
+.auth-or-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-or-divider span {
+  padding: 0 10px;
+}
+
+.dev-login-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 8px;
+}
+
+.dev-login-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+}
+
 .site-header {
   position: relative;
   z-index: 150;
@@ -3420,7 +3840,18 @@ code {
 
   .site-header {
     width: 100%;
-    padding: 16px;
+    padding: 14px 12px;
+    gap: 8px;
+    box-sizing: border-box;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .auth-signin-btn {
+    padding: 4px 8px;
+    font-size: 0.78rem;
   }
 
   .sidebar-open .chatgpt-dock,

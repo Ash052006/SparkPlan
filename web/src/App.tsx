@@ -21,6 +21,7 @@ import ProgressStepper from "./components/ProgressStepper";
 import VerificationBadges from "./components/VerificationBadges";
 import OptimizationSuggestions from "./components/OptimizationSuggestions";
 import Sidebar from "./components/Sidebar";
+import UserMenu from "./components/UserMenu";
 import { ChatSession, ChatTurn } from "./types/chat";
 import {
   ArtifactErrors,
@@ -385,6 +386,7 @@ export default function App() {
             >
               {theme === "dark" ? "Light" : "Dark"}
             </button>
+            <UserMenu />
           </div>
         </header>
 

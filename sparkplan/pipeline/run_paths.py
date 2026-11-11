@@ -41,6 +41,7 @@ ARTIFACT_PATHS: Final[dict[str, str]] = {
     "simulation_screenshot": "simulation/screenshot.png",
     "simulation_project": "simulation/project.zip",
     "guide": "GUIDE.md",
+    "gerbers": "gerbers.zip",
     "trace": "trace.json",
 }
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -151,6 +151,7 @@ function exportKiCadNetlist(spec: SupportedSpec, catalog: Catalog | null) {
 }
 
 export function PartsPanel({ spec, catalog, loading, onOpenFab }: PartsProps) {
+  const [expanded, setExpanded] = useState(false);
   const names = new Map(catalog?.parts.map((part) => [part.id, part]) ?? []);
   const totalCost = spec?.parts.reduce((sum, p) => {
     const qty = p.quantity ?? 1;
@@ -179,126 +180,172 @@ export function PartsPanel({ spec, catalog, loading, onOpenFab }: PartsProps) {
   ).toFixed(1);
 
   return (
-    <section className="panel" aria-labelledby="parts-heading">
-      <div className="panel-heading">
+    <section className="panel proposed-package-card" aria-labelledby="parts-heading">
+      <div className="package-card-topbar">
         <div>
           <p className="eyebrow">Bill of materials</p>
-          <h2 id="parts-heading">Parts & Sourcing</h2>
+          <h2 id="parts-heading" className="package-title">
+            Parts: {spec?.title ? `${spec.title} – proposed package` : "Proposed Hardware Package"}
+          </h2>
         </div>
-        {spec && (
-          <div className="bom-header-right">
-            <span className="bom-cost-badge">Est. BOM: ${totalCost.toFixed(2)}</span>
-            {onOpenFab && (
-              <button
-                type="button"
-                className="ghost-button bom-btn"
-                onClick={onOpenFab}
-                title="Instant PCB and 3D printing fabrication quote"
-              >
-                🏭 Order Fab
-              </button>
-            )}
-            <button
-              type="button"
-              className="ghost-button bom-btn"
-              onClick={() => exportBomCsv(spec, catalog)}
-              title="Download spreadsheet for DigiKey / Mouser ordering"
-            >
-              📥 Export CSV
-            </button>
-            <button
-              type="button"
-              className="ghost-button bom-btn"
-              onClick={() => exportKiCadNetlist(spec, catalog)}
-              title="Export netlist for KiCad schematic and PCB design"
-            >
-              📐 KiCad Netlist
-            </button>
-          </div>
-        )}
+        {spec && <span className="badge-budget-target">Budget target</span>}
       </div>
+
       {loading && <p className="muted">Loading the validated parts list...</p>}
       {!loading && !spec && <p className="muted">No parts list is available.</p>}
       {spec && (
         <>
-          <div className="chatgpt-metric-hero">
-            <div className="chatgpt-metric-val">
-              ${totalCost.toFixed(2)}
-              <span className="chatgpt-metric-sub">Target BOM cost</span>
-            </div>
-            <div className="chatgpt-metric-desc">
-              {spec.parts.length} validated catalog modules · ESP32-WROOM-32 MCU · 5V / 3.3V power rails
-            </div>
+          <div className="package-price-hero">
+            ${totalCost.toFixed(2)}
+          </div>
+          <div className="package-meta-subtitle">
+            {spec.parts.length} modules · {spec.connections.length} connections · ESP32 MCU · 5V / 3.3V rails
           </div>
 
-          <div className="power-profile-box">
-            <div className="power-metric">
-              <span className="power-label">⚡ Typ. Current:</span>
-              <span className="power-val">{typicalCurrentMa.toFixed(1)} mA</span>
-            </div>
-            <div className="power-metric">
-              <span className="power-label">🔥 Peak Current:</span>
-              <span className="power-val">{peakCurrentMa.toFixed(1)} mA</span>
-            </div>
-            <div className="power-metric">
-              <span className="power-label">🔋 1200mAh LiPo:</span>
-              <span className="power-val">{lipoHours} hrs</span>
-            </div>
-            <div className="power-metric">
-              <span className="power-label">🌙 10% Sleep Duty:</span>
-              <span className="power-val highlight">{dutyCycle10PctDays} days</span>
-            </div>
-          </div>
+          <div className="package-divider" />
 
-          <div className="table-wrap">
-          <table>
-            <caption className="sr-only">Validated parts list</caption>
-            <thead>
-              <tr>
-                <th scope="col">Qty</th>
-                <th scope="col">Instance</th>
-                <th scope="col">Part</th>
-                <th scope="col">Est. Price</th>
-                <th scope="col">Sourcing</th>
-              </tr>
-            </thead>
-            <tbody>
+          {/* Clean ChatGPT-style package component breakdown */}
+          <div className="package-breakdown">
+            <div className="package-breakdown-header">
+              <span>Component</span>
+              <span>Target cost</span>
+            </div>
+            <div className="package-breakdown-list">
               {spec.parts.map((part) => {
                 const catalogPart = names.get(part.part_id);
+                const qty = part.quantity ?? 1;
                 const unitPrice = PART_PRICES[part.part_id] ?? 2.0;
+                const lineTotal = (qty * unitPrice).toFixed(2);
                 const searchName = catalogPart?.name ?? part.part_id;
-                const digikeyUrl = `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(searchName)}`;
-
                 return (
-                  <tr key={part.instance_id}>
-                    <td>{part.quantity ?? 1}</td>
-                    <td>
-                      <code>{part.instance_id}</code>
-                      {part.label && <span className="cell-note">{part.label}</span>}
-                    </td>
-                    <td>
-                      <span className="part-name">{searchName}</span>
-                      <span className="cell-note">{titleCase(catalogPart?.category ?? "component")}</span>
-                    </td>
-                    <td>
-                      <span className="part-price">${unitPrice.toFixed(2)}</span>
-                    </td>
-                    <td>
-                      <a
-                        href={digikeyUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="sourcing-link"
-                      >
-                        Find on DigiKey ↗
-                      </a>
-                    </td>
-                  </tr>
+                  <div key={part.instance_id} className="package-breakdown-row">
+                    <span className="package-part-title">
+                      {qty > 1 ? `${qty}× ` : ""}{searchName}
+                    </span>
+                    <span className="package-part-cost">${lineTotal}</span>
+                  </div>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+
+          {/* Collapsible details section toggled by down arrow */}
+          {expanded && (
+            <div className="package-expanded-details">
+              <div className="power-profile-box" style={{ marginTop: "16px" }}>
+                <div className="power-metric">
+                  <span className="power-label">⚡ Typ. Current:</span>
+                  <span className="power-val">{typicalCurrentMa.toFixed(1)} mA</span>
+                </div>
+                <div className="power-metric">
+                  <span className="power-label">🔥 Peak Current:</span>
+                  <span className="power-val">{peakCurrentMa.toFixed(1)} mA</span>
+                </div>
+                <div className="power-metric">
+                  <span className="power-label">🔋 1200mAh LiPo:</span>
+                  <span className="power-val">{lipoHours} hrs</span>
+                </div>
+                <div className="power-metric">
+                  <span className="power-label">🌙 10% Sleep Duty:</span>
+                  <span className="power-val highlight">{dutyCycle10PctDays} days</span>
+                </div>
+              </div>
+
+              <div className="table-wrap" style={{ marginTop: "12px" }}>
+                <table>
+                  <caption className="sr-only">Detailed parts list and sourcing</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Qty</th>
+                      <th scope="col">Instance</th>
+                      <th scope="col">Part</th>
+                      <th scope="col">Est. Price</th>
+                      <th scope="col">Sourcing</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {spec.parts.map((part) => {
+                      const catalogPart = names.get(part.part_id);
+                      const unitPrice = PART_PRICES[part.part_id] ?? 2.0;
+                      const searchName = catalogPart?.name ?? part.part_id;
+                      const digikeyUrl = `https://www.digikey.com/en/products/result?keywords=${encodeURIComponent(searchName)}`;
+
+                      return (
+                        <tr key={part.instance_id}>
+                          <td>{part.quantity ?? 1}</td>
+                          <td>
+                            <code>{part.instance_id}</code>
+                            {part.label && <span className="cell-note">{part.label}</span>}
+                          </td>
+                          <td>
+                            <span className="part-name">{searchName}</span>
+                            <span className="cell-note">{titleCase(catalogPart?.category ?? "component")}</span>
+                          </td>
+                          <td>
+                            <span className="part-price">${unitPrice.toFixed(2)}</span>
+                          </td>
+                          <td>
+                            <a
+                              href={digikeyUrl}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="sourcing-link"
+                            >
+                              Find on DigiKey ↗
+                            </a>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bom-expanded-actions" style={{ marginTop: "14px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {onOpenFab && (
+                  <button
+                    type="button"
+                    className="ghost-button bom-btn"
+                    onClick={onOpenFab}
+                    title="Instant PCB and 3D printing fabrication quote"
+                  >
+                    🏭 Order Fab
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ghost-button bom-btn"
+                  onClick={() => exportBomCsv(spec, catalog)}
+                  title="Download spreadsheet for DigiKey / Mouser ordering"
+                >
+                  📥 Export CSV
+                </button>
+                <button
+                  type="button"
+                  className="ghost-button bom-btn"
+                  onClick={() => exportKiCadNetlist(spec, catalog)}
+                  title="Export netlist for KiCad schematic and PCB design"
+                >
+                  📐 KiCad Netlist
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Centered circular toggle button with down arrow */}
+          <div className="package-expand-toggle-wrap">
+            <button
+              type="button"
+              className="package-circle-expand-btn"
+              onClick={() => setExpanded((prev) => !prev)}
+              title={expanded ? "Collapse detailed breakdown" : "Expand full BOM and sourcing links"}
+              aria-expanded={expanded}
+            >
+              <span className={`circle-arrow-icon ${expanded ? "expanded" : ""}`}>
+                {expanded ? "↑" : "↓"}
+              </span>
+            </button>
+          </div>
         </>
       )}
       {!catalog && spec && (
@@ -454,17 +501,43 @@ export function FirmwarePanel({ code, error, loading }: FirmwareProps) {
   );
 }
 
-function InteractiveCheckbox({ checked: initialChecked }: { checked?: boolean }) {
-  const [checked, setChecked] = useState(Boolean(initialChecked));
+function InteractiveTaskItem({ children, ...props }: React.LiHTMLAttributes<HTMLLIElement>) {
+  const [checked, setChecked] = useState(false);
+
+  // Extract non-checkbox children to render as text
+  const childArray = React.Children.toArray(children);
+  const textChildren = childArray.filter((c) => {
+    if (React.isValidElement(c) && (c.type === "input" || (c.props as any)?.type === "checkbox")) {
+      return false;
+    }
+    return true;
+  });
+
   return (
-    <input
-      type="checkbox"
-      checked={checked}
-      onChange={() => setChecked((prev) => !prev)}
-      className="interactive-checklist-checkbox"
-      disabled={false}
-      style={{ cursor: "pointer", accentColor: "var(--primary)" }}
-    />
+    <li
+      className={`task-list-item ${checked ? "is-checked" : ""}`}
+      style={{ listStyleType: "none", marginLeft: 0 }}
+      {...props}
+    >
+      <label
+        className="checklist-label"
+        onClick={(e) => {
+          // If clicked directly on the input, onChange already handles it
+          if ((e.target as HTMLElement).tagName !== "INPUT") {
+            setChecked((prev) => !prev);
+          }
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => setChecked(e.target.checked)}
+          className="interactive-checklist-checkbox"
+          style={{ cursor: "pointer", accentColor: "var(--primary)" }}
+        />
+        <span className="checklist-text">{textChildren}</span>
+      </label>
+    </li>
   );
 }
 
@@ -491,11 +564,36 @@ export function GuidePanel({ guide, error, loading }: GuideProps) {
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
-              input: ({ node, ...props }) => {
-                if (props.type === "checkbox") {
-                  return <InteractiveCheckbox checked={props.checked} />;
+              ul: ({ node, className, children, ...props }) => {
+                const isTaskList =
+                  className?.includes("contains-task-list") ||
+                  React.Children.toArray(children).some(
+                    (c) => React.isValidElement(c) && (c.props as any)?.className?.includes("task-list-item")
+                  );
+                return (
+                  <ul
+                    className={`guide-ul ${className || ""} ${isTaskList ? "contains-task-list" : ""}`}
+                    style={isTaskList ? { listStyleType: "none", paddingLeft: "4px" } : undefined}
+                    {...props}
+                  >
+                    {children}
+                  </ul>
+                );
+              },
+              li: ({ node, className, children, ...props }) => {
+                const isTaskListItem =
+                  className?.includes("task-list-item") ||
+                  React.Children.toArray(children).some(
+                    (c) => React.isValidElement(c) && (c.type === "input" || (c.props as any)?.type === "checkbox")
+                  );
+                if (isTaskListItem) {
+                  return <InteractiveTaskItem {...props}>{children}</InteractiveTaskItem>;
                 }
-                return <input {...props} />;
+                return (
+                  <li className={className} {...props}>
+                    {children}
+                  </li>
+                );
               },
             }}
           >

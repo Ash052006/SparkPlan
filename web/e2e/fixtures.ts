@@ -272,6 +272,11 @@ Print the base and lid in PETG.
 
 Connect DATA to D4 and power to 3V3.
 
+## 9. Pre-flight test checklist
+
+- [ ] Confirm no loose wire strands or accidental connections between adjacent pins.
+- [ ] Measure each board rail with a multimeter before connecting modules.
+
 Not physically built.
 `;
 

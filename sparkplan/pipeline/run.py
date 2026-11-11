@@ -1406,6 +1406,14 @@ def run(
             details={"characters": len(guide)},
         )
 
+    if spec is not None:
+        try:
+            from sparkplan.geometry.pcb_gerber import generate_pcb_gerbers
+
+            generate_pcb_gerbers(spec, cat, out_zip_path=paths.artifact("gerbers"))
+        except Exception:
+            pass
+
     final_stages = recorder.ordered(reason="not reached before the run finished")
     run_status = (
         RunStatus.FAILED
@@ -1424,6 +1432,7 @@ def run(
             "firmware_elf",
             *_simulation_artifact_names(),
             "guide",
+            "gerbers",
         ),
     )
     artifacts["report"] = paths.artifact_inventory()["report"]

@@ -105,6 +105,7 @@ _DOWNLOADS: Final[dict[str, _Download]] = {
         "simulation_project", "application/zip", "project.zip", "simulation/project.zip"
     ),
     "GUIDE.md": _Download("guide", "text/markdown; charset=utf-8", "GUIDE.md", "GUIDE.md"),
+    "gerbers.zip": _Download("gerbers", "application/zip", "gerbers.zip", "gerbers.zip"),
 }
 
 _ARCHIVE_TIMESTAMP: Final = (1980, 1, 1, 0, 0, 0)
@@ -475,6 +476,7 @@ def create_root_router(
         return _guard(lambda: _resolve_result(run_id, runs_root, manager)[0])
 
     @router.get("/runs/{run_id}/events")
+    @router.get("/runs/{run_id}/stream")
     async def get_run_events(run_id: str) -> StreamingResponse:
         try:
             _resolve_result(run_id, runs_root, manager)
