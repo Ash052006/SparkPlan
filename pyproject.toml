@@ -12,6 +12,8 @@ dependencies = [
     "trimesh>=4.4",
     "cadquery>=2.4",
     "rtree>=1.4.1",
+    "pyserial>=3.5",
+    "esptool>=4.7",
 ]
 
 [project.optional-dependencies]
