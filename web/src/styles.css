@@ -3121,8 +3121,8 @@ code {
 
 .chatgpt-dock-inner {
   pointer-events: auto;
-  width: min(800px, 100%);
-  max-width: 800px;
+  width: 100%;
+  max-width: calc(800px - 48px);
   margin: 0 auto;
   display: flex;
   flex-direction: column;

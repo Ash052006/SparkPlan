@@ -203,6 +203,18 @@ test.describe("successful build", () => {
     await expect(page.getByRole("heading", { name: "Iterative Hardware Modification" })).toBeVisible();
     await expect(page.getByPlaceholder(/e\.g\. 'Add a passive buzzer/)).toBeVisible();
 
+    // Verify chatbox aligns horizontally with the content panel
+    const panelBox = await page.locator(".suggestions-panel").boundingBox();
+    const dockBox = await page.locator(".chatgpt-dock-form").boundingBox();
+    expect(panelBox).not.toBeNull();
+    expect(dockBox).not.toBeNull();
+    if (panelBox && dockBox) {
+      expect(Math.abs(panelBox.x - dockBox.x)).toBeLessThanOrEqual(2);
+      expect(Math.abs(panelBox.width - dockBox.width)).toBeLessThanOrEqual(2);
+    }
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.screenshot({ path: "/Users/aishwarysaxena/.gemini/antigravity/brain/c99e0439-0a0c-42ca-9ca5-319b95a59a35/aligned-chatbox.png" });
+
     const benchTab = page.getByRole("tab", { name: /Interactive Bench/ });
     await expect(benchTab).toBeVisible();
     await benchTab.click();
