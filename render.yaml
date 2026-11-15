@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: sparkplan-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: SPARKPLAN_LOG_LEVEL
+        value: info
+      - key: SPARKPLAN_CORS_ORIGINS
+        value: "http://localhost:5173,http://localhost:8001,https://sparkplan.vercel.app,https://sparkplan-ashes24x7.vercel.app,https://sparkplan-git-main-ashes24x7.vercel.app"

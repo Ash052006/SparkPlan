@@ -73,7 +73,7 @@ def _jsonable(obj: Any) -> Any:
 def _cors_origins() -> list[str]:
     raw = os.environ.get(
         "SPARKPLAN_CORS_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8001,https://sparkplan.vercel.app,https://sparkplan-ashes24x7.vercel.app,https://sparkplan-git-main-ashes24x7.vercel.app",
     )
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
@@ -104,8 +104,8 @@ def create_app(
         app.add_middleware(
             CORSMiddleware,
             allow_origins=origins,
-            allow_methods=["GET", "POST", "OPTIONS"],
-            allow_headers=["Content-Type"],
+            allow_methods=["*"],
+            allow_headers=["*"],
         )
 
     app.include_router(create_auth_router())
