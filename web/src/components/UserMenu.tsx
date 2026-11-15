@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { apiUrl } from "../api";
 
 export interface User {
   user_id: string;
@@ -16,7 +17,7 @@ export function UserMenu() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
-    fetch("/auth/me")
+    fetch(apiUrl("/auth/me"))
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         setUser(data);
@@ -30,7 +31,7 @@ export function UserMenu() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/auth/logout", { method: "POST" });
+      await fetch(apiUrl("/auth/logout"), { method: "POST" });
       setUser(null);
       setDropdownOpen(false);
     } catch (e) {
@@ -40,7 +41,7 @@ export function UserMenu() {
 
   const handleMockLogin = async () => {
     try {
-      const res = await fetch("/auth/mock-login", { method: "POST" });
+      const res = await fetch(apiUrl("/auth/mock-login"), { method: "POST" });
       if (res.ok) {
         const u = await res.json();
         setUser(u);
@@ -130,12 +131,12 @@ export function UserMenu() {
             </p>
 
             <div className="auth-providers-list">
-              <a href="/auth/login/github" className="oauth-btn github-oauth-btn">
+              <a href={apiUrl("/auth/login/github")} className="oauth-btn github-oauth-btn">
                 <span className="oauth-icon">🐙</span>
                 <span>Continue with GitHub</span>
               </a>
 
-              <a href="/auth/login/google" className="oauth-btn google-oauth-btn">
+              <a href={apiUrl("/auth/login/google")} className="oauth-btn google-oauth-btn">
                 <span className="oauth-icon">🔍</span>
                 <span>Continue with Google</span>
               </a>

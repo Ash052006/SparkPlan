@@ -198,12 +198,21 @@ export class ApiError extends Error {
   }
 }
 
+export const API_BASE =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+
+export function apiUrl(path: string): string {
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_BASE}${cleanPath}`;
+}
+
 export function artifactUrl(runId: string, filename: string): string {
-  return `/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(filename)}`;
+  return apiUrl(`/runs/${encodeURIComponent(runId)}/files/${encodeURIComponent(filename)}`);
 }
 
 export function bundleUrl(runId: string): string {
-  return `/runs/${encodeURIComponent(runId)}/bundle.zip`;
+  return apiUrl(`/runs/${encodeURIComponent(runId)}/bundle.zip`);
 }
 
 async function responseError(response: Response): Promise<string> {
@@ -233,7 +242,7 @@ async function responseError(response: Response): Promise<string> {
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const response = await fetch(apiUrl(url), init);
   if (!response.ok) throw new ApiError(await responseError(response), response.status);
   try {
     return (await response.json()) as T;
