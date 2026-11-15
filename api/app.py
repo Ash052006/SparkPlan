@@ -19,6 +19,7 @@ from api.limits import RateLimiter
 from api.v2 import CanonicalRunner, create_v2_router
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sparkplan.catalog import Catalog, load_catalog
 from sparkplan.llm.client import LLMClient, make_llm_from_env
@@ -228,6 +229,10 @@ def create_app(
         if result.guide is None:
             raise HTTPException(status_code=404, detail="no guide for this build")
         return Response(content=result.guide, media_type="text/markdown")
+
+    dist_dir = Path(__file__).resolve().parent.parent / "web" / "dist"
+    if dist_dir.exists() and (dist_dir / "index.html").exists():
+        app.mount("/", StaticFiles(directory=str(dist_dir), html=True), name="static")
 
     return app
 
