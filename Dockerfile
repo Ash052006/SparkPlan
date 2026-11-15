@@ -45,7 +45,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     SPARKPLAN_ARDUINO_CLI=/usr/local/bin/arduino-cli \
     ARDUINO_DIRECTORIES_DATA=/home/sparkplan/.arduino15
 
-# Install system dependencies for OpenCascade / CadQuery / headless graphics
+# Install system dependencies for OpenCascade / CadQuery / headless graphics / PrusaSlicer
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
@@ -54,6 +54,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    prusa-slicer \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv for fast Python package resolution
@@ -62,6 +63,7 @@ COPY --from=ghcr.io/astral-sh/uv:0.4.18 /uv /usr/local/bin/uv
 # Copy arduino-cli binary and pre-cached ESP32 cores from Stage 2
 COPY --from=toolchain-builder /usr/local/bin/arduino-cli /usr/local/bin/arduino-cli
 COPY --from=toolchain-builder /root/.arduino15 /home/sparkplan/.arduino15
+RUN chmod 755 /usr/local/bin/arduino-cli
 
 # Create non-root user
 RUN groupadd -g 1000 sparkplan && \

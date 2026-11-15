@@ -12,5 +12,11 @@ services:
         value: 10000
       - key: SPARKPLAN_LOG_LEVEL
         value: info
+      - key: SPARKPLAN_ARDUINO_CLI
+        value: "/usr/local/bin/arduino-cli"
+      - key: SPARKPLAN_SLICER
+        value: "/usr/bin/prusa-slicer"
+      - key: ARDUINO_DIRECTORIES_DATA
+        value: "/home/sparkplan/.arduino15"
       - key: SPARKPLAN_CORS_ORIGINS
         value: "http://localhost:5173,http://localhost:8001,https://sparkplan.vercel.app,https://sparkplan-ashes24x7.vercel.app,https://sparkplan-git-main-ashes24x7.vercel.app"
